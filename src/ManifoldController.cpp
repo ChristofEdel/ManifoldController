@@ -48,6 +48,10 @@ SdFs sd;
 MyMutex sdCardMutex;
 #define SD_CONFIG SdSpiConfig(sdCardCsPin, DEDICATED_SPI, SD_SCK_MHZ(50))
 
+// The valve position (preserved across resets)
+RTC_DATA_ATTR double lastKownValvePosition;
+
+
 void checkForNewSensors();
 void readAndLogSensors();
 String getSensorHeaderLine();
@@ -126,6 +130,7 @@ void setup() {
   oneWireSensors.setup(oneWirePin);
   valveManager.setup();
   valveManager.setSetpoint(Config.getFlowTargetTemp());
+  valveManager.setValvePosition(lastKownValvePosition);
   MyWebServer.setup(&sd, &sdCardMutex, &sensorMap, &valveManager, &oneWireSensors);
   ledBlinkSetup();
 
@@ -410,6 +415,7 @@ void valveControlTask(void *parameter) {
         dummyParameter = tmp;
       }
       manageValveControls();
+      lastKownValvePosition = valveManager.outputs.targetValvePosition;
       readAndLogSensors();
     }
   }
