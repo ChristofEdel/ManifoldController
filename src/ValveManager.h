@@ -14,10 +14,9 @@ struct ValveManagerConfig {
 };
 
 struct ValveManagerInputs {
-  float inputTemperature;     // Read from temperature sensors
-  float flowTemperature;      
-  float returnTemperature;    
-  // float valvePosition;        // Read from the valve itself
+  double inputTemperature;     // Read from temperature sensors
+  double flowTemperature;      
+  double returnTemperature;
 };
 
 struct ValveManagerPidState {
@@ -40,14 +39,14 @@ struct ValveManagerPidState {
 };
 
 struct ValveManagerOutputs {
-  float targetValvePosition; // 0..100 %
+  double targetValvePosition; // 0..100 %
 };
 
 class ValveManager {
   private:
     ValveManagerConfig m_config;
     ValveManagerPidState m_pidState;
-    float m_setpoint;
+    double m_setpoint;
 
   public:
     volatile ValveManagerInputs inputs;
@@ -55,14 +54,15 @@ class ValveManager {
 
     void configureGains(double proportionalGain, double integralGain, double derivativeGain);
     void configureSeconds(double proportionalGain, double integralTimeSeconds, double derivativeTimeSeconds);
-    void resetPidState(float initialOutput);
+    void resetPidState(double initialOutput);
 
     void setup();
     void loadConfig();
-    void setInputs(float inputTemperature, float flowTemperature, float returnTemperature);
-    void setSetpoint(float setpoint) { this->m_setpoint = setpoint; };
-    void calculateValePosition();
-    void setValvePosition(float position);
+    void setInputs(double inputTemperature, double flowTemperature, double returnTemperature);
+    void setSetpoint(double setpoint) { this->m_setpoint = setpoint; };
+    double getSetpoint() { return this->m_setpoint; };
+    void calculateValvePosition();
+    void setValvePosition(double position);
     void sendOutputs();
 };
 

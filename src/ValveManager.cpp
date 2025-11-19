@@ -37,18 +37,23 @@ void ValveManager::configureSeconds(double proportionalGain, double integralTime
     this->m_config.integralTimeSeconds = integralTimeSeconds;
     this->m_config.derivativeTimeSeconds = derivativeTimeSeconds;
     if (integralTimeSeconds != 0) {
-    this->m_config.integralGain = proportionalGain / integralTimeSeconds;
+        this->m_config.integralGain = proportionalGain / integralTimeSeconds;
     } else {
-    this->m_config.integralGain = 0;
+        this->m_config.integralGain = 0;
     }
     this->m_config.derivativeGain = proportionalGain * derivativeTimeSeconds;
 
     this->resetPidState(this->outputs.targetValvePosition);
 }
 
-void ValveManager::resetPidState(float initialOutput) {
+void ValveManager::resetPidState(double initialOutput) {
     this->m_pidState.first = true;
-    this->m_pidState.cumulativeError = initialOutput / this->m_config.integralGain;
+    if (this->m_config.integralGain) {
+        this->m_pidState.cumulativeError = initialOutput / this->m_config.integralGain;
+    }
+    else {
+        this->m_pidState.cumulativeError = 0;
+    }
     this->m_pidState.previousTime = 0;
 }
 
@@ -61,20 +66,32 @@ void ValveManager::loadConfig() {
     );
 }
 
-void ValveManager::setInputs(float inputTemperature, float flowTemperature, float returnTemperature) {
+void ValveManager::setInputs(double inputTemperature, double flowTemperature, double returnTemperature) {
     this->inputs.inputTemperature = inputTemperature;
     this->inputs.flowTemperature = flowTemperature; 
     this->inputs.returnTemperature = returnTemperature;
 };
 
-void ValveManager::calculateValePosition() {
+void ValveManager::calculateValvePosition() {
 
     ValveManagerPidState *state = &this->m_pidState;
+    unsigned long now = millis();
+
+    // if we have no measurement, we skip this iteration 
+    if (this->inputs.flowTemperature < -50) return;
+
+    // if this is the first time round, we only remember the time and do nothing
+    if (state->first) { 
+        state->first = false;
+        state->previousTime = now;
+        state->previousError = 0;
+        return; 
+    } 
 
     // Get the time change in seconds
-    unsigned long now = millis();
     double timeChange = (double)(now - state->previousTime) / 1000.0;
     if (timeChange <= 0) return;
+
 
     // Calculate current and cumulative errors
     double error = this->m_setpoint - this->inputs.flowTemperature;
@@ -94,14 +111,18 @@ void ValveManager::calculateValePosition() {
         + this->m_config.derivativeGain * dErr
     ;
     this->outputs.targetValvePosition = constrain(newOutput, 0, 100);
+
+    // Prepare for next iteration
+    state->previousTime = now;
+    state->previousError = error;
+
 }
 
-void ValveManager::setValvePosition(float position) {
+void ValveManager::setValvePosition(double position) {
     this->outputs.targetValvePosition = position;
-};
+    resetPidState(position);
+}
 
 void ValveManager::sendOutputs() {
     dac.setDACOutVoltage(this->outputs.targetValvePosition * 100, 0); // Scale 0..100% to 0..10,000 for 0..10V
-    Serial.print("Valve position set to ");
-    Serial.println(this->outputs.targetValvePosition);
-};
+}

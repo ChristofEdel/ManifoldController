@@ -22,21 +22,21 @@ size_t CMyWebServer::respondWithConfigPage(WiFiClient &client) {
 
   totalBytesSent += client.print("<tr>");
     totalBytesSent += client.print("<th>Proportional Gain</th>");
-    totalBytesSent += client.print("<td colspan=2><input name='pg' type='text' value='");
+    totalBytesSent += client.print("<td colspan=2><input name='pid_pg' type='text' value='");
     totalBytesSent += client.print(Config.getProportionalGain(),1);
     totalBytesSent += client.print("'/></td>");
   totalBytesSent += client.print("</tr>");
 
   totalBytesSent += client.print("<tr>");
     totalBytesSent += client.print("<th>Integral Seconds</th>");
-    totalBytesSent += client.print("<td colspan=2><input name='is' type='text' value='");
+    totalBytesSent += client.print("<td colspan=2><input name='pid_is' type='text' value='");
     totalBytesSent += client.print(Config.getIntegralSeconds(),1);
     totalBytesSent += client.print("'/></td>");
   totalBytesSent += client.print("</tr>");
 
   totalBytesSent += client.print("<tr>");
     totalBytesSent += client.print("<th>Derivative Seconds</th>");
-    totalBytesSent += client.print("<td colspan=2><input name='ds' type='text' value='");
+    totalBytesSent += client.print("<td colspan=2><input name='pid_ds' type='text' value='");
     totalBytesSent += client.print(Config.getDerivativeSeconds(),1);
     totalBytesSent += client.print("'/></td>");
   totalBytesSent += client.print("</tr>");
@@ -160,14 +160,15 @@ void CMyWebServer::processConfigPagePost(String postData) {
       }
       else if (currentKey == "tft") {
         Config.setFlowTargetTemp(currentValue.toFloat());
+        this->m_valveManager->setSetpoint(Config.getFlowTargetTemp());
       }
-      else if (currentKey == "pg") {
+      else if (currentKey == "pid_pg") {
         Config.setProportionalGain(currentValue.toDouble());
       }
-      else if (currentKey == "is") {
+      else if (currentKey == "pid_is") {
         Config.setIntegralSeconds(currentValue.toDouble());
       }
-      else if (currentKey == "ds") {
+      else if (currentKey == "pid_ds") {
         Config.setDerivativeSeconds(currentValue.toDouble());
       }
       else if (currentKey == "is") {

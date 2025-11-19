@@ -14,6 +14,7 @@
 #include <ArduinoOTA.h>
 #include "Arduino.h"
 #include "ValveManager.h"
+#include <cppQueue.h>
 
 // Pin Assignments - digital pins --------------------------------
 const uint8_t openThermInPin          = A0;         // Repurposed analog pins for OpenTherm module I/O
@@ -124,6 +125,7 @@ void setup() {
   setupOta();
   oneWireSensors.setup(oneWirePin);
   valveManager.setup();
+  valveManager.setSetpoint(Config.getFlowTargetTemp());
   MyWebServer.setup(&sd, &sdCardMutex, &sensorMap, &valveManager, &oneWireSensors);
   ledBlinkSetup();
 
@@ -140,8 +142,8 @@ void loop() {
   // How often we do what
   const unsigned long timeSyncInterval             = 60 * 60 * 1000; // Synchronise time every hour
   const unsigned long sensorCheckInterval          = 60000;          // Check for new or removed sensors
-  const unsigned long valvePositionControlInterval = 5000;           // Read sensors and set control vale poistion
-  const unsigned long memoryCheckInterval          = 1000;           // Check for possible memory leaks
+  const unsigned long valvePositionControlInterval = 1000;           // Read sensors and set control vale poistion
+  const unsigned long memoryCheckInterval          = 10000;          // Check for possible memory leaks
   const unsigned long blinkInterval                = 100;            // Blink so we can see
   
   // When we last did that
@@ -172,7 +174,6 @@ void loop() {
 
   if (first || timeNow - lastValvePositionControl >= valvePositionControlInterval) {
     lastValvePositionControl = timeNow;
-    readAndLogSensors();
     triggerValveControls();
   }
 
@@ -276,20 +277,27 @@ String getSensorLogLine() {
     String result;
     result = MyRtc.getTime().getTimestampText();
 
-    // result += ",";
-    // if(boilerManager.outputs.boilerCall) {
-    //   result += String(boilerManager.outputs.boilerSetpoint,1);
-    // }
-    // result += ",";
-    // if (boilerManager.inputs.boilerModulation > 0) result += String(boilerManager.inputs.boilerModulation,1);
-    // result += ",";
-    // if (boilerManager.inputs.boilerFlow > -50) result += String(boilerManager.inputs.boilerFlow,1);
-    // result += ",";
-    // if (boilerManager.inputs.boilerReturn > -50) result += String(boilerManager.inputs.boilerReturn,1);
+    result += ",";
+    result += String(valveManager.getSetpoint(),1);
+    result += ",";
+    if (valveManager.inputs.inputTemperature > -50) result += String(valveManager.inputs.inputTemperature,1);
+    result += ",";
+    if (valveManager.inputs.returnTemperature > -50) result += String(valveManager.inputs.returnTemperature,1);
+    result += ",";
+    result += String(valveManager.outputs.targetValvePosition,1);
+    result += "%,";
+    if (valveManager.inputs.flowTemperature > -50) result += String(valveManager.inputs.flowTemperature,1);
+
+    String inputSensorId = Config.getInputSensorId();
+    String flowSensorId = Config.getFlowSensorId();
+    String returnSensorId = Config.getReturnSensorId();
 
     int n = sensorMap.getCount();
     for (int i = 0; i < n; i++) {
       SensorMapEntry * entry = sensorMap[i];
+      if (entry->id == inputSensorId) continue;
+      if (entry->id == flowSensorId) continue;
+      if (entry->id == returnSensorId) continue;
       Sensor * sensor = oneWireSensors.getSensor(entry->id.c_str());
       float temperature = SensorManager::SENSOR_NOT_FOUND;
       if (sensor) {
@@ -305,12 +313,20 @@ String getSensorLogLine() {
 
 String getSensorHeaderLine() {
     String result;
-    result = "Time,Valve Target,Valve Position,Input,Flow,Return";
+    result = "Time,Setpoint,Input,Return,Valve,Flow";
+
+    String inputSensorId = Config.getInputSensorId();
+    String flowSensorId = Config.getFlowSensorId();
+    String returnSensorId = Config.getReturnSensorId();
 
     int n = sensorMap.getCount();
     for (int i = 0; i < n; i++) {
+      SensorMapEntry *entry = sensorMap[i];
+      if (entry->id == inputSensorId) continue;
+      if (entry->id == flowSensorId) continue;
+      if (entry->id == returnSensorId) continue;
       result += ",";
-      result += sensorMap[i]->name;
+      result += entry->name;
     }
     
     return result;
@@ -353,19 +369,27 @@ void logSensorIssues() {
   }
 }
 
+
 TaskHandle_t valveControlTaskHandle = NULL;          // Task for boiler control
 TaskHandle_t webServerTaskHandle = NULL;              // Task for boiler control
 QueueHandle_t valveControlQueue = NULL;
 
-void manageValveControls()
-{
-  // valveManager.setInputs(...);
-  float inputTemp = oneWireSensors.getCalibratedTemperature(Config.getInputSensorId().c_str());
-  float flowTemp = oneWireSensors.getCalibratedTemperature(Config.getFlowSensorId().c_str());
-  float returnTemp = oneWireSensors.getCalibratedTemperature(Config.getReturnSensorId().c_str());
-  valveManager.setInputs(inputTemp, flowTemp, returnTemp);  
-  valveManager.calculateValePosition();
+void manageValveControls() {
+  float inputTemperature = oneWireSensors.getCalibratedTemperature(Config.getInputSensorId().c_str());
+  float flowTemperature = oneWireSensors.getCalibratedTemperature(Config.getFlowSensorId().c_str());
+  float returnTemperature = oneWireSensors.getCalibratedTemperature(Config.getReturnSensorId().c_str());
+  valveManager.setInputs(inputTemperature, flowTemperature, returnTemperature);  
+  valveManager.calculateValvePosition();
   valveManager.sendOutputs();
+  // Serial.printf(
+  //   "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf\n", 
+  //   inputTemperature, 
+  //   valveManager.getSetpoint(),
+  //   valveManager.outputs.targetValvePosition,
+  //   flowTemperature,
+  //   returnTemperature,
+  //   flowTemperature
+  // );
 }
 
 void triggerValveControls() {
@@ -386,6 +410,7 @@ void valveControlTask(void *parameter) {
         dummyParameter = tmp;
       }
       manageValveControls();
+      readAndLogSensors();
     }
   }
 }
@@ -425,4 +450,58 @@ void startWebServerTask() {
   );
 }
 
+
+// SIMULATION
+//
+// // Queue representing the heating loop
+// const int heatingLoopDelaySeconds = 60;
+// const int measurementDelaySeconds = 10;
+// cppQueue	heatingLoop(sizeof(double), heatingLoopDelaySeconds+10, FIFO);
+// cppQueue	measurementDelay(sizeof(double), measurementDelaySeconds+10, FIFO);
+// bool first = true;
+
+// void simulatedManageValveControls()
+// {
+//   double loopInitialTemperature = 35;
+//   double deltaT = 5;
+//   double inputTemperature = 40.0;
+   
+//   if (first) {
+//     for (int i = 0; i < heatingLoopDelaySeconds; i++) {
+//       heatingLoop.push(&loopInitialTemperature);
+//     }
+//     for (int i = 0; i < measurementDelaySeconds; i++) {
+//       measurementDelay.push(&loopInitialTemperature);
+//     }
+//     valveManager.outputs.targetValvePosition = 50;  // half open
+//     first = false;
+//   } 
+
+//   double returnTemperature;
+//   heatingLoop.pull(&returnTemperature);
+//   returnTemperature -= deltaT;
+//   double measuredFlowTemperature;
+//   measurementDelay.pull(&measuredFlowTemperature);
+
+//   double flowTemperature = returnTemperature + (inputTemperature - returnTemperature) * valveManager.outputs.targetValvePosition / 100.0;
+//   heatingLoop.push(&flowTemperature);
+//   measurementDelay.push(&flowTemperature);
+
+//   // valveManager.setInputs(...);
+//   // float inputTemp = oneWireSensors.getCalibratedTemperature(Config.getInputSensorId().c_str());
+//   // float flowTemp = oneWireSensors.getCalibratedTemperature(Config.getFlowSensorId().c_str());
+//   // float returnTemp = oneWireSensors.getCalibratedTemperature(Config.getReturnSensorId().c_str());
+//   valveManager.setInputs(inputTemperature, measuredFlowTemperature, returnTemperature);  
+//   valveManager.calculateValvePosition();
+//   valveManager.sendOutputs();
+//   Serial.printf(
+//     "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf (calculated flow: %0.1lf)\n", 
+//     inputTemperature, 
+//     valveManager.getSetpoint(),
+//     valveManager.outputs.targetValvePosition,
+//     measuredFlowTemperature,
+//     returnTemperature,
+//     flowTemperature
+//   );
+// }
 

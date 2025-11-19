@@ -101,4 +101,6 @@ void CConfig::print(CMyLog &p) const {
 
 void CConfig::applyDefaults(SensorMap &sensorMap, SensorManager *oneWireManager) {
     flowTargetTemp     = 35.0;
+    this->proportionalGain = 2;
+    this->integralSeconds = 10;
 }
