@@ -2,40 +2,12 @@
 #define __BOILER_MANAGER_H
 
 #include "MyConfig.h"
-
-struct ValveManagerConfig {
-  double proportionalGain;      // Control constants used directly in control algorithm
-  double integralGain;
-  double derivativeGain;
-
-  double integralTimeSeconds;   // Alternative way to express integral gain
-  double derivativeTimeSeconds; // Alternative way to express derivative gain
-
-};
+#include "PidController.h"
 
 struct ValveManagerInputs {
   double inputTemperature;     // Read from temperature sensors
   double flowTemperature;      
   double returnTemperature;
-};
-
-struct ValveManagerPidState {
-  bool first;                   // In the first iteration, supporess D calculation
-
-  unsigned long previousTime;   // The time (millis) of the last calculation
-
-  double previousError;         // The error value observed at the last calculation
-  double cumulativeError;       // The cumulative error value (used for integral calculation)
-
-  // Variables - double - tuining
-  double Kp;
-  double Ki;
-  double Kd;
-  double divisor;
-
-  bool constrain;
-  double minOut;
-  double maxOut;
 };
 
 struct ValveManagerOutputs {
@@ -44,8 +16,7 @@ struct ValveManagerOutputs {
 
 class ValveManager {
   private:
-    ValveManagerConfig m_config;
-    ValveManagerPidState m_pidState;
+    PidController m_valveController = PidController(0, 100);
     double m_setpoint;
 
   public:
@@ -67,3 +38,4 @@ class ValveManager {
 };
 
 #endif
+
