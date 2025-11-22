@@ -7,12 +7,16 @@ DFRobot_GP8403 dac(&Wire,0x58); // I2C address 0x58
 
 void ValveManager::setup()
 {
-    while (dac.begin() != 0)
-    {
-        Serial.println("init error");
-        delay(1000);
+    int dacInitRetryCount = 3;
+    do {
+        m_dacInitialised = dac.begin() != 0;
+        if (m_dacInitialised) break;
+    } while (dacInitRetryCount-- > 0);
+
+    if (!m_dacInitialised) {
+        MyLog.println("Unable to initialise DAC");
     }
-    Serial.println("init succeed");
+
     // Set DAC output range
     dac.setDACOutRange(dac.eOutputRange10V);
 
@@ -45,6 +49,14 @@ void ValveManager::setValvePosition(double position) {
 }
 
 void ValveManager::sendOutputs() {
+    // If the DAC has not been initialised successfully, we try it once again here
+    if (!m_dacInitialised) {
+        m_dacInitialised = dac.begin() != 0;
+        if (m_dacInitialised) MyLog.println("DAC Initialised");
+    }
+
+    // No DAC - no action
+    if (!m_dacInitialised) return;
     double valveInverted = 100 - this->outputs.targetValvePosition;
     dac.setDACOutVoltage(valveInverted * 100, 0); // Scale 0..100% to 0..10,000 mV (0-10V)
 }

@@ -18,6 +18,7 @@ class ValveManager {
   private:
     PidController m_valveController = PidController(0, 100);
     double m_setpoint;
+    bool m_dacInitialised;
 
   public:
     volatile ValveManagerInputs inputs;
