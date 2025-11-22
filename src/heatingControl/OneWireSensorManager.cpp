@@ -130,7 +130,7 @@ void OneWireManager::readAllSensors()
         si->noResponseErrors++;
       }
       else {
-        break;  // don't retry for other error types
+        si->otherErrors++;
       }
     }
 

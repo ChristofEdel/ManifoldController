@@ -341,16 +341,19 @@ void logSensorIssues() {
   int totalReadings = 0;
   int totalCrcErrors = 0;
   int totalNoResponseErrors = 0;
+  int totalOtherErrors = 0;
   int totalFailures = 0;
   for (int index = 0; index < oneWireSensors.getCount(); index++) {
     OneWireSensor & sensor = oneWireSensors[index];
     totalReadings += sensor.readings;
     totalCrcErrors += sensor.crcErrors;
     totalNoResponseErrors += sensor.noResponseErrors;
+    totalOtherErrors += sensor.otherErrors;
     totalFailures += sensor.failures;
     sensor.readings = 0;
     sensor.crcErrors = 0;
     sensor.noResponseErrors = 0;
+    sensor.otherErrors = 0;
     sensor.failures = 0; 
   }
   if (totalReadings > 0 && (totalCrcErrors > 0 || totalNoResponseErrors > 0 || totalFailures > 0)) {

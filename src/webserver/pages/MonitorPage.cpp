@@ -28,10 +28,11 @@ size_t CMyWebServer::respondWithMonitorPage(WiFiClient &client) {
   int totalReadings = 0;
   int totalCrcErrors = 0;
   int totalNoResponseErrors = 0;
+  int totalOtherErrors = 0;
   int totalFailures = 0;
 
   totalBytesSent += client.println("<tr><th rowspan=2>Sensor</th><th rowspan=2>Temp</th><th colspan=3>Errors</th></tr>");
-  totalBytesSent += client.println("<tr><th>CRC</th><th>Empty</th><th>Fail</th></tr>");
+  totalBytesSent += client.println("<tr><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
   for (int i = 0; i < sensorCount; i++) {
     SensorMapEntry * entry = (*m_sensorMap)[i];
     Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
@@ -43,6 +44,7 @@ size_t CMyWebServer::respondWithMonitorPage(WiFiClient &client) {
       totalReadings += sensor->readings;
       totalCrcErrors += sensor->crcErrors;
       totalNoResponseErrors += sensor->noResponseErrors;
+      totalOtherErrors += sensor->otherErrors;
       totalFailures += sensor->failures;
     }
 
@@ -55,7 +57,7 @@ size_t CMyWebServer::respondWithMonitorPage(WiFiClient &client) {
     if (calibatedTemperature > -50) totalBytesSent += client.print(calibatedTemperature, 1);
     totalBytesSent += client.println("</td>");
     if (sensor) {
-      totalBytesSent += client.printf("<td>%d</td><td>%d</td><td>%d</td>", sensor->crcErrors, sensor->noResponseErrors, sensor->failures);
+      totalBytesSent += client.printf("<td>%d</td><td>%d</td><td>%d</td><td>%d</td>", sensor->crcErrors, sensor->noResponseErrors, sensor->otherErrors, sensor->failures);
     }
     else {
       totalBytesSent += client.print("<td colspan=3></td>");

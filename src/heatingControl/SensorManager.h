@@ -10,6 +10,7 @@ struct Sensor {
   int readings;
   int crcErrors;
   int noResponseErrors;
+  int otherErrors;
   int failures;
   inline float calibratedTemperature() { return  (this->temperature + calibrationOffset) * calibrationFactor; };
   Sensor() { this->calibrationOffset = 0.0; this->calibrationFactor = 1.0; }
