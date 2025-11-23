@@ -8,7 +8,8 @@ class MyMutex {
     SemaphoreHandle_t m_semaphore;
   public: 
     MyMutex() {
-      m_semaphore = xSemaphoreCreateMutex();
+      m_semaphore = xSemaphoreCreateBinary();
+      xSemaphoreGive(m_semaphore);
     }
     bool lock(int timeoutMillis = 0) {
       return xSemaphoreTake(

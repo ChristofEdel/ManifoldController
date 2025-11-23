@@ -13,7 +13,7 @@ int taskCompare(const void *a, const void *b) {
     return strcmp(tsA->pcTaskName, tsB->pcTaskName);
 }
 
-size_t printTaskLine(WiFiClient &client, TaskStatus_t& ts)
+void printTaskLine(AsyncResponseStream *response, TaskStatus_t& ts)
 {
     UBaseType_t aff = ts.xCoreID;   // bitmask
     const char* affStr = aff > 1 ? "0|1" : aff == 1 ? " 1" : " 0";
@@ -29,7 +29,7 @@ size_t printTaskLine(WiFiClient &client, TaskStatus_t& ts)
       default: stateStr = "??"; break;
     }
 
-    return client.printf(
+    response->printf(
       "%c %-18s|  %-3s | %4u |  %-3s  | %u\n",
       ts.eCurrentState == eRunning ? '*' : ' ',
       ts.pcTaskName, affStr,
@@ -40,11 +40,10 @@ size_t printTaskLine(WiFiClient &client, TaskStatus_t& ts)
 
 }
 
-size_t CMyWebServer::respondWithTaskList(WiFiClient &client) {
-  size_t totalBytesSent = 0;
-  totalBytesSent += this->startHttpResponse(client, "200 OK", "text/plain");
-  totalBytesSent += client.println("Task List:");
-  totalBytesSent += client.println();
+void CMyWebServer::respondWithTaskList(AsyncWebServerRequest *request) {
+  AsyncResponseStream* response = request->beginResponseStream("text/plain");
+  response->println("Task List:");
+  response->println();
 
   // Get all tasks
   UBaseType_t n = uxTaskGetNumberOfTasks();
@@ -58,18 +57,18 @@ size_t CMyWebServer::respondWithTaskList(WiFiClient &client) {
   qsort(tsp, n, sizeof(TaskStatus_t *), taskCompare);
 
   // Print table
-  totalBytesSent += client.println("Task                | core | prio | state | stack HW");
-  totalBytesSent += client.println("--------------------+------+------+-------+---------");
+  response->println("Task                | core | prio | state | stack HW");
+  response->println("--------------------+------+------+-------+---------");
 
-  for (UBaseType_t i = 0; i < n; ++i) if (tsp[i]->xCoreID == 0) totalBytesSent += printTaskLine(client, *tsp[i]);
-  totalBytesSent += client.println("--------------------+------+------+-------+---------");
-  for (UBaseType_t i = 0; i < n; ++i) if (tsp[i]->xCoreID == 1) totalBytesSent += printTaskLine(client, *tsp[i]);
-  totalBytesSent += client.println("--------------------+------+------+-------+---------");
-  for (UBaseType_t i = 0; i < n; ++i) if (tsp[i]->xCoreID >1) totalBytesSent += printTaskLine(client, *tsp[i]);
+  for (UBaseType_t i = 0; i < n; ++i) if (tsp[i]->xCoreID == 0) printTaskLine(response, *tsp[i]);
+  response->println("--------------------+------+------+-------+---------");
+  for (UBaseType_t i = 0; i < n; ++i) if (tsp[i]->xCoreID == 1) printTaskLine(response, *tsp[i]);
+  response->println("--------------------+------+------+-------+---------");
+  for (UBaseType_t i = 0; i < n; ++i) if (tsp[i]->xCoreID >1) printTaskLine(response, *tsp[i]);
 
-  totalBytesSent += client.println("--------------------+------+------+-------+---------");
+  response->println("--------------------+------+------+-------+---------");
   free(ts);
-  return totalBytesSent;
+  request->send(response);
 }
 
 

@@ -6,24 +6,22 @@ const String &CMyWebServer::mapSensorName(const String &id) const{
   return displayName;
 }
 
-size_t CMyWebServer::respondWithMonitorPage(WiFiClient &client) {
-  size_t totalBytesSent = 0;
-
+void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
+  AsyncResponseStream *response = startHttpHtmlResponse(request);
   int sensorCount = this->m_sensorMap->getCount();
+  this->startHttpHtmlResponse(request, /* refresh = */ 5);
+  response->println("<table><tbody>");
+  response->println("<tr><th colspan=99>Boiler Control</th>");
 
-  totalBytesSent += this->startHttpHtmlResponse(client, "200 OK", 5);
-  totalBytesSent += client.println("<table><tbody>");
-  totalBytesSent += client.println("<tr><th colspan=99>Boiler Control</th>");
+  response->print("<tr>");
+  response->print("<th>Flow Setpoint</th><td>");
+      response->print(Config.getFlowTargetTemp(),1);
+  response->print("</td><td colspan=4></td></tr>");
 
-  totalBytesSent += client.print("<tr>");
-  totalBytesSent += client.print("<th>Flow Setpoint</th><td>");
-      client.print(Config.getFlowTargetTemp(),1);
-  totalBytesSent += client.print("</td><td colspan=3></td></tr>");
-
-  totalBytesSent += client.print("<tr>");
-  totalBytesSent += client.print("<th>Valve Position</th><td>");
-      client.print(m_valveManager->outputs.targetValvePosition,1);
-  totalBytesSent += client.print("%</td><td colspan=4></td></tr>");
+  response->print("<tr>");
+  response->print("<th>Valve Position</th><td>");
+      response->print(m_valveManager->outputs.targetValvePosition,1);
+  response->print("%</td><td colspan=4></td></tr>");
 
   int totalReadings = 0;
   int totalCrcErrors = 0;
@@ -31,8 +29,8 @@ size_t CMyWebServer::respondWithMonitorPage(WiFiClient &client) {
   int totalOtherErrors = 0;
   int totalFailures = 0;
 
-  totalBytesSent += client.println("<tr><th rowspan=2>Sensor</th><th rowspan=2>Temp</th><th colspan=3>Errors</th></tr>");
-  totalBytesSent += client.println("<tr><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
+  response->println("<tr><th rowspan=2>Sensor</th><th rowspan=2>Temp</th><th colspan=4>Errors</th></tr>");
+  response->println("<tr><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
   for (int i = 0; i < sensorCount; i++) {
     SensorMapEntry * entry = (*m_sensorMap)[i];
     Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
@@ -48,26 +46,26 @@ size_t CMyWebServer::respondWithMonitorPage(WiFiClient &client) {
       totalFailures += sensor->failures;
     }
 
-    totalBytesSent += client.println("<tr>");
-    totalBytesSent += client.print("<th>");
-    totalBytesSent += client.print(entry->name);
-    totalBytesSent += client.println("</th>");
-    totalBytesSent += client.print("<td>");
-    if (calibatedTemperature == SensorManager::SENSOR_NOT_FOUND) totalBytesSent += client.print("???");
-    if (calibatedTemperature > -50) totalBytesSent += client.print(calibatedTemperature, 1);
-    totalBytesSent += client.println("</td>");
+    response->println("<tr>");
+    response->print("<th>");
+    response->print(entry->name);
+    response->println("</th>");
+    response->print("<td>");
+    if (calibatedTemperature == SensorManager::SENSOR_NOT_FOUND) response->print("???");
+    if (calibatedTemperature > -50) response->print(calibatedTemperature, 1);
+    response->println("</td>");
     if (sensor) {
-      totalBytesSent += client.printf("<td>%d</td><td>%d</td><td>%d</td><td>%d</td>", sensor->crcErrors, sensor->noResponseErrors, sensor->otherErrors, sensor->failures);
+      response->printf("<td>%d</td><td>%d</td><td>%d</td><td>%d</td>", sensor->crcErrors, sensor->noResponseErrors, sensor->otherErrors, sensor->failures);
     }
     else {
-      totalBytesSent += client.print("<td colspan=3></td>");
+      response->print("<td colspan=3></td>");
     }
 
-    totalBytesSent += client.println("</tr>");
+    response->println("</tr>");
   }
 
-  totalBytesSent += client.println("</body><table>");
-  totalBytesSent += finishHttpHtmlResponse(client);
-  return totalBytesSent;
+  response->println("</body><table>");
+  finishHttpHtmlResponse(response);
+  request->send(response);
 }
 

@@ -60,8 +60,6 @@ void logSensorIssues();
 bool dayChanged();
 void startValveControlTask();
 void triggerValveControls();
-void ensureWebServerTaskStopped();
-void startWebServerTask();
 
 void setup() {
 
@@ -134,7 +132,6 @@ void setup() {
   MyWebServer.setup(&sd, &sdCardMutex, &sensorMap, &valveManager, &oneWireSensors);
   ledBlinkSetup();
 
-  startWebServerTask();
   startValveControlTask();
 
   MyLog.println("-------------------------------------------------------------------------------------------");
@@ -249,7 +246,7 @@ void readAndLogSensors() {
       sensorMap.clearChanged();
     } 
 
-    FsFile dataFile = sd.open(dataFileName, FILE_WRITE);
+    FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
     String logLine = getSensorLogLine();
     if (dataFile && dataFile.isOpen()) {
       if (printHeaderLine) dataFile.println(getSensorHeaderLine());
@@ -269,7 +266,7 @@ void readAndLogSensors() {
 void logSensorHeaderLine() {
   if (sdCardMutex.lock()) {
     char * dataFileName = getSensorDataFileName();
-    FsFile dataFile = sd.open(dataFileName, FILE_WRITE);
+    FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
     if (dataFile && dataFile.isOpen()) {
       dataFile.println(getSensorHeaderLine());
       dataFile.close();
@@ -379,7 +376,6 @@ void logSensorIssues() {
 
 
 TaskHandle_t valveControlTaskHandle = NULL;          // Task for boiler control
-TaskHandle_t webServerTaskHandle = NULL;              // Task for boiler control
 QueueHandle_t valveControlQueue = NULL;
 
 void manageValveControls() {
@@ -438,27 +434,6 @@ void startValveControlTask() {
     &valveControlTaskHandle   // Task handle
   );
 }
-
-void webServerTask(void *parameter) {
-  for(;;) {
-    MyWebServer.processWebRequests();
-    ArduinoOTA.handle();
-    vTaskDelay(10 / portTICK_PERIOD_MS); // Small delay to yield to other tasks
-  }
-}
-
-void startWebServerTask() {
-  // Create boiler control task
-  xTaskCreate(
-    webServerTask,         // Task function
-    "WebServer",           // Task name
-    25000,                 // Stack size (bytes)
-    NULL,                  // Parameter to pass
-    1,                     // Task priority
-    &webServerTaskHandle   // Task handle
-  );
-}
-
 
 // SIMULATION
 //

@@ -1,196 +1,157 @@
 #include "../MyWebServer.h"
-#include <URLCode.h>
 
-size_t CMyWebServer::respondWithConfigPage(WiFiClient &client) {
-  size_t totalBytesSent = 0;
-
-  totalBytesSent += this->startHttpHtmlResponse(client, "200 OK");
-  totalBytesSent += client.println("<form action='config' method='post'>");
+void CMyWebServer::respondWithConfigPage(AsyncWebServerRequest *request) {
+  AsyncResponseStream *response = this->startHttpHtmlResponse(request);
+  response->println("<form action='config' method='post'>");
   
-  totalBytesSent += client.println("<table><tbody>");
+  response->println("<table><tbody>");
 
-  totalBytesSent += client.print("<tr><th colspan=99>Heating</th></tr>");
+  response->print("<tr><th colspan=99>Heating</th></tr>");
 
-  totalBytesSent += client.print("<tr>");
-    totalBytesSent += client.print("<th>Flow Setpoint</th>");
-    totalBytesSent += client.print("<td colspan=2><input name='tft' type='text' value='");
-    totalBytesSent += client.print(Config.getFlowTargetTemp(),1);
-    totalBytesSent += client.print("'/></td>");
-  totalBytesSent += client.print("</tr>");
+  response->print("<tr>");
+    response->print("<th>Flow Setpoint</th>");
+    response->print("<td colspan=2><input name='tft' type='text' value='");
+    response->print(Config.getFlowTargetTemp(),1);
+    response->print("'/></td>");
+  response->print("</tr>");
 
-  totalBytesSent += client.println("<tr><th colspan=99>PID Controller</th></tr>");
+  response->println("<tr><th colspan=99>PID Controller</th></tr>");
 
-  totalBytesSent += client.print("<tr>");
-    totalBytesSent += client.print("<th>Proportional Gain</th>");
-    totalBytesSent += client.print("<td colspan=2><input name='pid_pg' type='text' value='");
-    totalBytesSent += client.print(Config.getProportionalGain(),1);
-    totalBytesSent += client.print("'/></td>");
-  totalBytesSent += client.print("</tr>");
+  response->print("<tr>");
+    response->print("<th>Proportional Gain</th>");
+    response->print("<td colspan=2><input name='pid_pg' type='text' value='");
+    response->print(Config.getProportionalGain(),1);
+    response->print("'/></td>");
+  response->print("</tr>");
 
-  totalBytesSent += client.print("<tr>");
-    totalBytesSent += client.print("<th>Integral Seconds</th>");
-    totalBytesSent += client.print("<td colspan=2><input name='pid_is' type='text' value='");
-    totalBytesSent += client.print(Config.getIntegralSeconds(),1);
-    totalBytesSent += client.print("'/></td>");
-  totalBytesSent += client.print("</tr>");
+  response->print("<tr>");
+    response->print("<th>Integral Seconds</th>");
+    response->print("<td colspan=2><input name='pid_is' type='text' value='");
+    response->print(Config.getIntegralSeconds(),1);
+    response->print("'/></td>");
+  response->print("</tr>");
 
-  totalBytesSent += client.print("<tr>");
-    totalBytesSent += client.print("<th>Derivative Seconds</th>");
-    totalBytesSent += client.print("<td colspan=2><input name='pid_ds' type='text' value='");
-    totalBytesSent += client.print(Config.getDerivativeSeconds(),1);
-    totalBytesSent += client.print("'/></td>");
-  totalBytesSent += client.print("</tr>");
+  response->print("<tr>");
+    response->print("<th>Derivative Seconds</th>");
+    response->print("<td colspan=2><input name='pid_ds' type='text' value='");
+    response->print(Config.getDerivativeSeconds(),1);
+    response->print("'/></td>");
+  response->print("</tr>");
 
 
-  totalBytesSent += client.println("<tr><th colspan=99>Sensor Config</th></tr>");
+  response->println("<tr><th colspan=99>Sensor Config</th></tr>");
 
-  totalBytesSent += client.print("<tr>");
-    totalBytesSent += client.print("<th>Sensor ID</th>");
-    totalBytesSent += client.print("<th colspan=2>Name</th>");
-  totalBytesSent += client.println("</tr>");
-  totalBytesSent += client.println("</tbody><tbody class='sensorList'>");
+  response->print("<tr>");
+    response->print("<th>Sensor ID</th>");
+    response->print("<th colspan=2>Name</th>");
+  response->println("</tr>");
+  response->println("</tbody><tbody class='sensorList'>");
 
   int sensorCount = this->m_sensorMap->getCount();
   for (int i = 0; i < sensorCount; i++) {
     SensorMapEntry * entry = (*m_sensorMap)[i];
-    totalBytesSent += client.print("<tr>");
-      totalBytesSent += client.print("<th class='handle'>");
-        totalBytesSent += client.print(entry->id);
-      totalBytesSent += client.print("</th>");
-      totalBytesSent += client.print("<td>");
-        totalBytesSent += client.print("<input name='s");
-        totalBytesSent += client.print(entry->id);
-        totalBytesSent += client.print("' type='text' value='");
-        totalBytesSent += client.print(entry->name);
-        totalBytesSent += client.print("'/>");
-      totalBytesSent += client.print("</td>");
-      totalBytesSent += client.print("<td class='delete'>&#10006;</td>");
-    totalBytesSent += client.println("</tr>");
+    response->print("<tr>");
+      response->print("<th class='handle'>");
+        response->print(entry->id);
+      response->print("</th>");
+      response->print("<td>");
+        response->print("<input name='s");
+        response->print(entry->id);
+        response->print("' type='text' value='");
+        response->print(entry->name);
+        response->print("'/>");
+      response->print("</td>");
+      response->print("<td class='delete'>&#10006;</td>");
+    response->println("</tr>");
   }
 
-  totalBytesSent += client.println("</tbody><tbody>");
-  totalBytesSent += client.println("<tr>");
-    totalBytesSent += client.println("<th>Input temperature sensor</th>");
-    totalBytesSent += client.println("<td colspan=2><select name='is'></th>");
-    printSensorOptions(client, Config.getInputSensorId());
-    totalBytesSent += client.println("</select></td>");
-  totalBytesSent += client.print("</tr>");
-  totalBytesSent += client.println("<tr>");
-    totalBytesSent += client.println("<th>Flow temperature sensor</th>");
-    totalBytesSent += client.println("<td colspan=2><select name='fs'></th>");
-    printSensorOptions(client, Config.getFlowSensorId());
-    totalBytesSent += client.println("</select></td>");
-  totalBytesSent += client.print("</tr>");
-  totalBytesSent += client.println("<tr>");
-    totalBytesSent += client.println("<th>Return temperature sensor</th>");
-    totalBytesSent += client.println("<td colspan=2><select name='rs'></th>");
-    printSensorOptions(client, Config.getReturnSensorId());
-    totalBytesSent += client.println("</select></td>");
-  totalBytesSent += client.print("</tr>");
+  response->println("</tbody><tbody>");
+  response->println("<tr>");
+    response->println("<th>Input temperature sensor</th>");
+    response->println("<td colspan=2><select name='is'></th>");
+    printSensorOptions(response, Config.getInputSensorId());
+    response->println("</select></td>");
+  response->print("</tr>");
+  response->println("<tr>");
+    response->println("<th>Flow temperature sensor</th>");
+    response->println("<td colspan=2><select name='fs'></th>");
+    printSensorOptions(response, Config.getFlowSensorId());
+    response->println("</select></td>");
+  response->print("</tr>");
+  response->println("<tr>");
+    response->println("<th>Return temperature sensor</th>");
+    response->println("<td colspan=2><select name='rs'></th>");
+    printSensorOptions(response, Config.getReturnSensorId());
+    response->println("</select></td>");
+  response->print("</tr>");
 
-  totalBytesSent += client.println("</tbody><table>");
-  totalBytesSent += client.println("<input type='submit' style='display:block; margin:0 auto;' value='Save Changes'/>");
-  totalBytesSent += client.println("</form>");
+  response->println("</tbody><table>");
+  response->println("<input type='submit' style='display:block; margin:0 auto;' value='Save Changes'/>");
+  response->println("</form>");
 
-  totalBytesSent += finishHttpHtmlResponse(client);
-  return totalBytesSent;
+  finishHttpHtmlResponse(response);
+  request->send(response);
 }
 
-size_t CMyWebServer::printSensorOptions(WiFiClient &client, const String &selectedSensor)
+void CMyWebServer::printSensorOptions(AsyncResponseStream *response, const String &selectedSensor)
 {
   int sensorCount = this->m_sensorMap->getCount();
-  size_t totalBytesSent = 0;
-  totalBytesSent += client.println("<option value=''>Not selected</option>>");
+  response->println("<option value=''>Not selected</option>>");
   for (int i = 0; i < sensorCount; i++)
   {
     SensorMapEntry *entry = (*m_sensorMap)[i];
-    totalBytesSent += client.print("<option value='");
-    totalBytesSent += client.print(entry->id);
-    totalBytesSent += client.print(selectedSensor == entry->id ? "' selected>" : "'>");
-    totalBytesSent += client.print(entry->name);
-    totalBytesSent += client.println("</option>");
+    response->print("<option value='");
+    response->print(entry->id);
+    response->print(selectedSensor == entry->id ? "' selected>" : "'>");
+    response->print(entry->name);
+    response->println("</option>");
   }
-  return totalBytesSent;
 }
 
-void CMyWebServer::processConfigPagePost(String postData) {
+void CMyWebServer::processConfigPagePost(AsyncWebServerRequest *request) {
 
-  // Parse the POST data into key-value pairs
-  // Format: key1=value1&key2=value2&key3=value3
-  String currentKey = "";
-  String currentValue = "";
-  bool parsingKey = true;
-  bool processValue = false;
   int sensorIndex = 0;
-  bool pidReconfigured = false;
+  bool pidReconfigured = false;     // Flag to determine if the PID controller ocnfiguration
+                                    // has to be reloaded
 
-  for (size_t i = 0; i < postData.length(); i++) {
-    char c = postData[i];
+  int count = request->params();
+  for (int i = 0; i < count; i++) {
+    const AsyncWebParameter* p = request->getParam(i);
+    if (!p->isPost()) continue;   // Ignore parameters that are not postback parameters
+    const String & key = p->name();
 
-    if (parsingKey) {
-      if (c == '=') { // End of key, switch from parsing key to parsing value
-        parsingKey = false;
-      }
-      else{
-        currentKey += c;
-      }
+    // Process the key-value pair
+    if (key.startsWith("s")) {
+      // Handle sensor name updates
+      this->m_sensorMap->updateAtIndex(sensorIndex++, key.substring(1), p->value());
     }
-    else {
-      if (c == '&') { // End of value, process it
-        processValue = true;
-      }
-      else {
-        currentValue += c;
-      }
+    else if (key == "tft") {
+      Config.setFlowTargetTemp(p->value().toFloat());
+      this->m_valveManager->setSetpoint(Config.getFlowTargetTemp());
     }
-    // If this was the last character, we need to process the key-value pair in all cases
-    if (i == (postData.length() - 1) && !currentKey.isEmpty()) processValue = true;
-
-    if (processValue) {
-      // URL decode the value (convert %XX to characters and + to space)
-      URLCode decoder;
-      decoder.urlcode = currentValue;
-      decoder.urldecode();
-      currentValue = decoder.strcode;
-
-      // Process the key-value pair
-      if (currentKey.startsWith("s")) {
-        // Handle sensor name updates
-        this->m_sensorMap->updateAtIndex(sensorIndex++, currentKey.substring(1), currentValue);
-      }
-      else if (currentKey == "tft") {
-        Config.setFlowTargetTemp(currentValue.toFloat());
-        this->m_valveManager->setSetpoint(Config.getFlowTargetTemp());
-      }
-      else if (currentKey == "pid_pg") {
-        Config.setProportionalGain(currentValue.toDouble());
-      }
-      else if (currentKey == "pid_is") {
-        Config.setIntegralSeconds(currentValue.toDouble());
-      }
-      else if (currentKey == "pid_ds") {
-        Config.setDerivativeSeconds(currentValue.toDouble());
-      }
-      else if (currentKey == "is") {
-        Config.setInputSensorId(currentValue);
-        pidReconfigured = true;
-      }
-      else if (currentKey == "fs") {
-        Config.setFlowSensorId(currentValue);
-        pidReconfigured = true;
-      }
-      else if (currentKey == "rs") {
-        Config.setReturnSensorId(currentValue);
-        pidReconfigured = true;
-      }
-
-      // Reset for next pair
-      currentKey = "";
-      currentValue = "";
-      parsingKey = true;
-      processValue = false;
+    else if (key == "pid_pg") {
+      Config.setProportionalGain(p->value().toDouble());
+    }
+    else if (key == "pid_is") {
+      Config.setIntegralSeconds(p->value().toDouble());
+    }
+    else if (key == "pid_ds") {
+      Config.setDerivativeSeconds(p->value().toDouble());
+    }
+    else if (key == "is") {
+      Config.setInputSensorId(p->value());
+      pidReconfigured = true;
+    }
+    else if (key == "fs") {
+      Config.setFlowSensorId(p->value());
+      pidReconfigured = true;
+    }
+    else if (key == "rs") {
+      Config.setReturnSensorId(p->value());
+      pidReconfigured = true;
     }
   }
+
   this->m_sensorMap->removeFromIndex(sensorIndex); // Remove any remaining sensors
   Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap);
   if (pidReconfigured) this->m_valveManager->loadConfig();
