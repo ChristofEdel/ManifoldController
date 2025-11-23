@@ -6,6 +6,8 @@ CConfig Config;
 void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, const SensorMap &sensorMap) const {
     JsonDocument configJson;
 
+    configJson["hostname"]              = hostname;
+
     configJson["flowTargetTemp"]        = flowTargetTemp;
 
     configJson["hotWaterSensorId"]      = flowTargetTemp;
@@ -68,6 +70,7 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
         return;
     }
 
+    hostname = configJson["hostname"].as<String>();
     flowTargetTemp = configJson["flowTargetTemp"];
     flowSensorId   = configJson["flowSensorId"].as<String>();
     inputSensorId  = configJson["inputSensorId"].as<String>();
@@ -89,6 +92,8 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
 
 void CConfig::print(CMyLog &p) const {
     p.println("Config:");
+    p.print("  hostname: ");
+    p.println(hostname);
     p.print("  flowTargetTemp: ");
     p.println(flowTargetTemp);
     p.print("  flowSensorId: ");

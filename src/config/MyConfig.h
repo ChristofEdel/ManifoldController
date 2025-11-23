@@ -9,6 +9,7 @@
 
 class CConfig {
     private:
+        String hostname;
         float flowTargetTemp;
         String flowSensorId;
         String inputSensorId;
@@ -19,6 +20,7 @@ class CConfig {
         double derivativeSeconds;
 
     public:
+        inline const String &getHostname()              const { return hostname; }; 
         inline float getFlowTargetTemp()                const { return flowTargetTemp; }; 
         inline const String &getFlowSensorId()          const { return flowSensorId; };
         inline const String &getInputSensorId()         const { return inputSensorId; };
@@ -27,6 +29,7 @@ class CConfig {
         inline double getIntegralSeconds()              const { return integralSeconds; };
         inline double getDerivativeSeconds()            const { return derivativeSeconds; };
 
+        inline void setHostname(const String &value)         { hostname = value;};
         inline void setFlowTargetTemp(float value)           { flowTargetTemp = value; };
         inline void setFlowSensorId(const String &value)     { flowSensorId = value;};
         inline void setInputSensorId(const String &value)    { inputSensorId = value;};

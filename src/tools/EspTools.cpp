@@ -58,16 +58,17 @@ void setupOta()
 {
   static int otaProgressPercent;
   // Initialize OTA updates over WiFi
-  ArduinoOTA.onStart([]()
-                     {
+  ArduinoOTA.onStart([]() {
     MyLog.println("OTA Update Start");
-    otaProgressPercent = 0; });
-  ArduinoOTA.onEnd([]()
-                   {
+    otaProgressPercent = 0; 
+  });
+
+  ArduinoOTA.onEnd([]() {
     MyLog.println("OTA Update Completed");
-    setSoftwareResetReason(SW_RESET_OTA_UPDATE); });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
-                        {
+    setSoftwareResetReason(SW_RESET_OTA_UPDATE); 
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     if (total > 0) {
       int newProgressPercent = (progress * 100) / total;
       if ((newProgressPercent / 20) > (otaProgressPercent / 20)) {
@@ -76,13 +77,17 @@ void setupOta()
         MyLog.println("%");
         otaProgressPercent = newProgressPercent;
       }
-    } });
-  ArduinoOTA.onError([](ota_error_t err)
-                     {
+    } 
+  });
+
+  ArduinoOTA.onError([](ota_error_t err) {
     MyLog.print("OTA Update Error: ");
     MyLog.println((int)err);
     MyCrashLog.print("OTA Update Error: ");
-    MyCrashLog.println((int)err); });
+    MyCrashLog.println((int)err); 
+  });
+
+  ArduinoOTA.setMdnsEnabled(false);
   ArduinoOTA.begin();
 }
 

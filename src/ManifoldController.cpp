@@ -116,6 +116,10 @@ void setup() {
 
   // Connect to WiFi
   MyWiFi.connect();
+  if (Config.getHostname() != "") {
+    MyWiFi.setHostname(Config.getHostname());
+  }
+
   MyWiFi.updateRtcFromTimeServer(&MyRtc);
   String resetReason = getResetReason();
   MyLog.print("Last reset reason: ");

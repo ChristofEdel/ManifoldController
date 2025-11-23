@@ -10,9 +10,12 @@ class CMyWiFi {
 private:
   int m_wifiStatus; // The status of the WiFi connection
   WiFiUDP m_udp;    // A UDP instance to let us send and receive packets over UDP
+  String m_hostname;
 
 public:
   void connect();
+  void setHostname(const String &hostname);
+  const String &getHostname() const { return m_hostname; }
   void printStatus();
   bool updateRtcFromTimeServer(CMyRtc *rtc);
 };

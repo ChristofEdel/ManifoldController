@@ -1,6 +1,6 @@
 #include "MyWiFi.h"
 #include "MyLog.h"
-
+#include <ESPmDNS.h>
 
 //Include the Network Time Protocol
 #include <NTPClient.h>
@@ -43,6 +43,26 @@ void CMyWiFi::connect() {
 
 }
 
+void CMyWiFi::setHostname (const String & hostname) {
+  if (hostname == "" && this->m_hostname != "") {
+    MyLog.println("Hostname cleared");
+    MDNS.end();
+  }
+  else {
+    if (!MDNS.begin(hostname)) {
+      MyLog.println("Error starting mDNS");
+      m_hostname = "";
+      return;
+    }
+    if (hostname != m_hostname) {
+      MyLog.print("Hostname set to ");
+      MyLog.print(hostname);
+      MyLog.println(".local");
+    }
+  }
+  m_hostname = hostname;
+}
+
 void CMyWiFi::printStatus() {
   // print the SSID of the network you're attached to:
   MyLog.print("SSID: ");
@@ -52,6 +72,11 @@ void CMyWiFi::printStatus() {
   IPAddress ip = WiFi.localIP();
   MyLog.print("IP Address: ");
   MyLog.println(ip);
+
+  if(m_hostname != "") {
+    MyLog.print("Hostname: ");
+    MyLog.println(m_hostname + ".local");
+  }
 
   // print the received signal strength:
   long rssi = WiFi.RSSI();

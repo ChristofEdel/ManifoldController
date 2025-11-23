@@ -44,8 +44,6 @@ void CMyWebServer::processWebRequest(AsyncWebServerRequest *request) {
   if (method == HTTP_POST) {
     if (url == "/config") {
       processConfigPagePost(request);
-      // After processing POST, respond with the config page again
-      respondWithConfigPage(request);
     }
   }
   else if (method != HTTP_GET) {
