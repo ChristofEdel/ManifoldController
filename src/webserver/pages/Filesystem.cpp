@@ -2,12 +2,10 @@
 #include "MyLog.h"
 
 
-
-size_t CMyWebServer::sendFileChunk(FileStramingContext *context, uint8_t *buffer, size_t maxLen, size_t fromPosition) {
+size_t CMyWebServer::sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t fromPosition) {
 
   // Acquire a lock. If we can't we end this file.
   if (!this->m_sdMutex->lock()) return 0;
-  Serial.printf("Filling buffer from file %s - %d bytes from %d\n", context->fileName.c_str(), maxLen, fromPosition);
 
   // Open the file and stop if we can't
   FsFile file = this->m_sd->open(context->fileName, O_RDONLY);
@@ -21,15 +19,12 @@ size_t CMyWebServer::sendFileChunk(FileStramingContext *context, uint8_t *buffer
   int bytesRead = 0;
   if (file.seek(fromPosition)) {
     bytesRead = file.readBytes((char *)buffer, maxLen);
-    Serial.printf("%d bytes read\n", bytesRead);
   }
 
   // Close the file until the next time round and free the lock
   file.close();
   this->m_sdMutex->unlock();
-  Serial.println("done");
   if (bytesRead == 0) {
-    Serial.print("Deleting context");
     delete context;
   }
 
@@ -56,7 +51,7 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest *request, const
   Serial.println("Starting chunked response");
 
   // Allocate a streaming context on heap so it outlives this function
-  FileStramingContext *ctx = new FileStramingContext();
+  WebResponseContext *ctx = new WebResponseContext();
   ctx->fileName = fileName;
 
   // Set up the "sendFileChunk" callback that reads data from the file

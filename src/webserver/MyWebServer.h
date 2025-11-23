@@ -11,7 +11,7 @@
 #include "MyMutex.h"
 
 
-struct FileStramingContext {
+struct WebResponseContext {
   String fileName;
 };
 
@@ -30,7 +30,7 @@ class CMyWebServer {
   private:
       void processWebRequest(AsyncWebServerRequest *request);
       void respondWithFileContents(AsyncWebServerRequest *request, const String &fileName);
-      size_t sendFileChunk(FileStramingContext *context, uint8_t *buffer, size_t maxLen, size_t index);
+      size_t sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t index);
       void respondWithMonitorPage(AsyncWebServerRequest *request);
 
       void respondWithConfigPage(AsyncWebServerRequest *request);
