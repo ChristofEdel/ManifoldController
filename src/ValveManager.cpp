@@ -1,7 +1,7 @@
 #include "ValveManager.h"
 #include "Config.h"
 #include <DFRobot_GP8403.h>     // DAC for valve control
-DFRobot_GP8403 dac(&Wire,0x58); // I2C address 0x58
+DFRobot_GP8403 dac(&Wire,0x5f); // I2C address 0x58
 
 
 
@@ -58,5 +58,5 @@ void ValveManager::sendOutputs() {
     // No DAC - no action
     if (!m_dacInitialised) return;
     double valveInverted = 100 - this->outputs.targetValvePosition;
-    dac.setDACOutVoltage(valveInverted * 100, 0); // Scale 0..100% to 0..10,000 mV (0-10V)
+    dac.setDACOutVoltage(valveInverted * 100, 1); // Scale 0..100% to 0..10,000 mV (0-10V)
 }
