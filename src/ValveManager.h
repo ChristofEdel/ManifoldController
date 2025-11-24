@@ -31,7 +31,7 @@ class ValveManager {
     void setup();
     void loadConfig();
     void setInputs(double inputTemperature, double flowTemperature, double returnTemperature);
-    void setSetpoint(double setpoint) { this->m_setpoint = setpoint; };
+    void setSetpoint(double setpoint) { this->m_setpoint = setpoint; m_valveController.setSetpoint(setpoint); };
     double getSetpoint() { return this->m_setpoint; };
     void calculateValvePosition();
     void setValvePosition(double position);
