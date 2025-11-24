@@ -46,7 +46,7 @@ ValveManager valveManager;
 // SD Card access
 SdFs sd;
 MyMutex sdCardMutex;
-#define SD_CONFIG SdSpiConfig(sdCardCsPin, DEDICATED_SPI, SD_SCK_MHZ(50))
+#define SD_CONFIG SdSpiConfig(sdCardCsPin, SD_SCK_MHZ(50))
 
 // The valve position (preserved across resets)
 RTC_DATA_ATTR double lastKownValvePosition;

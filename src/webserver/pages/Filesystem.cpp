@@ -48,8 +48,6 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest *request, const
 
   String contentType = fileName.endsWith(".csv") ? "text/csv" : "text/plain";
 
-  Serial.println("Starting chunked response");
-
   // Allocate a streaming context on heap so it outlives this function
   WebResponseContext *ctx = new WebResponseContext();
   ctx->fileName = fileName;
@@ -59,7 +57,6 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest *request, const
     return this->sendFileChunk(ctx, buffer, maxLen, fromPosition);
   };
 
-  Serial.println("Begin chunked response");
   AsyncWebServerResponse *response = request->beginChunkedResponse(contentType, filler);
   request->send(response);
 }
