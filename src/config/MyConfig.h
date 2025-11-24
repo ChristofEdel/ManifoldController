@@ -10,7 +10,7 @@
 class CConfig {
     private:
         String hostname;
-        float flowTargetTemp;
+        double flowTargetTemp;
         String flowSensorId;
         String inputSensorId;
         String returnSensorId;
@@ -19,24 +19,28 @@ class CConfig {
         double integralSeconds;
         double derivativeSeconds;
 
+        bool valveInverted;
+
     public:
         inline const String &getHostname()              const { return hostname; }; 
-        inline float getFlowTargetTemp()                const { return flowTargetTemp; }; 
+        inline double getFlowTargetTemp()               const { return flowTargetTemp; }; 
         inline const String &getFlowSensorId()          const { return flowSensorId; };
         inline const String &getInputSensorId()         const { return inputSensorId; };
         inline const String &getReturnSensorId()        const { return returnSensorId; };
         inline double getProportionalGain()             const { return proportionalGain; };
         inline double getIntegralSeconds()              const { return integralSeconds; };
         inline double getDerivativeSeconds()            const { return derivativeSeconds; };
+        inline bool getValveInverted()                  const { return valveInverted; };
 
         inline void setHostname(const String &value)         { hostname = value;};
-        inline void setFlowTargetTemp(float value)           { flowTargetTemp = value; };
+        inline void setFlowTargetTemp(double value)          { flowTargetTemp = value; };
         inline void setFlowSensorId(const String &value)     { flowSensorId = value;};
         inline void setInputSensorId(const String &value)    { inputSensorId = value;};
         inline void setReturnSensorId(const String &value)   { returnSensorId = value;};
         inline void setProportionalGain(double value)        { proportionalGain = value; };
         inline void setIntegralSeconds(double value)         { integralSeconds = value; };
         inline void setDerivativeSeconds(double value)       { derivativeSeconds = value; };
+        inline void setValveInverted(bool value)             { valveInverted = value; };
 
 
         void saveToSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, const SensorMap &sensorMap) const;

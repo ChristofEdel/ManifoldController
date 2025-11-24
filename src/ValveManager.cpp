@@ -30,6 +30,7 @@ void ValveManager::loadConfig() {
         Config.getIntegralSeconds(),     // integralTimeSeconds
         Config.getDerivativeSeconds()    // derivativeTimeSeconds
     );
+    this->m_valveInverted = Config.getValveInverted();
 }
 
 void ValveManager::setInputs(double inputTemperature, double flowTemperature, double returnTemperature) {
@@ -57,6 +58,7 @@ void ValveManager::sendOutputs() {
 
     // No DAC - no action
     if (!m_dacInitialised) return;
-    double valveInverted = 100 - this->outputs.targetValvePosition;
-    dac.setDACOutVoltage(valveInverted * 100, 1); // Scale 0..100% to 0..10,000 mV (0-10V)
+    double valvePosition = this->outputs.targetValvePosition;
+    if (m_valveInverted) valvePosition = 100 - valvePosition;
+    dac.setDACOutVoltage(valvePosition * 100, 0); // Scale 0..100% to 0..10,000 mV (0-10V)
 }

@@ -18,15 +18,12 @@ class ValveManager {
   private:
     PidController m_valveController = PidController(0, 100);
     double m_setpoint;
+    bool m_valveInverted;
     bool m_dacInitialised;
 
   public:
     volatile ValveManagerInputs inputs;
     volatile ValveManagerOutputs outputs;
-
-    void configureGains(double proportionalGain, double integralGain, double derivativeGain);
-    void configureSeconds(double proportionalGain, double integralTimeSeconds, double derivativeTimeSeconds);
-    void resetPidState(double initialOutput);
 
     void setup();
     void loadConfig();

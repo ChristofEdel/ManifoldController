@@ -39,7 +39,16 @@ void CMyWebServer::respondWithConfigPage(AsyncWebServerRequest *request) {
     response->print("'/></td>");
   response->print("</tr>");
 
+  response->print("<tr>");
+    response->print("<th>Valve Direction</th>");
+    response->println("<td colspan=2><select name='vd'>");
+    response->printf("  <option value='0'%s>Standard (clockwise)</option>", Config.getValveInverted() == false ? " selected" : "");
+    response->printf("  <option value='1'%s>Inverted (conter-clockwise)</option>", Config.getValveInverted() == true ? " selected" : "");
+    response->print("'</select></td>");
+  response->print("</tr>");
+
   response->print("<tr><th colspan=99>System</th></tr>");
+
   response->print("<tr>");
     response->print("<th>Hostname</th>");
     response->print("<td colspan=2><input name='hostname' type='text' value='");
@@ -77,19 +86,19 @@ void CMyWebServer::respondWithConfigPage(AsyncWebServerRequest *request) {
   response->println("</tbody><tbody>");
   response->println("<tr>");
     response->println("<th>Input temperature sensor</th>");
-    response->println("<td colspan=2><select name='is'></th>");
+    response->println("<td colspan=2><select name='is'>");
     printSensorOptions(response, Config.getInputSensorId());
     response->println("</select></td>");
   response->print("</tr>");
   response->println("<tr>");
     response->println("<th>Flow temperature sensor</th>");
-    response->println("<td colspan=2><select name='fs'></th>");
+    response->println("<td colspan=2><select name='fs'>");
     printSensorOptions(response, Config.getFlowSensorId());
     response->println("</select></td>");
   response->print("</tr>");
   response->println("<tr>");
     response->println("<th>Return temperature sensor</th>");
-    response->println("<td colspan=2><select name='rs'></th>");
+    response->println("<td colspan=2><select name='rs'>");
     printSensorOptions(response, Config.getReturnSensorId());
     response->println("</select></td>");
   response->print("</tr>");
@@ -105,7 +114,7 @@ void CMyWebServer::respondWithConfigPage(AsyncWebServerRequest *request) {
 void CMyWebServer::printSensorOptions(AsyncResponseStream *response, const String &selectedSensor)
 {
   int sensorCount = this->m_sensorMap->getCount();
-  response->println("<option value=''>Not selected</option>>");
+  response->println("<option value=''>Not selected</option>");
   for (int i = 0; i < sensorCount; i++)
   {
     SensorMapEntry *entry = (*m_sensorMap)[i];
@@ -115,6 +124,17 @@ void CMyWebServer::printSensorOptions(AsyncResponseStream *response, const Strin
     response->print(entry->name);
     response->println("</option>");
   }
+}
+
+bool update(double oldValue, void (CConfig::*setter)(double), double newValue) {
+  if (oldValue == newValue) return false;
+  (Config.*setter)(newValue);
+  return true;
+}
+bool update(bool oldValue, void (CConfig::*setter)(bool), bool newValue) {
+  if (oldValue == newValue) return false;
+  (Config.*setter)(newValue);
+  return true;
 }
 
 void CMyWebServer::processConfigPagePost(AsyncWebServerRequest *request) {
@@ -141,29 +161,30 @@ void CMyWebServer::processConfigPagePost(AsyncWebServerRequest *request) {
       hostnameChanged = true;
     }
     else if (key == "tft") {
-      Config.setFlowTargetTemp(p->value().toFloat());
-      this->m_valveManager->setSetpoint(Config.getFlowTargetTemp());
+      if (update(Config.getFlowTargetTemp(), &CConfig::setFlowTargetTemp, p->value().toFloat())) {
+        this->m_valveManager->setSetpoint(Config.getFlowTargetTemp());
+      }
     }
     else if (key == "pid_pg") {
-      Config.setProportionalGain(p->value().toDouble());
+      pidReconfigured |= update(Config.getProportionalGain(), &CConfig::setProportionalGain, p->value().toFloat());
     }
     else if (key == "pid_is") {
-      Config.setIntegralSeconds(p->value().toDouble());
+      pidReconfigured |= update(Config.getIntegralSeconds(), &CConfig::setIntegralSeconds, p->value().toFloat());
     }
     else if (key == "pid_ds") {
-      Config.setDerivativeSeconds(p->value().toDouble());
+      pidReconfigured |= update(Config.getDerivativeSeconds(), &CConfig::setDerivativeSeconds, p->value().toFloat());
+    }
+    else if (key == "vd") {
+      pidReconfigured |= update(Config.getValveInverted(), &CConfig::setValveInverted, (bool) p->value().toInt());
     }
     else if (key == "is") {
       Config.setInputSensorId(p->value());
-      pidReconfigured = true;
     }
     else if (key == "fs") {
       Config.setFlowSensorId(p->value());
-      pidReconfigured = true;
     }
     else if (key == "rs") {
       Config.setReturnSensorId(p->value());
-      pidReconfigured = true;
     }
   }
 

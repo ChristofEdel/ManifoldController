@@ -19,6 +19,8 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
     configJson["integralSeconds"]       = integralSeconds;  
     configJson["derivativeSeconds"]     = derivativeSeconds;
 
+    configJson["valveInverted"]         = valveInverted;
+
     for (int i = 0; i < sensorMap.getCount(); i++) {
         SensorMapEntry * entry = sensorMap[i];
         configJson["sensors"][i]["id"] = entry->id;
@@ -78,6 +80,7 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
     proportionalGain   = configJson["proportionalGain"].as<double>();
     integralSeconds    = configJson["integralSeconds"].as<double>(); 
     derivativeSeconds  = configJson["derivativeSeconds"].as<double>();
+    valveInverted  = configJson["valveInverted"].as<bool>();
 
     // Iterate over sensors
     JsonArray sensorsArray = configJson["sensors"].as<JsonArray>();
