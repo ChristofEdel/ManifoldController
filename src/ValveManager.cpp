@@ -9,7 +9,7 @@ void ValveManager::setup()
 {
     int dacInitRetryCount = 3;
     do {
-        m_dacInitialised = dac.begin() != 0;
+        m_dacInitialised = dac.begin() == 0;
         if (m_dacInitialised) break;
     } while (dacInitRetryCount-- > 0);
 
@@ -51,7 +51,7 @@ void ValveManager::setValvePosition(double position) {
 void ValveManager::sendOutputs() {
     // If the DAC has not been initialised successfully, we try it once again here
     if (!m_dacInitialised) {
-        m_dacInitialised = dac.begin() != 0;
+        m_dacInitialised = dac.begin() == 0;
         if (m_dacInitialised) MyLog.println("DAC Initialised");
     }
 
