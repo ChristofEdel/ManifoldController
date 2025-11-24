@@ -151,6 +151,7 @@ void loop() {
   const unsigned long valvePositionControlInterval = 1000;           // Read sensors and set control vale poistion
   const unsigned long memoryCheckInterval          = 10000;          // Check for possible memory leaks
   const unsigned long blinkInterval                = 100;            // Blink so we can see
+  const unsigned long otaCheckInterval             = 1000;           // Over-The-Air updates
   
   // When we last did that
   static unsigned long lastTimeSync = 0;
@@ -158,6 +159,7 @@ void loop() {
   static unsigned long lastValvePositionControl = 0;
   static unsigned long lastMemoryCheck = 0;
   static unsigned long lastBlink = 0;
+  static unsigned long lastOtaCheck = 0;
   static bool first = true;
 
   // Do stuff
@@ -186,6 +188,11 @@ void loop() {
   if (first || timeNow - lastMemoryCheck >= memoryCheckInterval) {
     lastMemoryCheck = timeNow;
     checkMemoryChange(4096);  // Report if we have lost more than 4kB since last check
+  }
+
+  if (first || timeNow - lastOtaCheck >= otaCheckInterval) {
+    lastOtaCheck = timeNow;
+    ArduinoOTA.handle();
   }
 
   if (first || timeNow - lastBlink >= blinkInterval) {
