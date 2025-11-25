@@ -79,7 +79,7 @@ void CMyWebServer::respondWithConfigPage(AsyncWebServerRequest *request) {
         response->print(entry->name);
         response->print("'/>");
       response->print("</td>");
-      response->print("<td class='delete'>&#10006;</td>");
+      response->print("<td class='delete-row'>&#10006;</td>");
     response->println("</tr>");
   }
 

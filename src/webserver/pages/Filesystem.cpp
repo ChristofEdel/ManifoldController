@@ -33,19 +33,6 @@ size_t CMyWebServer::sendFileChunk(WebResponseContext *context, uint8_t *buffer,
 
 void CMyWebServer::respondWithFileContents(AsyncWebServerRequest *request, const String &fileName) {
 
-  // Check if file exists, reply 404 if not
-  if (!this->m_sdMutex->lock()) {
-      request->send(400, "text/plain", "Unable to access SD card");
-      return;
-  }
-  bool exists = this->m_sd->exists(fileName);
-  this->m_sdMutex->unlock();
-
-  if (!exists) {
-    request->send(404, "text/plain", "File not found");
-    return; 
-  }
-
   String contentType = fileName.endsWith(".csv") ? "text/csv" : "text/plain";
 
   // Allocate a streaming context on heap so it outlives this function

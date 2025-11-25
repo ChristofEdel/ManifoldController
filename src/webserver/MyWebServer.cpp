@@ -6,20 +6,12 @@
 #include "freertos/task.h"
 #include "esp_task.h" 
 #include "freertos/idf_additions.h"
+#include "styles_string.h"
+#include "scripts_string.h"
 
 CMyWebServer MyWebServer;
 
 CMyWebServer::CMyWebServer() : m_server(80) {
-}
-
-void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager * valveManager, SensorManager *sensorManager) {
-  this->m_sd = sd;
-  this->m_sdMutex = sdMutex;
-  this->m_sensorMap = sensorMap;
-  this->m_valveManager = valveManager;
-  this->m_sensorManager = sensorManager;
-  this->m_server.onNotFound([this](AsyncWebServerRequest *r) { this->processWebRequest(r); });
-  this->m_server.begin();
 }
 
 String methodToString(WebRequestMethodComposite m) {
@@ -35,37 +27,58 @@ String methodToString(WebRequestMethodComposite m) {
   }
 }
 
-// Process a single pending web reques
-void CMyWebServer::processWebRequest(AsyncWebServerRequest *request) {
+void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager * valveManager, SensorManager *sensorManager) {
+  this->m_sd = sd;
+  this->m_sdMutex = sdMutex;
+  this->m_sensorMap = sensorMap;
+  this->m_valveManager = valveManager;
+  this->m_sensorManager = sensorManager;
+  this->m_server.on("/", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
+  this->m_server.on("/monitor", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
+  this->m_server.on("/config", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithConfigPage(r); });
+  this->m_server.on("/config", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processConfigPagePost(r); });
+  this->m_server.on("/tasks", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
+  this->m_server.on("/panic", HTTP_GET, [this](AsyncWebServerRequest *r) { abort(); /* Force a crash to test crash logging */ });
+  this->m_server.on("/scripts.js", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
+  this->m_server.on("/styles.css", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
+  this->m_server.on("/*", HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+  this->m_server.onNotFound([this](AsyncWebServerRequest *r) { this->respondWithError(r, 400, "Unsupported Method: " + methodToString(r->method()) + " on URL " + r->url()); });
+  this->m_server.begin();
+}
 
-  WebRequestMethodComposite method = request->method();
-  String url = request->url();
+void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
 
-  if (method == HTTP_POST) {
-    if (url == "/config") {
-      processConfigPagePost(request);
-    }
+  String fileName = request->url();
+
+  // Open the file briefly and check for existence and what it is
+  if (!this->m_sdMutex->lock()) {
+      request->send(400, "text/plain", "Unable to access SD card");
+      return;
   }
-  else if (method != HTTP_GET) {
-    respondWithError(request, 400, "Unsupported Method: " + methodToString(method) + " on URL " + url);
+
+  FsFile f = this->m_sd->open(fileName, O_RDONLY);
+  bool exists = f.isOpen();
+  bool isDir = f.isDir();
+  bool isFile = f.isFile();
+  f.close();
+  this->m_sdMutex->unlock();
+
+  // Errors unless it is a file or directoy
+  if (!exists) {
+    request->send(404, "text/plain", "File not found");
+    return; 
   }
-  else if (url == "/") {
-    respondWithDirectory(request, "/");
+  if (!isDir && !isFile) {
+    request->send(404, "text/plain", "Not a file or directory");
+    return; 
   }
-  else if (url == "/monitor") {
-    respondWithMonitorPage(request);
-  }
-  else if (url == "/panic") {
-    abort(); // Force a crash to test crash logging
-  }
-  else if (url == "/config") {
-    respondWithConfigPage(request);
-  }
-  else if (url == "/tasks") {
-    respondWithTaskList(request);
+
+  // Respond as appropriate
+  if (isDir) {
+    respondWithFileContents(request, request->url());
   }
   else {
-    respondWithFileContents(request, url);
+    respondWithDirectory(request, request->url());
   }
 }
 
@@ -74,47 +87,25 @@ void CMyWebServer::respondWithError(AsyncWebServerRequest *request, int code, co
   request->send(r);
 }
 
+void CMyWebServer::respondWithString(AsyncWebServerRequest *request, const String &contentType, const char *s) {
+  AsyncWebServerResponse *response = request->beginResponse_P(200, contentType, (const uint8_t *)s, strlen(s));
+  request->send(response);
+}
+
 AsyncResponseStream *CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest *request, int refreshRate) {
   AsyncResponseStream* response = request->beginResponseStream("text/html");
   response->setCode(200);
-  if (refreshRate > 0) response->addHeader("Refresh", String(refreshRate));
   response->println("<!DOCTYPE HTML>");
   response->println("<html>");
   response->println("  <head>");
+  if (refreshRate > 0)  {
+    response->printf("    <meta http-equiv='refresh' content='%d'>", refreshRate);
+  }
   response->println("    <link rel='icon' href='data:,'>");
   response->println("    <script src='https://code.jquery.com/jquery-3.7.1.min.js'></script>");
   response->println("    <script src='https://code.jquery.com/ui/1.14.1/jquery-ui.min.js'></script>");
-  response->println("    <script>");
-  response->println("      function fixedWidthHelper(e, tr) {");
-  response->println("        const $orig = tr.children();");
-  response->println("        const $helper = tr.clone();");
-  response->println("        $helper.children().each(function(i) {");
-  response->println("          $(this).width($orig.eq(i).width());");
-  response->println("        });");
-  response->println("        return $helper;");
-  response->println("      }");
-  response->println("      $(function() {");
-  response->println("        $('.delete').on('click', function(e) {");
-  response->println("          e.preventDefault();");
-  response->println("          $(this).closest('tr').remove();");
-  response->println("        });");
-  response->println("        $('.sensorList').sortable({");
-  response->println("          handle: '.handle',");
-  response->println("          helper: fixedWidthHelper,");
-  response->println("          placeholder: 'sortable-placeholder',");
-  response->println("          axis: 'y'");
-  response->println("        }).disableSelection();");
-  response->println("      });");
-  response->println("    </script>");
-  response->println("    <style>");
-  response->println("      table { margin: 0 auto; font-size: 12pt; border-collapse: collapse; }");
-  response->println("      table th { background: rgba(0,0,0,.1); }");
-  response->println("      table tbody th, table thead th:first-child { text-align: left; }");
-  response->println("      table th, table td { padding: .5em; border: 1px solid lightgrey; }");
-  response->println("      .delete { width: 21px; cursor: pointer; text-align: center; color: red; }");
-  response->println("      .handle { cursor: move; }");
-  response->println("      .sortable-placeholder { background: #f5f5f5; visibility: visible !important; }");
-  response->println("    </style>");
+  response->println("    <script src='scripts.js'></script>");
+  response->println("    <link rel='stylesheet' href='styles.css'>");
   response->println("  </head>");
   return response;
 }

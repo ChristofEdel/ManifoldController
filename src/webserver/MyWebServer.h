@@ -28,24 +28,29 @@ class CMyWebServer {
     void setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager *valveManager, SensorManager *sensorManager);
 
   private:
-      void processWebRequest(AsyncWebServerRequest *request);
+      // Simple responses
+      void respondWithError(AsyncWebServerRequest *request, int code, const String &messageText);
+      void respondWithString(AsyncWebServerRequest *request, const String &contentType, const char *s);
+
+      // File server
+      void processFileRequest(AsyncWebServerRequest *request);
+      void respondWithDirectory(AsyncWebServerRequest *request, const String &path);
       void respondWithFileContents(AsyncWebServerRequest *request, const String &fileName);
       size_t sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t index);
+
+      // HTML pages - main functions
+      AsyncResponseStream *startHttpHtmlResponse(AsyncWebServerRequest *request, int refresh = 0);
+      void finishHttpHtmlResponse(AsyncResponseStream *response);
+
       void respondWithMonitorPage(AsyncWebServerRequest *request);
 
       void respondWithConfigPage(AsyncWebServerRequest *request);
       void processConfigPagePost(AsyncWebServerRequest *request);
-
       void printSensorOptions(AsyncResponseStream *response, const String &selectedSensor);
-      void respondWithDirectory(AsyncWebServerRequest *request, const String &path);
-      void respondWithError(AsyncWebServerRequest *request, int code, const String &messageText);
-      void respondWitTracePage(AsyncWebServerRequest *request, bool);
-      void respondWithTaskList(AsyncWebServerRequest *request);
-
-      AsyncResponseStream *startHttpHtmlResponse(AsyncWebServerRequest *request, int refresh = 0);
-      void finishHttpHtmlResponse(AsyncResponseStream *response);
-
       const String &mapSensorName(const String &name) const;
+
+      // Other pages for debugging
+      void respondWithTaskList(AsyncWebServerRequest *request);
 
 };
 
