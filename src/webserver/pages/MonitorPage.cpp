@@ -9,17 +9,17 @@ const String &CMyWebServer::mapSensorName(const String &id) const{
 void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = startHttpHtmlResponse(request);
   int sensorCount = this->m_sensorMap->getCount();
-  this->startHttpHtmlResponse(request, /* refresh = */ 5);
+  this->startHttpHtmlResponse(request);
   response->println("<table><tbody>");
   response->println("<tr><th colspan=99>Boiler Control</th>");
 
   response->print("<tr>");
-  response->print("<th>Flow Setpoint</th><td>");
+  response->print("<th>Flow Setpoint</th><td id='flowSetpoint' class='has-data'>");
       response->print(Config.getFlowTargetTemp(),1);
   response->print("</td><td colspan=4></td></tr>");
 
   response->print("<tr>");
-  response->print("<th>Valve Position</th><td>");
+  response->print("<th>Valve Position</th><td id='valvePosition' class='has-data'>");
       response->print(m_valveManager->outputs.targetValvePosition,1);
   response->print("%</td><td colspan=4></td></tr>");
 
@@ -35,10 +35,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
     SensorMapEntry * entry = (*m_sensorMap)[i];
     Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
     float temperature = SensorManager::SENSOR_NOT_FOUND;
-    float calibatedTemperature = SensorManager::SENSOR_NOT_FOUND;
     if (sensor) {
-      temperature = sensor->temperature;
-      calibatedTemperature = sensor->calibratedTemperature();
+      temperature = sensor->calibratedTemperature();
       totalReadings += sensor->readings;
       totalCrcErrors += sensor->crcErrors;
       totalNoResponseErrors += sensor->noResponseErrors;
@@ -50,20 +48,27 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
     response->print("<th>");
     response->print(entry->name);
     response->println("</th>");
-    response->print("<td>");
-    if (calibatedTemperature == SensorManager::SENSOR_NOT_FOUND) response->print("???");
-    if (calibatedTemperature > -50) response->print(calibatedTemperature, 1);
+    response->printf("<td id='%s-temp' class='has-data'>", entry->id.c_str());
+    if (temperature == SensorManager::SENSOR_NOT_FOUND) response->print("???");
+    if (temperature > -50) response->print(temperature, 1);
     response->println("</td>");
     if (sensor) {
-      response->printf("<td>%d</td><td>%d</td><td>%d</td><td>%d</td>", sensor->crcErrors, sensor->noResponseErrors, sensor->otherErrors, sensor->failures);
+      response->printf("<td id='%s-crc' class='has-data'>%d</td><td id='%s-nr' class='has-data'>%d</td><td id='%s-oe' class='has-data'>%d</td><td id='%s-f' class='has-data'>%d</td>", 
+        sensor->id, sensor->crcErrors, 
+        sensor->id, sensor->noResponseErrors, 
+        sensor->id, sensor->otherErrors,
+        sensor->id, sensor->failures
+      );
     }
     else {
       response->print("<td colspan=3></td>");
     }
-
     response->println("</tr>");
   }
+  response->println("</table>");
 
+  response->println("<script>setInterval(monitorPage_refreshData, 5000)</script>");
+  response->println("</body><table>");
   response->println("</body><table>");
   finishHttpHtmlResponse(response);
   request->send(response);

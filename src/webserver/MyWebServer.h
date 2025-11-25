@@ -39,7 +39,7 @@ class CMyWebServer {
       size_t sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t index);
 
       // HTML pages - main functions
-      AsyncResponseStream *startHttpHtmlResponse(AsyncWebServerRequest *request, int refresh = 0);
+      AsyncResponseStream *startHttpHtmlResponse(AsyncWebServerRequest *request);
       void finishHttpHtmlResponse(AsyncResponseStream *response);
 
       void respondWithMonitorPage(AsyncWebServerRequest *request);
@@ -48,6 +48,9 @@ class CMyWebServer {
       void processConfigPagePost(AsyncWebServerRequest *request);
       void printSensorOptions(AsyncResponseStream *response, const String &selectedSensor);
       const String &mapSensorName(const String &name) const;
+
+      // json 
+      void respondWithStatusData(AsyncWebServerRequest *response);
 
       // Other pages for debugging
       void respondWithTaskList(AsyncWebServerRequest *request);

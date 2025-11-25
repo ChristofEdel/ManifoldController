@@ -39,6 +39,7 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
   this->m_server.on("/config", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processConfigPagePost(r); });
   this->m_server.on("/tasks", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
   this->m_server.on("/panic", HTTP_GET, [this](AsyncWebServerRequest *r) { abort(); /* Force a crash to test crash logging */ });
+  this->m_server.on("/data/status", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
   this->m_server.on("/scripts.js", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
   this->m_server.on("/styles.css", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
   this->m_server.on("/*", HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
@@ -92,15 +93,12 @@ void CMyWebServer::respondWithString(AsyncWebServerRequest *request, const Strin
   request->send(response);
 }
 
-AsyncResponseStream *CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest *request, int refreshRate) {
+AsyncResponseStream *CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest *request) {
   AsyncResponseStream* response = request->beginResponseStream("text/html");
   response->setCode(200);
   response->println("<!DOCTYPE HTML>");
   response->println("<html>");
   response->println("  <head>");
-  if (refreshRate > 0)  {
-    response->printf("    <meta http-equiv='refresh' content='%d'>", refreshRate);
-  }
   response->println("    <link rel='icon' href='data:,'>");
   response->println("    <script src='https://code.jquery.com/jquery-3.7.1.min.js'></script>");
   response->println("    <script src='https://code.jquery.com/ui/1.14.1/jquery-ui.min.js'></script>");
@@ -114,4 +112,36 @@ void CMyWebServer::finishHttpHtmlResponse(AsyncResponseStream *response) {
   response->println("</html>");
 }
 
+void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
+  JsonDocument statusJson;
 
+  statusJson["flowSetpoint"]    = m_valveManager->getSetpoint();
+  statusJson["valvePosition"]   = m_valveManager->outputs.targetValvePosition;
+  
+  int sensorCount = this->m_sensorMap->getCount();
+
+  for (int i = 0; i < sensorCount; i++) {
+      SensorMapEntry * entry = (*this->m_sensorMap)[i];
+      Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
+      if (sensor) {
+        statusJson["sensors"][i]["id"] = entry->id;
+        statusJson["sensors"][i]["name"] = entry->name;
+        statusJson["sensors"][i]["temperature"] = sensor->calibratedTemperature();
+        statusJson["sensors"][i]["readings"] = sensor->readings;
+        statusJson["sensors"][i]["crcErrors"] = sensor->crcErrors;
+        statusJson["sensors"][i]["noResponseErrors"] = sensor->noResponseErrors;
+        statusJson["sensors"][i]["otherErrors"] = sensor->otherErrors;
+        statusJson["sensors"][i]["failures"] = sensor->failures;
+      }
+
+  }
+
+  String result;
+  serializeJsonPretty(statusJson, result);
+
+  AsyncWebServerResponse* response = request->beginResponse(200, "application/json", result);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+  request->send(response);
+}
