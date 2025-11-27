@@ -32,7 +32,7 @@ class WebSocketsClient : protected WebSockets {
 #ifdef __AVR__
     typedef void (*WebSocketClientEvent)(WStype_t type, uint8_t * payload, size_t length);
 #else
-    typedef std::function<void(WStype_t type, uint8_t * payload, size_t length)> WebSocketClientEvent;
+    typedef std::function<void(WStype_t type, uint8_t * payload, size_t length, void *clientData)> WebSocketClientEvent;
 #endif
 
     WebSocketsClient(void);
@@ -84,7 +84,7 @@ class WebSocketsClient : protected WebSockets {
     void loop(void) __attribute__((deprecated)) {}
 #endif
 
-    void onEvent(WebSocketClientEvent cbEvent);
+    void onEvent(WebSocketClientEvent cbEvent, void *clientData = 0);
 
     bool sendTXT(uint8_t * payload, size_t length = 0, bool headerToPayload = false);
     bool sendTXT(const uint8_t * payload, size_t length = 0);
@@ -149,6 +149,7 @@ class WebSocketsClient : protected WebSockets {
     WSclient_t _client;
 
     WebSocketClientEvent _cbEvent;
+    void *_clientData;
 
     unsigned long _lastConnectionFail;
     unsigned long _reconnectInterval;
@@ -183,7 +184,7 @@ class WebSocketsClient : protected WebSockets {
      */
     virtual void runCbEvent(WStype_t type, uint8_t * payload, size_t length) {
         if(_cbEvent) {
-            _cbEvent(type, payload, length);
+            _cbEvent(type, payload, length, _clientData);
         }
     }
 };

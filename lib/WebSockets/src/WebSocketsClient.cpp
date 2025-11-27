@@ -338,8 +338,9 @@ void WebSocketsClient::loop(void) {
  * set callback function
  * @param cbEvent WebSocketServerEvent
  */
-void WebSocketsClient::onEvent(WebSocketClientEvent cbEvent) {
+void WebSocketsClient::onEvent(WebSocketClientEvent cbEvent, void *clientData /* = 0 */) {
     _cbEvent = cbEvent;
+    _clientData = clientData;
 }
 
 /**
