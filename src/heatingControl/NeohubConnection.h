@@ -14,29 +14,38 @@ private:
     // Internal class for a single message - response interaction
     class Conversation {
     public:
-        String m_message;
+        String m_command;
+        String m_expectedResponse;
         unsigned long m_startMillis;
         int m_timeoutMillis;
-        std::function<void(String json)> m_onReceive;
+        std::function<void(String responseJson)> m_onReceive;
         std::function<void(String message)> m_onError;
         bool m_started = false;
 
         Conversation(
-            const String &message,
-            std::function<void(String json)> onReceive,
+            const String &command,
+            const String &expectedRespons,
+            std::function<void(String responseJson)> onReceive,
             std::function<void(String message)> onError,
             int timeoutMillis
-        ) : m_message(message), m_startMillis(millis()), m_timeoutMillis(timeoutMillis), m_onReceive(onReceive), m_onError(onError)
+        ) : m_command(command), m_expectedResponse(expectedRespons), m_startMillis(millis()), m_timeoutMillis(timeoutMillis), m_onReceive(onReceive), m_onError(onError)
+        {};
+        Conversation(
+            const String &command,
+            std::function<void(String responseJson)> onReceive,
+            std::function<void(String message)> onError,
+            int timeoutMillis
+        ) : m_command(command), m_expectedResponse("*"), m_startMillis(millis()), m_timeoutMillis(timeoutMillis), m_onReceive(onReceive), m_onError(onError)
         {};
         
         bool timeout() {
             return (millis() - m_startMillis) > m_timeoutMillis;
         }
     };
-
     
 private:
     String m_host;
+    String m_accessToken;
     WebSocketsClient m_websocketClient;
     static void webSocketEventHandler(WStype_t type, uint8_t * payload, size_t length, void *clientData);
 
@@ -50,10 +59,10 @@ private:
     
 
 public:
-    NeohubConnection(const String &hubHost);
+    NeohubConnection(const String &host, const String &accessToken) : m_host(host), m_accessToken(accessToken) {};
 private:
-    ~NeohubConnection();        // Private so nobody can delete an object from a callback
-                                // use NeohubConnection::remove() instead which will
+    ~NeohubConnection() {};     // Private so nobody can delete an object from a callback
+                                // use NeohubConnection::finish() instead which will
                                 // delete the object in the next loop
 
 public:
@@ -76,8 +85,8 @@ public:
 
     // Conversations
     bool send (
-        String json, 
-        std::function<void(String json)> onReceive,
+        String command, 
+        std::function<void(String responseJson)> onReceive,
         std::function<void(String message)> onError,
         int timeoutMillis = 1000
     );
@@ -101,8 +110,11 @@ private:
     // A mutex preventing concurrent access to the set with the live connections
     static MyMutex m_loopMutex;
 
+    // Add this connecetion to the processing in the loop
     void addToLoopTask();
 
+    // Wrap the actual message in the convoluted message queue objects expeted by the hub
+    String wrapCommand(const String &command);
 
 };
 

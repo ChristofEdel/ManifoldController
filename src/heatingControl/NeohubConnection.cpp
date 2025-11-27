@@ -1,11 +1,7 @@
+#include <Arduino.h>
 #include "NeohubCOnnection.h"
-
-
-NeohubConnection::NeohubConnection(const String &hubHost) {
-    this->m_host = hubHost;
-}
-NeohubConnection::~NeohubConnection() {
-}
+#include <ArduinoJson.h>
+#include "MyLog.h"
 
 bool NeohubConnection::open(int timeoutMillis /* = -1 */) {
     this->m_websocketClient.beginSSL(this->m_host, 4243, "/");
@@ -25,20 +21,26 @@ bool NeohubConnection::isConnected() {
 }
 
 bool NeohubConnection::send (
-    String json, 
-    std::function<void(String json)> onReceive,
+    String command, 
+    std::function<void(String responseJson)> onReceive,
     std::function<void(String message)> onError,
     int timeoutMillis
 ) {
-    Conversation *c = new Conversation(json, onReceive, onError, timeoutMillis);
+    Conversation *c = new Conversation(
+        command, 
+        onReceive, onError, 
+        timeoutMillis
+    );
     bool success = true;
+
 
     // Do not do anythinh while processing in the loop is ongoing
     if (m_loopMutex.lock("NeohubConnection::send")) {
 
         // If there are no live conversations, send immediately
         if (m_conversations.empty()) {
-            c->m_started = this->m_websocketClient.sendTXT(json);
+            String s = wrapCommand(c->m_command);
+            c->m_started = this->m_websocketClient.sendTXT(s);
             // If sending was successful, put into processing queue
             // for processing the return
             if (c->m_started) {
@@ -67,7 +69,8 @@ bool NeohubConnection::startConversation(NeohubConnection::Conversation *c) {
         c->m_onError("Timeout before sending");
         return false;
     };
-    c->m_started = this->m_websocketClient.sendTXT(c->m_message);
+    String s = wrapCommand(c->m_command);
+    c->m_started = this->m_websocketClient.sendTXT(s);
     // If we failed to send it, we remove it from the queue
     // if there are more waiting, we will deal with it the next time round in the loop
     if (!c->m_started) {
@@ -141,15 +144,35 @@ void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t * payload, s
                     // catastrophic failure! need to clear queue and reconnect
                     abort();
                 }
-                if (c->m_onReceive) c->m_onReceive(String(payload, length));
+
+                // Deserialise and report any erros
+                JsonDocument json;
+                DeserializationError error = deserializeJson(json, payload, length);
+                if (error) {
+                    String message = "Failed to parse neohub response: ";
+                    message += error.c_str();
+                    message += "\n";
+                    message += String(payload, length);
+                    MyLog.println(message);
+                    if (_this->m_on_error) _this->m_on_error(message);
+                }
+
+                // Message is ok, deliver the result
+                else {
+                    if (c->m_onReceive) {
+                        c->m_onReceive(json["response"].as<String>());
+                    }
+                }
+
+                // In all cases, we are done and can remove this from the processing queue
                 _this->m_conversations.pop_front();
                 delete c;
             }
             else {
-                if (_this->m_on_error)  _this->m_on_error(
-                    String("Message received outside a conversation: ") 
-                    + String(payload, min((int)length, 30))
-                );
+                String message = String("Message received outside a conversation: ") ;
+                message += String(payload, min((int)length, 30));
+                MyLog.println(message);
+                if (_this->m_on_error) _this->m_on_error(message);
             }
             break;
         }
@@ -216,9 +239,43 @@ void NeohubConnection::ensureLoopTask() {
     xTaskCreate(
         NeohubConnection::loopTask, // Task function
         "WebSocketLoop",            // Task name
-        4096,                       // Stack size (bytes)
+        4096 * 4,                       // Stack size (bytes)
         NULL,                       // Parameter to pass
         1,                          // Task priority
         &m_loopTaskHandle           // Task handle
     );
+    
+}
+
+String NeohubConnection::wrapCommand(const String &command) {
+
+    //
+    // Top level: 
+    // {
+    //      "message_type": "hm_get_command_queue",
+    //      "message": "<SECOND LEVEL MESSAGE>"
+    // }
+    //
+    // Second level:
+    // {
+    //      token: "........",
+    //      COMMANDS: [
+    //          { COMMAND: "...........", COMMANDID: 1 },
+    //          { COMMAND: "...........", COMMANDID: 2 }
+    //          ...
+    //      ]
+    // }
+    //
+    // because the second level is embedded as text, not as string, we need to escape it as a sting, and
+    // also the command within.
+    //
+
+    String commandQuoted = command;
+    String result = R"({"message_type":"hm_get_command_queue","message":"{\"token\":\")";
+    result += this->m_accessToken;
+    result +=  R"(\",\"COMMANDS\":[{\"COMMAND\":\")";
+    result += command;
+    result += R"(\",\"COMMANDID\":1}]}"})";
+
+    return result;
 }
