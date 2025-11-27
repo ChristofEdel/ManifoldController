@@ -20,6 +20,16 @@ class MyMutex {
     void unlock() {
       xSemaphoreGive(m_semaphore);
     };
+
+    bool lock(const char *message) { 
+      // Serial.print("MyMutex::lock   "); Serial.println(message); 
+      return lock(); 
+    }
+
+    void unlock(const char *message) { 
+      // Serial.print("MyMutex::unlock "); Serial.println(message); 
+      unlock(); 
+    }
 };
 
 #endif
