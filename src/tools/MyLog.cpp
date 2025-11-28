@@ -13,7 +13,7 @@ void CMyLog::unlockSdCard() {
 void CMyLog::print(Printable const&p) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(p);
+  if (this->m_logToSerial) MyDebugLog.print(p);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(p); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -21,7 +21,7 @@ void CMyLog::print(Printable const&p) {
 void CMyLog::println(Printable const&p) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(p);
+  if (this->m_logToSerial) MyDebugLog.println(p);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(p); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -30,7 +30,7 @@ void CMyLog::println(Printable const&p) {
 void CMyLog::print(long i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(i, base);
+  if (this->m_logToSerial) MyDebugLog.print(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -38,7 +38,7 @@ void CMyLog::print(long i, int base) {
 void CMyLog::println(long i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(i, base);
+  if (this->m_logToSerial) MyDebugLog.println(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -47,7 +47,7 @@ void CMyLog::println(long i, int base) {
 void CMyLog::print(unsigned long i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(i, base);
+  if (this->m_logToSerial) MyDebugLog.print(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -55,7 +55,7 @@ void CMyLog::print(unsigned long i, int base) {
 void CMyLog::println(unsigned long i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(i, base);
+  if (this->m_logToSerial) MyDebugLog.println(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -64,7 +64,7 @@ void CMyLog::println(unsigned long i, int base) {
 void CMyLog::print(int i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(i, base);
+  if (this->m_logToSerial) MyDebugLog.print(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -72,7 +72,7 @@ void CMyLog::print(int i, int base) {
 void CMyLog::println(int i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(i, base);
+  if (this->m_logToSerial) MyDebugLog.println(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -81,7 +81,7 @@ void CMyLog::println(int i, int base) {
 void CMyLog::print(unsigned int i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(i, base);
+  if (this->m_logToSerial) MyDebugLog.print(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -89,7 +89,7 @@ void CMyLog::print(unsigned int i, int base) {
 void CMyLog::println(unsigned int i, int base) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(i, base);
+  if (this->m_logToSerial) MyDebugLog.println(i, base);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -98,7 +98,7 @@ void CMyLog::println(unsigned int i, int base) {
 void CMyLog::print(double d, int digits) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(d, digits);
+  if (this->m_logToSerial) MyDebugLog.print(d, digits);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(d, digits); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -106,7 +106,7 @@ void CMyLog::print(double d, int digits) {
 void CMyLog::println(double d, int digits) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(d, digits);
+  if (this->m_logToSerial) MyDebugLog.println(d, digits);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(d, digits); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -115,7 +115,7 @@ void CMyLog::println(double d, int digits) {
 void CMyLog::print(String const &s) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(s);
+  if (this->m_logToSerial) MyDebugLog.print(s);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(s); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -123,7 +123,7 @@ void CMyLog::print(String const &s) {
 void CMyLog::println(String const &s) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(s);
+  if (this->m_logToSerial) MyDebugLog.println(s);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(s); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -132,7 +132,7 @@ void CMyLog::println(String const &s) {
 void CMyLog::print(const char s[]) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.print(s);
+  if (this->m_logToSerial) MyDebugLog.print(s);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(s); logFile.close(); } this->unlockSdCard(); }
   this->m_loggerMutex->unlock();
 }
@@ -140,7 +140,7 @@ void CMyLog::print(const char s[]) {
 void CMyLog::println(const char s[]) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println(s);
+  if (this->m_logToSerial) MyDebugLog.println(s);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(s); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -156,7 +156,7 @@ void CMyLog::printlnSdOnly(const char s[]) {
 void CMyLog::println(void) {
   this->m_loggerMutex->lock();
   this->handleStartOfLine();
-  if (this->m_logToSerial) Serial.println();
+  if (this->m_logToSerial) MyDebugLog.println();
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(); logFile.close(); } this->unlockSdCard(); }
   this->m_atStartOfLine = true;
   this->m_loggerMutex->unlock();
@@ -174,7 +174,7 @@ void CMyLog::enableSerialLog() {
 }
 
 void CMyLog::printRaw(const char *s) {
-  if (this->m_logToSerial) Serial.print(s);
+  if (this->m_logToSerial) MyDebugLog.print(s);
   if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(s); logFile.close(); } this->unlockSdCard(); }
 }
 
@@ -202,9 +202,9 @@ FsFile CMyLog::openLogFile() {
 
   FsFile result = m_sd->open(this->m_logFileName, FILE_WRITE);
   if (!result && this->m_logToSerial) {
-    Serial.print("Unable to open log file ");
-    Serial.print(this->m_logFileName);
-    Serial.print(". Stopping file logging");
+    MyDebugLog.print("Unable to open log file ");
+    MyDebugLog.print(this->m_logFileName);
+    MyDebugLog.print(". Stopping file logging");
     this->m_logToSdCard = false;
   }
   return result;
@@ -213,3 +213,5 @@ FsFile CMyLog::openLogFile() {
 CMyLog MyLog;
 CMyLog MyWebLog;
 CMyLog MyCrashLog;
+CMyDebugLog MyDebugLog;
+
