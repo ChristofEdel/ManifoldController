@@ -4,6 +4,7 @@
 #include <SdFat.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include "NeohubConnection.h"
 #include "MyWifi.h"
 #include "OneWireSensorManager.h" // OneWire sensor reading and management
 #include "SensorMap.h"            // Sensor name mapping
@@ -38,6 +39,9 @@ class CMyWebServer {
       void respondWithFileContents(AsyncWebServerRequest *request, const String &fileName);
       size_t sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t index);
 
+      // Heatmiser Neohub pass-through
+      void respondFromNeohub(AsyncWebServerRequest *request);
+
       // HTML pages - main functions
       AsyncResponseStream *startHttpHtmlResponse(AsyncWebServerRequest *request);
       void finishHttpHtmlResponse(AsyncResponseStream *response);
@@ -54,6 +58,13 @@ class CMyWebServer {
 
       // Other pages for debugging
       void respondWithTaskList(AsyncWebServerRequest *request);
+
+      // Helper function
+      static void assemblePostBody(
+        AsyncWebServerRequest *request,
+        uint8_t *data, size_t len,
+        size_t index, size_t total
+      );
 
 };
 

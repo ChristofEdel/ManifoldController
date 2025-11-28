@@ -1,15 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>JSON Fetch Demo</title>
+  <link rel="icon" href="data:,">
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js"></script>
   <script src="scripts.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script>
+    function sendRequest() {
+        $.ajax({
+            url: "http://192.168.1.50/neohub",
+            method: "POST",
+            contentType: "text/plain",
+            dataType: "json",
+            data: $("#command").val(),
+            success: function (response) {
+                $("#result").text(JSON.stringify(response, null, 2));
+            },
+            error: function (xhr, status, error) {
+                $("#result").text("Error: " + status + " " + xhr.status + xhr.responseText);
+            }
+        });
+    }
+
+    $(function() {
+        $("#sendBtn").on("click", sendRequest)
+        $("#command").val("{'GET_ZONES':0}")
+    });
   </script>
 </head>
 <body>
-    PUT TEST STUFF HERE
+<body>
+    <input type="text" id="command"/>
+    <button id="sendBtn" type="button">Send</button>
+    <pre id='result'>
+
+    </pre>
+
 </body>

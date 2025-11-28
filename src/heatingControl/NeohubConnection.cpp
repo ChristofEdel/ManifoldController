@@ -1,7 +1,9 @@
 #include <Arduino.h>
-#include "NeohubCOnnection.h"
+#include "NeohubConnection.h"
 #include <ArduinoJson.h>
 #include "MyLog.h"
+
+//
 
 bool NeohubConnection::open(int timeoutMillis /* = -1 */) {
     this->m_websocketClient.beginSSL(this->m_host, 4243, "/");
@@ -21,7 +23,7 @@ bool NeohubConnection::isConnected() {
 }
 
 bool NeohubConnection::send (
-    String command, 
+    const String &command, 
     std::function<void(String responseJson)> onReceive,
     std::function<void(String message)> onError,
     int timeoutMillis
@@ -40,10 +42,10 @@ bool NeohubConnection::send (
         // If there are no live conversations, send immediately
         if (m_conversations.empty()) {
             String s = wrapCommand(c->m_command);
-            c->m_started = this->m_websocketClient.sendTXT(s);
+            c->m_commandSent = this->m_websocketClient.sendTXT(s);
             // If sending was successful, put into processing queue
             // for processing the return
-            if (c->m_started) {
+            if (c->m_commandSent) {
                 m_conversations.push_back(c);
             }
             // If sending failed, give up and return false
@@ -65,15 +67,18 @@ bool NeohubConnection::send (
 // Start a conversation; remove from queue if it cannot be started
 bool NeohubConnection::startConversation(NeohubConnection::Conversation *c) {
     // If it is too late to start, we time out
-    if (c->timeout()) {
+    if (c->timeoutExceeded()) {
         c->m_onError("Timeout before sending");
         return false;
     };
     String s = wrapCommand(c->m_command);
-    c->m_started = this->m_websocketClient.sendTXT(s);
+    delay(200);
+    c->m_commandSent = this->m_websocketClient.sendTXT(s);
+    delay(200);
+
     // If we failed to send it, we remove it from the queue
     // if there are more waiting, we will deal with it the next time round in the loop
-    if (!c->m_started) {
+    if (!c->m_commandSent) {
         c->m_onError("Send failed");
         return false;
     }
@@ -86,7 +91,7 @@ void NeohubConnection::loop() {
     // NMB - Mutex already acquired in calling function, do not need to lock here
     // Process the first conversation in the queue and start it if required
     Conversation *c = m_conversations.empty() ? nullptr : m_conversations.front();
-    if (c && !c->m_started) {
+    if (c && !c->m_commandSent) {
         if (!startConversation(c)) {
             m_conversations.pop_front();
             delete c;
@@ -102,7 +107,7 @@ void NeohubConnection::loop() {
         // If it needs to be started, we try to start it.
         // In any case, we stop processing messages from the queue until the next
         // round trip in the loop
-        if (!c->m_started) {
+        if (!c->m_commandSent) {
             if (!startConversation(c)) {
                 m_conversations.pop_front();
                 delete c;
@@ -113,7 +118,7 @@ void NeohubConnection::loop() {
         // if it is waiting for a response, we check for timeout.
         // if it has not timed out, we wait for it to complete and process no more 
         // conversations until then
-        if (!c->timeout()) break;
+        if (!c->timeoutExceeded()) break;
 
         // If it has timed out, we finish it with an error and process the next
         // conversation in the queue
@@ -140,7 +145,7 @@ void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t * payload, s
             // the conversation from the processing queue
             Conversation *c = _this->m_conversations.empty() ? nullptr : _this->m_conversations.front();
             if (c) {
-                if (!c->m_started) {
+                if (!c->m_commandSent) {
                     // catastrophic failure! need to clear queue and reconnect
                     abort();
                 }
@@ -247,8 +252,10 @@ void NeohubConnection::ensureLoopTask() {
     
 }
 
-String NeohubConnection::wrapCommand(const String &command) {
+String NeohubConnection::wrapCommand(String command) {
 
+    // Commands to the Neohub are in a three-level JSON, where a second and third level JSON
+    // is embedded in a string.
     //
     // Top level: 
     // {
@@ -260,22 +267,48 @@ String NeohubConnection::wrapCommand(const String &command) {
     // {
     //      token: "........",
     //      COMMANDS: [
-    //          { COMMAND: "...........", COMMANDID: 1 },
-    //          { COMMAND: "...........", COMMANDID: 2 }
+    //          { COMMAND: "<ACTUAL COMMAND>", COMMANDID: 1 },
+    //          { COMMAND: "<ACTUAL COMMAND>", COMMANDID: 2 }
     //          ...
     //      ]
     // }
     //
-    // because the second level is embedded as text, not as string, we need to escape it as a sting, and
-    // also the command within.
+    // because the second and third levels are embedded in a string, we need to escape any '"'
+    // 
+    // The actual command uses a "bastardised" JSON where ' is used instead of ", which avoids
+    // awkward quotes like \\\"..., so at the beginning we take the command and replace
+    // all " we find with '.
     //
 
+    // First we turn JSON into the non-standard, single quote format
+    int i = 0;
+    const char *cp = command.c_str();
+    while (*cp) {
+        if (*cp == '"') command[i] = '\'';
+        cp++, i++;
+    }
+
+    // This is the slow but "perfect" JSON construction
+    //    JsonDocument jsonLevel2;
+    //    String level2String;
+    //    jsonLevel2["token"] = this->m_accessToken;
+    //    jsonLevel2["COMMANDS"][0]["COMMAND"] = command;
+    //    jsonLevel2["COMMANDS"][0]["COMMANDID"] = 1;
+    //    serializeJson(jsonLevel2, level2String);
+
+    //    JsonDocument jsonResult;
+    //    String result;
+    //    jsonResult["message_type"] = "hm_get_command_queue";
+    //    jsonResult["message"] = level2String;
+    //
+    //    serializeJson(jsonResult, result);
+
+    // to make this less resource consuming, we simply wrap the command in the always identical JSON for level 1 and level 2
     String commandQuoted = command;
     String result = R"({"message_type":"hm_get_command_queue","message":"{\"token\":\")";
     result += this->m_accessToken;
     result +=  R"(\",\"COMMANDS\":[{\"COMMAND\":\")";
     result += command;
     result += R"(\",\"COMMANDID\":1}]}"})";
-
     return result;
 }

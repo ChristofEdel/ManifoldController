@@ -1,4 +1,6 @@
 #include <arduino.h>
+#include <esp_websocket_client.h>
+#include <NeohubConnection.h>
 #include "MyWebServer.h"
 #include "MyLog.h"      // Lopgging to serial and, if available, SD card
 #include <MyConfig.h> 
@@ -39,6 +41,7 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
   this->m_server.on("/config", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processConfigPagePost(r); });
   this->m_server.on("/tasks", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
   this->m_server.on("/panic", HTTP_GET, [this](AsyncWebServerRequest *r) { abort(); /* Force a crash to test crash logging */ });
+  this->m_server.on("/neohub", HTTP_POST, [this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
   this->m_server.on("/data/status", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
   this->m_server.on("/scripts.js", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
   this->m_server.on("/styles.css", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
@@ -76,10 +79,10 @@ void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
 
   // Respond as appropriate
   if (isDir) {
-    respondWithFileContents(request, request->url());
+    respondWithDirectory(request, request->url());
   }
   else {
-    respondWithDirectory(request, request->url());
+    respondWithFileContents(request, request->url());
   }
 }
 
@@ -144,4 +147,112 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
   response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   response->addHeader("Access-Control-Allow-Headers", "Content-Type");
   request->send(response);
+}
+
+NeohubConnection *c;
+void ensureConnection() {
+  if (!c) {
+    c = new NeohubConnection("192.168.1.139", "6b4f25a5-9de5-460a-a3ac-5845d3fbe095");
+    c->onConnect([]() {
+      MyLog.println("Connection to NeoHub established");
+    });
+    c->onDisconnect([]() {
+      MyLog.println("Connection to NeoHub disconnected");
+      c->finish();
+    });
+    c->onError([](String message) {
+      MyLog.print("Error in NeoHob connection: ");
+      MyLog.println(message);
+    });
+    c->open();
+  }
+  while (!c->isConnected()) delay(100);
+
+}
+
+void CMyWebServer::respondFromNeohub(AsyncWebServerRequest *r) {
+
+  const int timeoutMillis = 1000;
+  bool disconnected = false;
+  bool finished = false;
+
+  // if we get disconnected prematurely, we remember this so we don't
+  // try to send to a "dead" request
+  r->onDisconnect([&disconnected]() {
+    disconnected = true;
+  });
+
+  ensureConnection();
+
+  String *body = (String *)r->_tempObject;
+  DEBUG_LOG("Request received: %s", body ? body->c_str() : "(null)");
+  if (!body) {
+      AsyncWebServerResponse* response = r->beginResponse(400, "application/json", "{ \"error\": \"Empty request\" }");
+      response->addHeader("Access-Control-Allow-Origin", "*");
+      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+      r->send(response);
+      finished = true;
+  }
+  c->send(
+    *body,
+    [r, &disconnected, &finished](const String &s) {
+      if (disconnected) {
+        return;
+      }
+      AsyncWebServerResponse* response = r->beginResponse(200, "application/json", s);
+      response->addHeader("Access-Control-Allow-Origin", "*");
+      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+      r->send(response);
+      finished = true;
+    },
+    [r, &disconnected, &finished](const String &s) {
+      if (disconnected) {
+        return;
+      }
+      AsyncWebServerResponse* response = r->beginResponse(400, "application/json", "{ \"error\": \"" + s + "\" }");
+      response->addHeader("Access-Control-Allow-Origin", "*");
+      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+      r->send(response);
+      finished = true;
+    }
+  );
+  r->_tempObject = nullptr;
+  delete body;
+
+  // Now we wait until we either get a client disconnect or have responded to the request
+  // (with a timeout slightly longer thatn the timeout used above)
+  unsigned long startMillis = millis();
+  while (millis() - startMillis < timeoutMillis && !finished && !disconnected) delay(10);
+  if (!finished && !disconnected) {
+      AsyncWebServerResponse* response = r->beginResponse(400, "application/json", "{ \"error\": \"Timeout\" }");
+      response->addHeader("Access-Control-Allow-Origin", "*");
+      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+  }
+  r->onDisconnect(nullptr);
+}
+
+void CMyWebServer::assemblePostBody(
+  AsyncWebServerRequest *request,
+  uint8_t *data, size_t len,
+  size_t index, size_t total
+)
+{
+    String *body;
+    // First time round? create a sting for the body
+    if (index == 0) {
+      // first chunk
+      body = new String();
+      body->reserve(total);
+      request->_tempObject = body;
+    }
+    // all others - continue with the previous string
+    else {
+      body = (String*)request->_tempObject;
+    }
+    // append what we just received
+    body->concat((const char*)data, len);
 }
