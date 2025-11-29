@@ -10,140 +10,32 @@ void CMyLog::unlockSdCard() {
   if(this->m_sdMutex) this->m_sdMutex->unlock();
 }
 
-void CMyLog::print(Printable const&p) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(p);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(p); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
+// Single-byte write
+size_t CMyLog::write(uint8_t c) {
+  if (this->m_loggerMutex->lock()) {
+    this->handleStartOfLine();
+    if (this->m_logToSerial) MyDebugLog.write(c);
+    if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.write(c); logFile.close(); } this->unlockSdCard(); }
+    this->m_loggerMutex->unlock();
+    if (c == '\n') m_atStartOfLine = true;
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
-void CMyLog::println(Printable const&p) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(p);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(p); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::print(long i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::println(long i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::print(unsigned long i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::println(unsigned long i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::print(int i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::println(int i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::print(unsigned int i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::println(unsigned int i, int base) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(i, base);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(i, base); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::print(double d, int digits) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(d, digits);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(d, digits); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::println(double d, int digits) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(d, digits);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(d, digits); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::print(String const &s) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(s);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(s); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::println(String const &s) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(s);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(s); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::print(const char s[]) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.print(s);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.print(s); logFile.close(); } this->unlockSdCard(); }
-  this->m_loggerMutex->unlock();
-}
-
-void CMyLog::println(const char s[]) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println(s);
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(s); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
+// Buffer write
+size_t CMyLog::write(const uint8_t *buffer, size_t size) {
+  if (this->m_loggerMutex->lock()) {
+    this->handleStartOfLine();
+    if (this->m_logToSerial) MyDebugLog.write(buffer, size);
+    if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.write(buffer, size); logFile.close(); } this->unlockSdCard(); }
+    this->m_loggerMutex->unlock();
+    if (buffer && size >= 1 && buffer[size-1] == '\n') m_atStartOfLine = true;
+    return size;
+  } else {
+    return 0;
+  }
 }
 
 void CMyLog::printlnSdOnly(const char s[]) {
@@ -151,15 +43,6 @@ void CMyLog::printlnSdOnly(const char s[]) {
   this->m_logToSerial = false;
   this->println(s);
   this->m_logToSerial = serial;
-}
-
-void CMyLog::println(void) {
-  this->m_loggerMutex->lock();
-  this->handleStartOfLine();
-  if (this->m_logToSerial) MyDebugLog.println();
-  if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.println(); logFile.close(); } this->unlockSdCard(); }
-  this->m_atStartOfLine = true;
-  this->m_loggerMutex->unlock();
 }
 
 void CMyLog::enableSdCardLog(const char *fileName, SdFs *sdFs, MyMutex *sdMutex) {
@@ -209,6 +92,74 @@ FsFile CMyLog::openLogFile() {
   }
   return result;
 }
+
+// Single-byte write
+size_t CMyDebugLog::write(uint8_t c) {
+  if (xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE) {
+    size_t n = fwrite(&c,1,1,stdout);
+    fflush(stdout);
+    xSemaphoreGive(_mutex);
+    return n;
+  }
+  return 0;
+}
+
+// Buffer write
+size_t CMyDebugLog::write(const uint8_t *buffer, size_t size) {
+  if (xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE) {
+    size_t n =fwrite(buffer,size,1,stdout);
+    fflush(stdout);
+    xSemaphoreGive(_mutex);
+    return n;
+  }
+  return 0;
+}
+
+size_t CMyDebugLog::printfWithLocation(const char *debugLogFormat, const char *taskName, const char *location, const char *format, ...) {
+  if (xSemaphoreTake(_mutex, portMAX_DELAY) == pdTRUE) {
+
+    int result = fprintf(stdout, debugLogFormat, taskName, location);
+
+    // The following is 1:1 copy of the printf implementation but with a larger buffer
+    // and using _serial.write
+    char loc_buf[200];
+    char * temp = loc_buf;
+    va_list arg;
+    va_list copy;
+    va_start(arg, format);
+    va_copy(copy, arg);
+    int len = vsnprintf(temp, sizeof(loc_buf), format, copy);
+    va_end(copy);
+    if(len < 0) {
+        va_end(arg);
+        xSemaphoreGive(_mutex);
+        return result;
+    }
+    if(len >= (int)sizeof(loc_buf)){  // comparation of same sign type for the compiler
+        temp = (char*) malloc(len+1);
+        if(temp == NULL) {
+            va_end(arg);
+            xSemaphoreGive(_mutex);
+            return result;
+        }
+        len = vsnprintf(temp, len+1, format, arg);
+    }
+    va_end(arg);
+    len = fwrite(temp, len, 1, stdout);
+    if(temp != loc_buf){
+        free(temp);
+    }
+    // end of copied code
+
+    result += len;
+    result += fwrite("\n", 1, 1, stdout);
+    fflush(stdout);
+    xSemaphoreGive(_mutex);
+    return result;
+  }
+  return 0;
+}
+
 
 CMyLog MyLog;
 CMyLog MyWebLog;
