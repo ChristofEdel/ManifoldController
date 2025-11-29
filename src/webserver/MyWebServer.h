@@ -48,8 +48,11 @@ class CMyWebServer {
 
       void respondWithMonitorPage(AsyncWebServerRequest *request);
 
-      void respondWithConfigPage(AsyncWebServerRequest *request);
-      void processConfigPagePost(AsyncWebServerRequest *request);
+      void respondWithHeatingConfigPage(AsyncWebServerRequest *request);
+      void processHeatingConfigPagePost(AsyncWebServerRequest *request);
+      void respondWithSystemConfigPage(AsyncWebServerRequest *request);
+      void processSystemConfigPagePost(AsyncWebServerRequest *request);
+ 
       void printSensorOptions(AsyncResponseStream *response, const String &selectedSensor);
       const String &mapSensorName(const String &name) const;
 

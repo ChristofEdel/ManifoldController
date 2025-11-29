@@ -1,7 +1,7 @@
 #include "../MyWebServer.h"
 #include "ESPmDNS.h"
 
-void CMyWebServer::respondWithConfigPage(AsyncWebServerRequest *request) {
+void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
   response->println("<form action='config' method='post'>");
   
@@ -46,16 +46,6 @@ void CMyWebServer::respondWithConfigPage(AsyncWebServerRequest *request) {
     response->printf("  <option value='1'%s>Inverted (conter-clockwise)</option>", Config.getValveInverted() == true ? " selected" : "");
     response->print("'</select></td>");
   response->print("</tr>");
-
-  response->print("<tr><th colspan=99>System</th></tr>");
-
-  response->print("<tr>");
-    response->print("<th>Hostname</th>");
-    response->print("<td colspan=2><input name='hostname' type='text' value='");
-    response->print(Config.getHostname());
-    response->print("'/></td>");
-  response->print("</tr>");
-
 
   response->println("<tr><th colspan=99>Sensor Config</th></tr>");
 
@@ -137,10 +127,9 @@ bool update(bool oldValue, void (CConfig::*setter)(bool), bool newValue) {
   return true;
 }
 
-void CMyWebServer::processConfigPagePost(AsyncWebServerRequest *request) {
+void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) {
 
   int sensorIndex = 0;
-  bool hostnameChanged = false;     // Flag if we have to redirect to the new hostname
   bool pidReconfigured = false;     // Flag to determine if the PID controller ocnfiguration
                                     // has to be reloaded
 
@@ -154,11 +143,6 @@ void CMyWebServer::processConfigPagePost(AsyncWebServerRequest *request) {
     if (key.startsWith("s")) {
       // Handle sensor name updates
       this->m_sensorMap->updateAtIndex(sensorIndex++, key.substring(1), p->value());
-    }
-    else if (key == "hostname") {
-      Config.setHostname(p->value());
-      MyWiFi.setHostname(p->value());
-      hostnameChanged = true;
     }
     else if (key == "tft") {
       if (update(Config.getFlowTargetTemp(), &CConfig::setFlowTargetTemp, p->value().toFloat())) {
@@ -194,14 +178,7 @@ void CMyWebServer::processConfigPagePost(AsyncWebServerRequest *request) {
   Config.print(MyLog);
 
   // After processing POST, respond with the config page again
-  if (!hostnameChanged) {
-    respondWithConfigPage(request);
-  }
-  else {
-    AsyncWebServerResponse *response = request->beginResponse(302);  
-    response->addHeader("Location", "http://" + Config.getHostname() + ".local" + request->url());  
-    request->send(response);
-  }
+  respondWithHeatingConfigPage(request);
 
 }
 
