@@ -10,6 +10,7 @@
 #include "freertos/idf_additions.h"
 #include "styles_string.h"
 #include "scripts_string.h"
+#include "NeohubManager.h"
 
 CMyWebServer MyWebServer;
 
@@ -151,90 +152,34 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
   request->send(response);
 }
 
-NeohubConnection *c;
-void ensureConnection() {
-  if (!c) {
-    c = new NeohubConnection("192.168.1.139", "6b4f25a5-9de5-460a-a3ac-5845d3fbe095");
-    c->onConnect([]() {
-      MyLog.println("Connection to NeoHub established");
-    });
-    c->onDisconnect([]() {
-      MyLog.println("Connection to NeoHub disconnected");
-      c->finish();
-    });
-    c->onError([](String message) {
-      MyLog.print("Error in NeoHob connection: ");
-      MyLog.println(message);
-    });
-    c->open();
-  }
-  while (!c->isConnected()) delay(100);
-
-}
-
 void CMyWebServer::respondFromNeohub(AsyncWebServerRequest *r) {
 
-  const int timeoutMillis = 1000;
+  const int timeoutMillis = 2000;
   bool disconnected = false;
-  bool finished = false;
-
-  // if we get disconnected prematurely, we remember this so we don't
-  // try to send to a "dead" request
-  r->onDisconnect([&disconnected]() {
-    disconnected = true;
-  });
-
-  ensureConnection();
+  int responseCode = 200;
+  String responseString;
 
   String *body = (String *)r->_tempObject;
   DEBUG_LOG("Request received: %s", body ? body->c_str() : "(null)");
   if (!body) {
-      AsyncWebServerResponse* response = r->beginResponse(400, "application/json", "{ \"error\": \"Empty request\" }");
-      response->addHeader("Access-Control-Allow-Origin", "*");
-      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-      r->send(response);
-      finished = true;
+    responseCode = 400;
+    responseString = "{ \"error\": \"Empty request\" }";
   }
-  c->send(
-    *body,
-    [r, &disconnected, &finished](const String &s) {
-      if (disconnected) {
-        return;
-      }
-      AsyncWebServerResponse* response = r->beginResponse(200, "application/json", s);
-      response->addHeader("Access-Control-Allow-Origin", "*");
-      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-      r->send(response);
-      finished = true;
-    },
-    [r, &disconnected, &finished](const String &s) {
-      if (disconnected) {
-        return;
-      }
-      AsyncWebServerResponse* response = r->beginResponse(400, "application/json", "{ \"error\": \"" + s + "\" }");
-      response->addHeader("Access-Control-Allow-Origin", "*");
-      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-      r->send(response);
-      finished = true;
-    }
-  );
-  r->_tempObject = nullptr;
-  delete body;
+  else {
+    responseString = NeohubManager.neohubCommand(*body, timeoutMillis);
 
-  // Now we wait until we either get a client disconnect or have responded to the request
-  // (with a timeout slightly longer thatn the timeout used above)
-  unsigned long startMillis = millis();
-  while (millis() - startMillis < timeoutMillis && !finished && !disconnected) delay(10);
-  if (!finished && !disconnected) {
-      AsyncWebServerResponse* response = r->beginResponse(400, "application/json", "{ \"error\": \"Timeout\" }");
-      response->addHeader("Access-Control-Allow-Origin", "*");
-      response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (responseString == emptyString) {
+      responseCode = 400;
+      responseString = "{ \"error\": \"Unable to retrieve data from Neohub\" }";
+    }
   }
-  r->onDisconnect(nullptr);
+
+  AsyncWebServerResponse* response = r->beginResponse(responseCode, "application/json", responseString);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+  r->send(response);
+
 }
 
 void CMyWebServer::assemblePostBody(

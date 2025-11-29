@@ -50,7 +50,7 @@ bool NeohubConnection::send (
             }
             // If sending failed, give up and return false
             else {
-                if (c->m_onError) c->m_onError("Send failed");
+                if (c->m_onError) c->m_onError("NeohubConnection: send to WebSocketClient failed");
                 delete c;
                 success = false;
             }
@@ -68,18 +68,16 @@ bool NeohubConnection::send (
 bool NeohubConnection::startConversation(NeohubConnection::Conversation *c) {
     // If it is too late to start, we time out
     if (c->timeoutExceeded()) {
-        c->m_onError("Timeout before sending");
+        c->m_onError("NeohubConnection: Conversation timed out before sending");
         return false;
     };
     String s = wrapCommand(c->m_command);
-    delay(200);
     c->m_commandSent = this->m_websocketClient.sendTXT(s);
-    delay(200);
 
     // If we failed to send it, we remove it from the queue
     // if there are more waiting, we will deal with it the next time round in the loop
     if (!c->m_commandSent) {
-        c->m_onError("Send failed");
+        c->m_onError("NeohubConnection: Send to WebSocketClient failed");
         return false;
     }
     else {
@@ -122,7 +120,7 @@ void NeohubConnection::loop() {
 
         // If it has timed out, we finish it with an error and process the next
         // conversation in the queue
-        c->m_onError("Timeout waiting for response");
+        c->m_onError("NeohubConnection: Timeout waiting for response");
         m_conversations.pop_front();
         delete c;
     }
@@ -133,14 +131,20 @@ void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t * payload, s
     NeohubConnection* _this = (NeohubConnection *) clientData;
     switch (type) {
         case WStype_CONNECTED: {
+            DEBUG_LOG("WStype_CONNECTED");
             if (_this->m_on_connect) _this->m_on_connect();
             break;
         }
         case WStype_DISCONNECTED: {
+            DEBUG_LOG("WStype_DISCONNECTED");
+            if (length > 0) {
+                DEBUG_LOG("%s", String(payload, length).c_str());
+            }
             if (_this->m_on_disconnect) _this->m_on_disconnect();
             break;
         }
         case WStype_TEXT: {
+            DEBUG_LOG("WStype_TEXT");
             // Send the received data to the conversation's hanlder and then remove 
             // the conversation from the processing queue
             Conversation *c = _this->m_conversations.empty() ? nullptr : _this->m_conversations.front();
@@ -154,7 +158,7 @@ void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t * payload, s
                 JsonDocument json;
                 DeserializationError error = deserializeJson(json, payload, length);
                 if (error) {
-                    String message = "Failed to parse neohub response: ";
+                    String message = "NeohubConnection: Failed to parse response: ";
                     message += error.c_str();
                     message += "\n";
                     message += String(payload, length);
@@ -174,7 +178,7 @@ void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t * payload, s
                 delete c;
             }
             else {
-                String message = String("Message received outside a conversation: ") ;
+                String message = String("NeohubConnection: Message received outside of a conversation: ") ;
                 message += String(payload, min((int)length, 30));
                 MyLog.println(message);
                 if (_this->m_on_error) _this->m_on_error(message);
@@ -184,26 +188,33 @@ void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t * payload, s
         break;
 
         case WStype_ERROR: {
-            if (_this->m_on_error) _this->m_on_error("Error event");
+            DEBUG_LOG("WStype_ERROR");
+            if (_this->m_on_error) _this->m_on_error("NeohubConnection: WebSocket error event");
             break;
         }
 
         case WStype_FRAGMENT_TEXT_START:
         case WStype_FRAGMENT:
         case WStype_FRAGMENT_FIN: {
-            if (_this->m_on_error) _this->m_on_error("Fragment received - unhandled");
+            DEBUG_LOG("WStype_FRAGMENT_xxxx");
+            if (_this->m_on_error) _this->m_on_error("NeohubConnection: Fragment received - unhandled");
             break;
         }
 
         // Binary data messages - we don't need them so we don't handle them
         case WStype_BIN:
         case WStype_FRAGMENT_BIN_START:
-        if (_this->m_on_error) _this->m_on_error("Binary data received - unhandled");
-            break;
+            DEBUG_LOG("WStype_BIN or WStype_FRAGMENT_BIN_START");
+            if (_this->m_on_error) _this->m_on_error("NeohubConnection: Binary data received - unhandled");
+                break;
 
         // Messages we don't care for
         case WStype_PING:
         case WStype_PONG:
+            break;
+
+        default:
+            DEBUG_LOG("WStype_UNKNOWN");
             break;
     }
 }
