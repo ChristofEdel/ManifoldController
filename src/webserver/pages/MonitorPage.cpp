@@ -8,68 +8,74 @@ const String &CMyWebServer::mapSensorName(const String &id) const{
 
 void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = startHttpHtmlResponse(request);
-  int sensorCount = this->m_sensorMap->getCount();
-  this->startHttpHtmlResponse(request);
-  response->println("<table><tbody>");
-  response->println("<tr><th colspan=99>Boiler Control</th>");
+  HtmlGenerator html(response);
 
-  response->print("<tr>");
-  response->print("<th>Flow Setpoint</th><td id='flowSetpoint' class='has-data'>");
-      response->print(Config.getFlowTargetTemp(),1);
-  response->print("</td><td colspan=4></td></tr>");
+  html.blockLayout([this, &html]{
 
-  response->print("<tr>");
-  response->print("<th>Valve Position</th><td id='valvePosition' class='has-data'>");
-      response->print(m_valveManager->outputs.targetValvePosition,1);
-  response->print("%</td><td colspan=4></td></tr>");
+    html.block("Control", [this, &html]{
+      html.fieldTable( [this, &html] {
+        html.fieldTableRow("Flow Setpoint", String(Config.getFlowTargetTemp(),1).c_str());
+        html.fieldTableRow("Valve Position", (String(m_valveManager->outputs.targetValvePosition,0) + "%").c_str());
+      });
+    });
 
-  int totalReadings = 0;
-  int totalCrcErrors = 0;
-  int totalNoResponseErrors = 0;
-  int totalOtherErrors = 0;
-  int totalFailures = 0;
+    html.block("Sensors", [this, &html]{
+      html.element("table", "class='monitor-table'", [this, &html]{
+        html.print("<thead>");
+        html.print("<tr class='tight'><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Sensor</th><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Temp</th><th colspan=4>Errors</th></tr>");
+        html.print("<tr class='tight'><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
+        html.print("</thead>");
+        html.element("tbody", "class='sensorList'", [this, &html]{
+          int sensorCount = this->m_sensorMap->getCount();
+          int totalReadings = 0;
+          int totalCrcErrors = 0;
+          int totalNoResponseErrors = 0;
+          int totalOtherErrors = 0;
+          int totalFailures = 0;
+          for (int i = 0; i < sensorCount; i++) {
+            SensorMapEntry * entry = (*m_sensorMap)[i];
+            Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
+            float temperature = SensorManager::SENSOR_NOT_FOUND;
+            if (sensor) {
+              temperature = sensor->calibratedTemperature();
+              totalReadings += sensor->readings;
+              totalCrcErrors += sensor->crcErrors;
+              totalNoResponseErrors += sensor->noResponseErrors;
+              totalOtherErrors += sensor->otherErrors;
+              totalFailures += sensor->failures;
+            }
 
-  response->println("<tr><th rowspan=2>Sensor</th><th rowspan=2>Temp</th><th colspan=4>Errors</th></tr>");
-  response->println("<tr><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
-  for (int i = 0; i < sensorCount; i++) {
-    SensorMapEntry * entry = (*m_sensorMap)[i];
-    Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
-    float temperature = SensorManager::SENSOR_NOT_FOUND;
-    if (sensor) {
-      temperature = sensor->calibratedTemperature();
-      totalReadings += sensor->readings;
-      totalCrcErrors += sensor->crcErrors;
-      totalNoResponseErrors += sensor->noResponseErrors;
-      totalOtherErrors += sensor->otherErrors;
-      totalFailures += sensor->failures;
-    }
+            html.print("<tr>");
+            html.print("<th>");
+            html.print(entry->name.c_str());
+            html.print("</th>");
+            html.print("<td id='"); html.print(entry->id.c_str()); html.print("-temp' class='has-data'>");
+            if (temperature == SensorManager::SENSOR_NOT_FOUND) html.print("???");
+            if (temperature > -50) html.print(String(temperature, 1).c_str());
+            html.print("</td>");
+            if (sensor) {
+              char buffer[500];
+              snprintf(
+                buffer, sizeof(buffer), 
+                "<td id='%s-crc' class='has-data'>%d</td><td id='%s-nr' class='has-data'>%d</td><td id='%s-oe' class='has-data'>%d</td><td id='%s-f' class='has-data'>%d</td>", 
+                sensor->id, sensor->crcErrors, 
+                sensor->id, sensor->noResponseErrors, 
+                sensor->id, sensor->otherErrors,
+                sensor->id, sensor->failures
+              );
+              html.print(buffer);
+            }
+            else {
+              html.print("<td colspan=99></td>");
+            }
+            html.print("</tr>");
+          }
+        });
+      });
+    });
+  }); // block layout
 
-    response->println("<tr>");
-    response->print("<th>");
-    response->print(entry->name);
-    response->println("</th>");
-    response->printf("<td id='%s-temp' class='has-data'>", entry->id.c_str());
-    if (temperature == SensorManager::SENSOR_NOT_FOUND) response->print("???");
-    if (temperature > -50) response->print(temperature, 1);
-    response->println("</td>");
-    if (sensor) {
-      response->printf("<td id='%s-crc' class='has-data'>%d</td><td id='%s-nr' class='has-data'>%d</td><td id='%s-oe' class='has-data'>%d</td><td id='%s-f' class='has-data'>%d</td>", 
-        sensor->id, sensor->crcErrors, 
-        sensor->id, sensor->noResponseErrors, 
-        sensor->id, sensor->otherErrors,
-        sensor->id, sensor->failures
-      );
-    }
-    else {
-      response->print("<td colspan=3></td>");
-    }
-    response->println("</tr>");
-  }
-  response->println("</table>");
-
-  response->println("<script>setInterval(monitorPage_refreshData, 5000)</script>");
-  response->println("</body><table>");
-  response->println("</body><table>");
+  html.print("<script>setInterval(monitorPage_refreshData, 5000)</script>");
   finishHttpHtmlResponse(response);
   request->send(response);
 }

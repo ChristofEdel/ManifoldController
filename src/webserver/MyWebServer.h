@@ -10,6 +10,7 @@
 #include "SensorMap.h"            // Sensor name mapping
 #include "ValveManager.h"
 #include "MyMutex.h"
+#include "HtmlGenerator.h"
 
 
 struct WebResponseContext {
@@ -53,7 +54,8 @@ class CMyWebServer {
       void respondWithSystemConfigPage(AsyncWebServerRequest *request);
       void processSystemConfigPagePost(AsyncWebServerRequest *request);
  
-      void printSensorOptions(AsyncResponseStream *response, const String &selectedSensor);
+      void generateSensorOptions(HtmlGenerator &html, const String &selectedSensor);
+      void generateThermostatOptions(HtmlGenerator &html, int selectedThermostat);
       const String &mapSensorName(const String &name) const;
 
       // json 

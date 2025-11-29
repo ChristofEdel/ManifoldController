@@ -3,22 +3,29 @@
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
-  response->println("<form action='config' method='post'>");
-  
-  response->println("<table><tbody>");
+  HtmlGenerator html(response);
 
-  response->print("<tr><th colspan=99>System</th></tr>");
+  html.element("form", "action='config' method='post'", [this, &html]{
+    html.blockLayout([this, &html]{
 
-  response->print("<tr>");
-    response->print("<th>Hostname</th>");
-    response->print("<td colspan=2><input name='hostname' type='text' value='");
-    response->print(Config.getHostname());
-    response->print("'/></td>");
-  response->print("</tr>");
+      html.block("Hostname", [this, &html]{
+        html.input("name='hostname'", Config.getHostname().c_str());
+      });
 
-  response->println("</tbody><table>");
-  response->println("<input type='submit' style='display:block; margin:0 auto;' value='Save Changes'/>");
-  response->println("</form>");
+      html.block("Neohub", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("URL", [&html]{
+            html.fieldTableInput("name='nh_url' style='width: 20em'", "xxx.xx.xx.xx");
+          });
+          html.fieldTableRow("Token", [&html]{
+            html.fieldTableInput("name='nh_token' style='width: 20em'", "xxxxxx-xxxxxx-xxxx-xxxxx-xxxxxxxxxx");
+          });
+        });
+      });
+
+    }); // block layout
+    html.print("<input type='submit' class='save-button' value='Save Changes'/>");
+  }); // </form>
 
   finishHttpHtmlResponse(response);
   request->send(response);

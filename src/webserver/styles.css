@@ -1,7 +1,223 @@
-table { margin: 0 auto; font-size: 12pt; border-collapse: collapse; }
-table th { background: rgba(0,0,0,.1); }
-table tbody th, table thead th:first-child { text-align: left; }
-table th, table td { padding: .5em; border: 1px solid lightgrey; }
-.delete { width: 21px; cursor: pointer; text-align: center; color: red; }
-.handle { cursor: move; }
-.sortable-placeholder { background: #f5f5f5; visibility: visible !important; }
+body {
+    margin: 10;
+}
+
+/*
+** Straight table layout for table with titles on the top
+*/
+table.list {
+    margin: 0 auto;
+    font-size: 12pt;
+    border-collapse: collapse;
+    border-bottom: 1px solid #505050;
+}
+
+table.list > thead > tr > th,
+table.list > tbody > tr > th {
+    background: #e0e0e0;
+    border-top: 3px solid #505050;
+    border-bottom: 1px solid #505050;
+}
+
+table.list > tbody > tr > th:first-child,
+table.list > thead > tr > th:first-child {
+    text-align: left;
+}
+
+table.list > thead > tr > th,
+table.list > thead > tr > td,
+table.list > tbody > tr > th,
+table.list > tbody > tr > td {
+    padding: 5px;
+}
+
+table.list > tbody > tr:nth-child(even)
+{
+    background: #f4f4f4;
+}
+
+/*
+** Tables with field names in column 1 and fields in column 2
+*/
+
+/* table.field-table {
+    border-collapse: collapse;
+} */
+
+table.field-table > thead > tr > th {   /* if it has a head, thin line at bottom of head */
+    border-bottom: 3px solid #505050;
+}
+
+table.field-table > tbody > tr > th {   /* headers in each row */
+    text-align: left;
+    font-weight: normal;
+    padding-left: 10px;
+    padding-right: 5px; 
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+table.field-table input {               /* input field style within table */
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #505050;
+}
+
+.block-layout .content table.field-table { /* Special case: eliminate parent padding if in block-layoud */
+    margin: -5px;
+    margin-left: -10px;
+    border-collapse: collapse;
+}
+
+
+/*
+**
+*/
+
+table.monitor-table {
+    border-collapse: collapse;
+}
+
+table.monitor-table > tbody > tr > th:first-child,
+table.monitor-table > thead > tr > th:first-child {
+    text-align: left;
+}
+
+table.monitor-table > thead > tr > th {
+    border-bottom: 1px solid #505050;
+}
+
+table.monitor-table > tbody > tr > th {
+    text-align: left;
+}
+table.monitor-table > tbody > tr > td {
+    text-align: center;
+}
+
+table.monitor-table > thead > tr > th {
+    padding: 5px;
+}
+table.monitor-table > tbody > tr > th,
+table.monitor-table > tbody > tr > td {
+    padding: 5px;
+}
+
+table.monitor-table > tbody > tr:nth-child(even)
+{
+    background: #f4f4f4;
+}
+
+.block-layout .content table.monitor-table { /* Special case: eliminate parent padding if in block-layoud */
+    margin: -8px;
+    margin-left: -5px;
+}
+
+
+th.gap-right {
+    border-right: 5px solid white;
+}
+
+tr.tight > th,
+tr.tight > td {
+    padding-top: 0px !important;
+    padding-bottom: 0px!important;
+}
+
+td.right {
+    text-align: right;
+}
+
+input.num-3em {
+    text-align: right;
+    width: 3em;
+}
+input.num-4em {
+    text-align: right;
+    width: 4em;
+}
+
+input.save-button {
+    border: 3px solid #505050;
+    display:block;
+    font-weight: bold;
+    padding: 5px;
+    background-color: orange;
+    margin: 10px auto 0px auto;
+}
+
+
+/*
+** Insert / Delete / Drag-Drop styling
+*/
+
+.delete-row {
+    width: 21px;
+    cursor: pointer;
+    text-align: center;
+    color: red;
+}
+
+.handle {
+    cursor: move;
+}
+
+.sortable-placeholder {
+    background: #f5f5f5;
+    visibility: visible !important;
+}
+
+/* "Block Layout" with bold titles on the left and content on the right;
+** adapts to titles on top on narrow screens (mobile)
+*/
+
+/* bottom border for the whole block */
+.block-layout {
+    border-bottom: 3px solid #505050;
+}
+
+.block-layout * {
+    box-sizing: border-box;
+}
+
+.block-layout .block {
+    display: flex;
+}
+
+.block-layout .title {
+    width: 220px;
+    flex-shrink: 0;
+    padding: 8px;
+    background: #e0e0e0;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-top: 3px solid #505050;
+    /* same element as background */
+}
+
+.block-layout .content {
+    flex: 1;
+    padding: 8px;
+    border-top: 3px solid #505050;
+    /* same element as background */
+}
+
+/* collapsed (narrow) view */
+@media (max-width: 550px) {
+    .block-layout .block {
+        flex-direction: column;
+    }
+
+    .block-layout .title {
+        width: 100%;
+        border-top: 3px solid #505050;
+        /* top of the pair */
+    }
+
+    .block-layout .content {
+        width: 100%;
+        border-top: 1px solid #505050;
+        /* only 1px between title and content */
+    }
+}

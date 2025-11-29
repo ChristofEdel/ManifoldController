@@ -62,7 +62,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const St
     else {
       FsBaseFile file; 
       char nameBuffer[100];
-      response->println("<table><thead><tr><th>File</th><th>Size (kb)</th></tr></thead><tbody>");
+      response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th></tr></thead><tbody>");
       while (file.openNext(&dir, O_RDONLY)) {
         // indent for dir level
         if (!file.isHidden()) {
@@ -72,7 +72,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const St
           response->print(nameBuffer);
           response->print("'>");
           response->print(nameBuffer);
-          response->println("</a></td><td>");
+          response->println("</a></td><td class='right'>");
           response->print(file.fileSize() / 1024.0);
           response->println("</a></td></tr>");
         }

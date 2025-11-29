@@ -36,6 +36,8 @@ class CNeohubManager {
             m_thermostatData.reserve(15);
         }
 
+        const std::vector<NeohubThermostatData>& getThermostatData() { ensureThermostatNames(); return m_thermostatData; }
+
         // Get the data for a particular thermostat. If it has not been polled,
         // it will be empty except for its name and id
         NeohubThermostatData * getThermostatData(const String &name);
@@ -63,7 +65,7 @@ class CNeohubManager {
         // Vector with the data for all thermostats
         std::vector<NeohubThermostatData> m_thermostatData;
         NeohubThermostatData *getOrCreateThermostatData(int id, const String &name);
-
+        void ensureThermostatNames();
         void loadThermostatNames();
 
         // loop function which regularly ensures the connection and polls data as requied

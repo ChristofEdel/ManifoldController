@@ -114,10 +114,16 @@ String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /
     return result;
 }
 
+void CNeohubManager::ensureThermostatNames() {
+    if (m_thermostatData.empty()) {
+        loadThermostatNames();
+    }
+}
+
 void CNeohubManager::loadThermostatNames() {
     if (!ensureNeohubConnection()) return;
 
-    String response = neohubCommand("{ 'GET_ZONES', 0 }");
+    String response = neohubCommand("{ 'GET_ZONES': 0 }");
     JsonDocument json;
     DeserializationError error = deserializeJson(json, response);
     if (error) {

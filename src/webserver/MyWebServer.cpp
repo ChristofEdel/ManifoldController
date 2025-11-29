@@ -38,8 +38,8 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
   this->m_sensorManager = sensorManager;
   this->m_server.on("/", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
   this->m_server.on("/monitor", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
-  this->m_server.on("/config/system", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });
-  this->m_server.on("/config/system", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processSystemConfigPagePost(r); });
+  this->m_server.on("/config-system", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });
+  this->m_server.on("/config-system", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processSystemConfigPagePost(r); });
   this->m_server.on("/config", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithHeatingConfigPage(r); });
   this->m_server.on("/config", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processHeatingConfigPagePost(r); });
   this->m_server.on("/tasks", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });

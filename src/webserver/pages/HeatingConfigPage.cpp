@@ -1,118 +1,114 @@
 #include "../MyWebServer.h"
 #include "ESPmDNS.h"
+#include "NeohubManager.h"
+#include <vector>
+#include "../HtmlGenerator.h"
+
 
 void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) {
-  AsyncResponseStream *response = this->startHttpHtmlResponse(request);
-  response->println("<form action='config' method='post'>");
-  
-  response->println("<table><tbody>");
+  AsyncResponseStream *response= this->startHttpHtmlResponse(request);
 
-  response->print("<tr><th colspan=99>Heating</th></tr>");
+  HtmlGenerator html(response);
 
-  response->print("<tr>");
-    response->print("<th>Flow Setpoint</th>");
-    response->print("<td colspan=2><input name='tft' type='text' value='");
-    response->print(Config.getFlowTargetTemp(),1);
-    response->print("'/></td>");
-  response->print("</tr>");
+  html.element("form", "action='config' method='post'", [this, &html]{
+    html.blockLayout([this, &html]{
 
-  response->println("<tr><th colspan=99>PID Controller</th></tr>");
+      html.block("Room Thermostats", [this, &html]{
+        html.select("name='ts'", [this, &html]{
+          generateThermostatOptions(html, 0);
+        });
+      });
 
-  response->print("<tr>");
-    response->print("<th>Proportional Gain</th>");
-    response->print("<td colspan=2><input name='pid_pg' type='text' value='");
-    response->print(Config.getProportionalGain(),1);
-    response->print("'/></td>");
-  response->print("</tr>");
+      html.block("Control Paraneters", [&html]{
+        html.fieldTable( [&html] {
+          html.fieldTableRow("Flow Setpoint", [&html]{
+            html.fieldTableInput("name='tft' type='text' class='num-3em'", Config.getFlowTargetTemp(), 1);
+            html.print("<td>&deg;C</td>");
+          });
+          html.fieldTableRow("Proportional Gain", [&html]{
+            html.fieldTableInput("name='pid_pg' type='text' class='num-3em'", Config.getProportionalGain(), 1);
+            html.print("<td>% per &deg;C error</td>");
+          });
+          html.fieldTableRow("Integral Term", [&html]{
+            html.fieldTableInput("name='pid_is' type='text' class='num-3em'", Config.getIntegralSeconds(), 1);
+            html.print("<td>seconds to correct 1% per &deg;C error</td>");
+          });
+          html.fieldTableRow("Derivative Term", [&html]{
+            html.fieldTableInput("name='pid_ds' type='text' class='num-3em'", Config.getDerivativeSeconds(), 1);
+            html.print("<td>seconds</td>");
+          });
+          html.fieldTableRow("Valve Direction", [&html]{
+            html.fieldTableSelect("colspan=2", "name='vd'", [&html]{
+              html.option("0", "Standard (clockwise)",  Config.getValveInverted() == false);
+              html.option("1", "Inverted (conter-clockwise)",  Config.getValveInverted() == false);
+            });
+          });
+        });
+      });
 
-  response->print("<tr>");
-    response->print("<th>Integral Seconds</th>");
-    response->print("<td colspan=2><input name='pid_is' type='text' value='");
-    response->print(Config.getIntegralSeconds(),1);
-    response->print("'/></td>");
-  response->print("</tr>");
+      html.block("Sensor Names", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.print("<thead></tr><th>Sensor Id</th><th>Name</th></tr></thead>");
+          html.element("tbody", "class='sensorList'", [this, &html]{
+            int sensorCount = this->m_sensorMap->getCount();
+            for (int i = 0; i < sensorCount; i++) {
+              SensorMapEntry * entry = (*m_sensorMap)[i];
+              String fieldParameter = "name='s" + entry->id + "' type='text'";
+              html.fieldTableRow(entry->id.c_str(), "class='handle'", [this, &html, fieldParameter, entry]{
+                html.fieldTableInput(fieldParameter.c_str(), entry->name.c_str());
+                html.print("<td class='delete-row'>&#10006;</td>");
+              });
+            }
+          });
+        });
+      });
 
-  response->print("<tr>");
-    response->print("<th>Derivative Seconds</th>");
-    response->print("<td colspan=2><input name='pid_ds' type='text' value='");
-    response->print(Config.getDerivativeSeconds(),1);
-    response->print("'/></td>");
-  response->print("</tr>");
+      html.block("Sensor Functions", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("Input temperature", [this, &html]{
+            html.fieldTableSelect("name='is'", [this, &html]{
+              this->generateSensorOptions(html, Config.getInputSensorId());
+            });
+          });
+          html.fieldTableRow("Flow temperature", [this, &html]{
+            html.fieldTableSelect("name='fs'", [this, &html]{
+              this->generateSensorOptions(html, Config.getFlowSensorId());
+            });
+          });
+          html.fieldTableRow("Return temperature", [this, &html]{
+            html.fieldTableSelect("name='rs'", [this, &html]{
+              this->generateSensorOptions(html, Config.getReturnSensorId());
+            });
+          });
+        });
+      });
 
-  response->print("<tr>");
-    response->print("<th>Valve Direction</th>");
-    response->println("<td colspan=2><select name='vd'>");
-    response->printf("  <option value='0'%s>Standard (clockwise)</option>", Config.getValveInverted() == false ? " selected" : "");
-    response->printf("  <option value='1'%s>Inverted (conter-clockwise)</option>", Config.getValveInverted() == true ? " selected" : "");
-    response->print("'</select></td>");
-  response->print("</tr>");
-
-  response->println("<tr><th colspan=99>Sensor Config</th></tr>");
-
-  response->print("<tr>");
-    response->print("<th>Sensor ID</th>");
-    response->print("<th colspan=2>Name</th>");
-  response->println("</tr>");
-  response->println("</tbody><tbody class='sensorList'>");
-
-  int sensorCount = this->m_sensorMap->getCount();
-  for (int i = 0; i < sensorCount; i++) {
-    SensorMapEntry * entry = (*m_sensorMap)[i];
-    response->print("<tr>");
-      response->print("<th class='handle'>");
-        response->print(entry->id);
-      response->print("</th>");
-      response->print("<td>");
-        response->print("<input name='s");
-        response->print(entry->id);
-        response->print("' type='text' value='");
-        response->print(entry->name);
-        response->print("'/>");
-      response->print("</td>");
-      response->print("<td class='delete-row'>&#10006;</td>");
-    response->println("</tr>");
-  }
-
-  response->println("</tbody><tbody>");
-  response->println("<tr>");
-    response->println("<th>Input temperature sensor</th>");
-    response->println("<td colspan=2><select name='is'>");
-    printSensorOptions(response, Config.getInputSensorId());
-    response->println("</select></td>");
-  response->print("</tr>");
-  response->println("<tr>");
-    response->println("<th>Flow temperature sensor</th>");
-    response->println("<td colspan=2><select name='fs'>");
-    printSensorOptions(response, Config.getFlowSensorId());
-    response->println("</select></td>");
-  response->print("</tr>");
-  response->println("<tr>");
-    response->println("<th>Return temperature sensor</th>");
-    response->println("<td colspan=2><select name='rs'>");
-    printSensorOptions(response, Config.getReturnSensorId());
-    response->println("</select></td>");
-  response->print("</tr>");
-
-  response->println("</tbody><table>");
-  response->println("<input type='submit' style='display:block; margin:0 auto;' value='Save Changes'/>");
-  response->println("</form>");
+    }); // block layout
+    html.print("<input type='submit' class='save-button' value='Save Changes'/>");
+  }); // </form>
 
   finishHttpHtmlResponse(response);
   request->send(response);
 }
 
-void CMyWebServer::printSensorOptions(AsyncResponseStream *response, const String &selectedSensor)
+void CMyWebServer::generateSensorOptions(HtmlGenerator &html, const String &selectedSensor)
 {
   int sensorCount = this->m_sensorMap->getCount();
-  response->println("<option value=''>Not selected</option>");
+  html.option("", "Not Selected", false);
   for (int i = 0; i < sensorCount; i++)
   {
     SensorMapEntry *entry = (*m_sensorMap)[i];
-    response->print("<option value='");
-    response->print(entry->id);
-    response->print(selectedSensor == entry->id ? "' selected>" : "'>");
-    response->print(entry->name);
-    response->println("</option>");
+    html.option(entry->id.c_str(), entry->name.c_str(), /* selected: */ selectedSensor == entry->id);
+  }
+}
+
+void CMyWebServer::generateThermostatOptions(HtmlGenerator &html, int selectedThermostat)
+{
+  const std::vector<NeohubThermostatData> &thermostats = NeohubManager.getThermostatData();
+  html.option("", "Not Selected", false);
+  for (auto &i: thermostats)
+  {
+    html.option(String(i.id).c_str(), i.name.c_str(), /* selected: */ selectedThermostat == i.id);
   }
 }
 
