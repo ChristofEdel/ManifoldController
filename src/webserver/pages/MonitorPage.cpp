@@ -31,7 +31,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
         html.print("<tr class='tight'><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Sensor</th><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Temp</th><th colspan=4>Errors</th></tr>");
         html.print("<tr class='tight'><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
         html.print("</thead>");
-        html.element("tbody", "class='sensorList'", [this, &html]{
+        html.element("tbody", [this, &html]{
           int sensorCount = this->m_sensorMap->getCount();
           int totalReadings = 0;
           int totalCrcErrors = 0;

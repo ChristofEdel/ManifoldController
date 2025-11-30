@@ -14,16 +14,43 @@ function fixedWidthHelper(e, tr) {
   });
   return $helper;
 }
+
+function renumberTable($table) {
+  $table.find("tbody tr").not(".template-row").each(function (i) {
+    const $first = $(this).children("td").eq(0);
+    if (!$first.hasClass("seq")) return;  // skip this row
+    $first.text(i+1);
+  });
+}
+
 $(function () {
+  
+  /* row deletion and addition for tables that support it*/
   $('.delete-row').on('click', function (e) {
     e.preventDefault();
     $(this).closest('tr').remove();
   });
-  $('.sensorList').sortable({
+
+  $(".add-row > div").on("click", function () {
+    const $table = $(this).closest('table')
+    const $tbody = $table.find("tbody")
+    const $templateRow = $tbody.find(".template-row");
+    var $newRow = $templateRow.clone(true, true)
+      .removeClass("template-row")
+      .show();
+    $newRow.insertBefore($tbody.children("tr").last());
+    renumberTable($table);
+  });
+
+  $('.dragDropList').sortable({
     handle: '.handle',
     helper: fixedWidthHelper,
     placeholder: 'sortable-placeholder',
-    axis: 'y'
+    axis: 'y',
+    update: function (event, ui) {
+      const $table = $(this).closest("table");
+      renumberTable($table);
+    }
   }).disableSelection();
 });
 

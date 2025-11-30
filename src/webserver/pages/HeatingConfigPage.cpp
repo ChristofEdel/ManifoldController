@@ -15,12 +15,39 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
     html.blockLayout([this, &html]{
 
       html.block("Room Thermostats", [this, &html]{
-        html.select("name='ts'", [this, &html]{
-          generateThermostatOptions(html, 0);
+
+        html.fieldTable( [this, &html] {
+          html.print("<thead></tr><th style='width: 21px'></th><th style='min-width: 8em'>Zone</th><th style='min-width: 5em'>Usage</th></tr></thead>");
+          html.element("tbody", "class='dragDropList'", [this, &html]{
+            html.element("tr", "class='template-row'", [this,&html]{
+              html.print("<td class='handle seq'/>0</td><td>");
+              html.select("name='z_id'", [this, &html]{
+                generateThermostatOptions(html, 0);
+              });
+              html.print("</td>");
+              html.print("<td><select name='z_use'><option value='0'>Information</option><option value='1'>Regulate</option></select></td>");
+              html.print("<td class='delete-row'></td>");
+            });
+            int zoneCount = 2; // this->m_sensorMap->getCount();
+            for (int i = 0; i < zoneCount; i++) {
+              SensorMapEntry * entry = (*m_sensorMap)[i];
+              html.element("tr", [this, &html, i, entry]{
+                html.print("<td class='handle seq'/>");
+                html.print(String(i+1).c_str());
+                html.print("</td>");
+                html.fieldTableSelect("name='z_use'", [this, &html]{
+                  this->generateThermostatOptions(html, 0);
+                });
+                html.print("<td><select name='z_use'><option value='0'>Information</option><option value='1'>Regulate</option></select></td>");
+                html.print("<td class='delete-row'></td>");
+              });
+            }
+            html.print("<tr><td class='add-row'><div></div></td></tr>");
+          });
         });
       });
 
-      html.block("Control Paraneters", [&html]{
+      html.block("Control Parameters", [&html]{
         html.fieldTable( [&html] {
           html.fieldTableRow("Flow Setpoint", [&html]{
             html.fieldTableInput("name='tft' type='text' class='num-3em'", Config.getFlowTargetTemp(), 1);
@@ -50,14 +77,14 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
       html.block("Sensor Names", [this, &html]{
         html.fieldTable( [this, &html] {
           html.print("<thead></tr><th>Sensor Id</th><th>Name</th></tr></thead>");
-          html.element("tbody", "class='sensorList'", [this, &html]{
+          html.element("tbody", "class='dragDropList'", [this, &html]{
             int sensorCount = this->m_sensorMap->getCount();
             for (int i = 0; i < sensorCount; i++) {
               SensorMapEntry * entry = (*m_sensorMap)[i];
               String fieldParameter = "name='s" + entry->id + "' type='text'";
               html.fieldTableRow(entry->id.c_str(), "class='handle'", [this, &html, fieldParameter, entry]{
                 html.fieldTableInput(fieldParameter.c_str(), entry->name.c_str());
-                html.print("<td class='delete-row'>&#10006;</td>");
+                html.print("<td class='delete-row'></td>");
               });
             }
           });

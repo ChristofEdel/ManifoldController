@@ -154,11 +154,18 @@ table.monitor-table > tbody > tr:nth-child(even)
     margin-left: -5px;
 }
 
+/*
+** re-usable styles for all tables
+*/
 
 th.gap-right {
     border-right: 5px solid white;
 }
 
+table.tight > thead > tr >  th,
+table.tight > thead > tr >  td,
+table.tight > tbody > tr >  th,
+table.tight > tbody > tr >  td,
 tr.tight > th,
 tr.tight > td {
     padding-top: 0px !important;
@@ -178,6 +185,10 @@ input.num-4em {
     width: 4em;
 }
 
+/*
+** Buttons
+*/
+
 input.save-button {
     border: 3px solid #505050;
     display:block;
@@ -192,15 +203,34 @@ input.save-button {
 ** Insert / Delete / Drag-Drop styling
 */
 
+.template-row {
+    display: none;
+}
 .delete-row {
     width: 21px;
     cursor: pointer;
     text-align: center;
     color: red;
 }
+.delete-row::before {
+    content: "\2716";
+}
+.add-row {
+    padding-top: 0;
+}
+.add-row > div {
+    width: 21px;
+    cursor: pointer;
+    text-align: center;
+    color: darkgreen;
+}
+.add-row > div::before {
+    content: "\271A";
+}
 
 .handle {
     cursor: move;
+    text-align: center;
 }
 
 .sortable-placeholder {
@@ -211,7 +241,11 @@ input.save-button {
 /* "Block Layout" with bold titles on the left and content on the right;
 ** adapts to titles on top on narrow screens (mobile)
 */
-
+.page-div {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 800px;
+}
 /* bottom border for the whole block */
 .block-layout {
     border-bottom: 3px solid #505050;
@@ -226,7 +260,7 @@ input.save-button {
 }
 
 .block-layout .title {
-    width: 220px;
+    width: 180px;
     flex-shrink: 0;
     padding: 8px;
     background: #e0e0e0;
@@ -246,7 +280,7 @@ input.save-button {
 }
 
 /* collapsed (narrow) view */
-@media (max-width: 550px) {
+@media (max-width: 600px) {
     .block-layout .block {
         flex-direction: column;
     }
