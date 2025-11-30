@@ -10,7 +10,6 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
 
     configJson["flowTargetTemp"]        = flowTargetTemp;
 
-    configJson["hotWaterSensorId"]      = flowTargetTemp;
     configJson["flowSensorId"]          = flowSensorId;
     configJson["inputSensorId"]         = inputSensorId;
     configJson["returnSensorId"]        = returnSensorId;
