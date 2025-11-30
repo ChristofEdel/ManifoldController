@@ -36,19 +36,21 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
   this->m_sensorMap = sensorMap;
   this->m_valveManager = valveManager;
   this->m_sensorManager = sensorManager;
-  this->m_server.on("/", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
-  this->m_server.on("/monitor", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
-  this->m_server.on("/config-system", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });
-  this->m_server.on("/config-system", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processSystemConfigPagePost(r); });
-  this->m_server.on("/config", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithHeatingConfigPage(r); });
-  this->m_server.on("/config", HTTP_POST, [this](AsyncWebServerRequest *r) { this->processHeatingConfigPagePost(r); });
-  this->m_server.on("/tasks", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
-  this->m_server.on("/panic", HTTP_GET, [this](AsyncWebServerRequest *r) { abort(); /* Force a crash to test crash logging */ });
-  this->m_server.on("/neohub", HTTP_POST, [this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
-  this->m_server.on("/data/status", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
-  this->m_server.on("/scripts.js", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
-  this->m_server.on("/styles.css", HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
-  this->m_server.on("/*", HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
+  this->m_server.on(AsyncURIMatcher::dir  ("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/monitor"),       HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_POST,[this](AsyncWebServerRequest *r) { this->processSystemConfigPagePost(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithHeatingConfigPage(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->processHeatingConfigPagePost(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/tasks"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { abort(); /* Force a crash to test crash logging */ });
+  this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
+  this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
+  this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
+  this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });
   this->m_server.onNotFound([this](AsyncWebServerRequest *r) { this->respondWithError(r, 400, "Unsupported Method: " + methodToString(r->method()) + " on URL " + r->url()); });
   this->m_server.begin();
 }
@@ -56,6 +58,11 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
 void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
 
   String fileName = request->url();
+  if (!fileName.startsWith("/files")) {
+    request->send(404, "text/plain", "File not found");
+    return; 
+  }
+  fileName = fileName.substring(6);
 
   // Open the file briefly and check for existence and what it is
   if (!this->m_sdMutex->lock()) {
@@ -82,10 +89,10 @@ void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
 
   // Respond as appropriate
   if (isDir) {
-    respondWithDirectory(request, request->url());
+    respondWithDirectory(request, fileName);
   }
   else {
-    respondWithFileContents(request, request->url());
+    respondWithFileContents(request, fileName);
   }
 }
 

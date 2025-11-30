@@ -73,7 +73,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const St
         if (!file.isHidden()) {
           file.getName(nameBuffer,sizeof(nameBuffer));
           nameBuffer[sizeof(nameBuffer)-1] = '\0';
-          response->print("<tr><td><a href='/");
+          response->print("<tr><td><a href='/files/");
           response->print(nameBuffer);
           response->print("'>");
           response->print(nameBuffer);
