@@ -16,8 +16,12 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
 
     html.block("Control", [this, &html]{
       html.fieldTable( [this, &html] {
-        html.fieldTableRow("Flow Setpoint", String(Config.getFlowTargetTemp(),1).c_str());
-        html.fieldTableRow("Valve Position", (String(m_valveManager->outputs.targetValvePosition,0) + "%").c_str());
+        html.fieldTableRow("Flow Setpoint", [&html]{
+          html.element("td", "id='flowSetpoint' class='has-data'", String(Config.getFlowTargetTemp(),1).c_str());
+        });
+        html.fieldTableRow("Valve Position", [this, &html]{
+          html.element("td", "id='valvePosition' class='has-data'", (String(this->m_valveManager->outputs.targetValvePosition,0) + "%").c_str());
+        });
       });
     });
 
