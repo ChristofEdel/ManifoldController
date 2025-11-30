@@ -31,7 +31,7 @@ $(function () {
     $(this).closest('tr').remove();
   });
 
-  $(".add-row > div").on("click", function () {
+  $(".add-row > td > div").on("click", function () {
     const $table = $(this).closest('table')
     const $tbody = $table.find("tbody")
     const $templateRow = $tbody.find(".template-row");
@@ -50,6 +50,36 @@ $(function () {
     update: function (event, ui) {
       const $table = $(this).closest("table");
       renumberTable($table);
+    },
+    sort: function (e, ui) {
+      // get the insert row (if any)
+      const $tbody = ui.placeholder.parent()
+      const $last = $tbody.children('tr.add-row');
+      // If the placeholder is positioned on the insert row, we move it above that
+      if ($last.length && ui.placeholder.index() > $last.index()) {
+        ui.placeholder.insertBefore($last);
+      }
+    }
+  }).disableSelection();
+
+
+  $('.dragDropListAcross').sortable({
+    handle: '.handle',
+    helper: fixedWidthHelper,
+    placeholder: 'sortable-placeholder',
+    connectWith: 'tbody.dragDropListAcross',
+    update: function (event, ui) {
+      const $table = $(this).closest("table");
+      renumberTable($table);
+    },
+    sort: function (e, ui) {
+      // get the insert row (if any)
+      const $tbody = ui.placeholder.parent()
+      const $last = $tbody.children('tr.add-row');
+      // If placeholder is positioned on the insert row, we move it above that
+      if ($last.length && ui.placeholder.index() > $last.index()) {
+        ui.placeholder.insertBefore($last);
+      }
     }
   }).disableSelection();
 });

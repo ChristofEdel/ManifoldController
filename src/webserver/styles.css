@@ -232,17 +232,26 @@ input.num-4em {
 .delete-row::before {
     content: "\2716";
 }
-.add-row {
-    padding-top: 0;
-}
-.add-row > div {
+.delete-header {
     width: 21px;
+}
+.add-row > td {
+    padding-top: 0;
+    text-align: right;
+}
+.add-row > td > div {
+    width: 21px;
+    display: inline-block;
     cursor: pointer;
     text-align: center;
     color: var(--color-green);
 }
-.add-row > div::before {
+.add-row > td > div::before {
     content: "\271A";
+}
+.add-row > td {
+    border-top: var(--border-narrow);
+    padding:0
 }
 
 .handle {
@@ -304,6 +313,16 @@ input.save-button {
     padding: 8px;
     border-top: var(--border-wide);
     /* same element as background */
+}
+
+.flex-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    align-items: flex-start;
+}
+.flex-wrap table {
+    flex: 0 0 auto;
 }
 
 /* collapsed (narrow) view */
