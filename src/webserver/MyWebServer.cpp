@@ -118,11 +118,13 @@ AsyncResponseStream *CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest *
   response->println("    <script src='scripts.js'></script>");
   response->println("    <link rel='stylesheet' href='styles.css'>");
   response->println("  </head>");
+  response->println("  <body>");
+  response->println("    <div class='page-div'>");
   return response;
 }
 
 void CMyWebServer::finishHttpHtmlResponse(AsyncResponseStream *response) {
-  response->println("</html>");
+  response->println("</div></body></html>");
 }
 
 void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
