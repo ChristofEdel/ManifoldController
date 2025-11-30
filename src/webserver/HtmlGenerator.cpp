@@ -97,6 +97,15 @@ void HtmlGenerator::fieldTableSelect(const char *tdParameters, const char *param
 }
 
 
+void HtmlGenerator::navbar(NavbarPage activePage) {
+    r->print("<div class='navbar'>");
+    r->print("<div class='navbox"); if (activePage == NavbarPage::Monitor) r->print(" selected"); r->print("'><a href='/monitor'>Monitor</a></div>");
+    r->print("<div class='navbox"); if (activePage == NavbarPage::Files) r->print(" selected"); r->print("'><a href='/'>Files</a></div>");
+    r->print("<div class='navbox"); if (activePage == NavbarPage::Config) r->print(" selected"); r->print("'><a href='/config'>Config</a></div>");
+    r->print("<div class='navbox"); if (activePage == NavbarPage::System) r->print(" selected"); r->print("'><a href='/config-system'>System</a></div>");    
+    r->print("</div>");
+}
+
 bool HtmlGenerator::needsEscapingSingleQuotes(const char *cp) {
     while (*cp) {
         if (*cp == '\\' || *cp == '\'') return true;
@@ -104,6 +113,7 @@ bool HtmlGenerator::needsEscapingSingleQuotes(const char *cp) {
     }
     return false;
 }
+
 String HtmlGenerator::escapeSingleQuotes(const char *cp) {
     String result;
     result.reserve(strlen(cp)+10);

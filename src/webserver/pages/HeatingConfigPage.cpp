@@ -9,6 +9,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
   AsyncResponseStream *response= this->startHttpHtmlResponse(request);
 
   HtmlGenerator html(response);
+  html.navbar(NavbarPage::Config);
 
   html.element("form", "action='config' method='post'", [this, &html]{
     html.blockLayout([this, &html]{

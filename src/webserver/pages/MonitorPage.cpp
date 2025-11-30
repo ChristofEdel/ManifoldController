@@ -10,6 +10,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = startHttpHtmlResponse(request);
   HtmlGenerator html(response);
 
+  html.navbar(NavbarPage::Monitor);
+
   html.blockLayout([this, &html]{
 
     html.block("Control", [this, &html]{

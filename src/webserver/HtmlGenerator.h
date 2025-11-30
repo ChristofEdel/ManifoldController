@@ -3,6 +3,10 @@
 
 #include <Arduino.h>
 
+enum class NavbarPage {
+  Files, Monitor, Config, System
+};
+
 class HtmlGenerator {
 
   private:
@@ -38,6 +42,8 @@ class HtmlGenerator {
     void fieldTableInput(const char *tdParameters, const char *parameters, int value) { fieldTableInput(parameters, String(value).c_str()); };
     void fieldTableInput(const char *tdParameters, const char *parameters, double value, int precision) { fieldTableInput(parameters, String(value,precision).c_str()); };
     void fieldTableSelect(const char *tdParameters, const char *parameters, std::function<void()> func);
+
+    void navbar(NavbarPage activePage);
 
     bool needsEscapingSingleQuotes(const char *s);
     String escapeSingleQuotes(const char *s);

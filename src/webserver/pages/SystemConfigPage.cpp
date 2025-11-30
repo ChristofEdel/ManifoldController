@@ -5,6 +5,8 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
   HtmlGenerator html(response);
 
+  html.navbar(NavbarPage::System);
+
   html.element("form", "action='config' method='post'", [this, &html]{
     html.blockLayout([this, &html]{
 

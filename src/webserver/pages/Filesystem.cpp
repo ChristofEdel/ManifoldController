@@ -1,4 +1,5 @@
 #include "../MyWebServer.h"
+#include "../HtmlGenerator.h"
 #include "MyLog.h"
 
 
@@ -51,6 +52,10 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest *request, const
 void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const String &path) {
   if (this->m_sdMutex->lock()) {
     AsyncResponseStream *response = startHttpHtmlResponse(request);
+    HtmlGenerator html(response);
+    html.navbar(NavbarPage::Files);
+    response->println("<div class='navbar-border'></div>");
+
     FsFile dir = this->m_sd->open("/", O_RDONLY);
     if (!dir.isOpen()) {
       response->println("Unable to open directory");
