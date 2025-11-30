@@ -7,7 +7,7 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
 
   html.navbar(NavbarPage::System);
 
-  html.element("form", "action='config' method='post'", [this, &html]{
+  html.element("form", "method='post'", [this, &html]{
     html.blockLayout([this, &html]{
 
       html.block("Hostname", [this, &html]{

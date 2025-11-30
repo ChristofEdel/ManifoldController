@@ -11,7 +11,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
   HtmlGenerator html(response);
   html.navbar(NavbarPage::Config);
 
-  html.element("form", "action='config' method='post'", [this, &html]{
+  html.element("form", "method='post'", [this, &html]{
     html.blockLayout([this, &html]{
 
       html.block("Room Thermostats", [this, &html]{
@@ -41,7 +41,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
           html.fieldTableRow("Valve Direction", [&html]{
             html.fieldTableSelect("colspan=2", "name='vd'", [&html]{
               html.option("0", "Standard (clockwise)",  Config.getValveInverted() == false);
-              html.option("1", "Inverted (conter-clockwise)",  Config.getValveInverted() == false);
+              html.option("1", "Inverted (conter-clockwise)",  Config.getValveInverted() == true);
             });
           });
         });
