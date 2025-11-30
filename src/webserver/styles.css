@@ -1,8 +1,37 @@
-body {
-    margin: 10;
+/**********************************************************************************
+** Colours
+*/
+
+:root {
+  --bg-global:           white;
+  --color-dark-grey:     #505050;
+  --border-wide:         3px solid var(--color-dark-grey);
+  --border-narrow:       1px solid var(--color-dark-grey);
+  --color-text-active:   black;
+  --color-text-inactive: #707070;
+  --bg-active:           #dddddd;
+  --bg-inactive:         var(--bg-global);
+  --bg-titles:           #e0e0e0;
+  --bg-even:             #f4f4f4;
+  --bg-odd:              var(--bg-global);
+  --color-red:           red;
+  --color-green:         darkgreen;
+  --color-call-to-action:orange;
 }
 
-/*
+
+/**********************************************************************************
+** Page: center and limit to 880px width
+*/
+
+.page-div {
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 800px;
+}
+
+
+/**********************************************************************************
 ** Navigation bar
 */
 
@@ -16,45 +45,46 @@ body {
     width: 5em;
     text-align: center;
     font-weight: bold;
-    background: white;
-    border: 3px solid #505050;
+    background: var(--bg-inactive);
+    border: var(--border-wide);
     border-bottom: none;
     border-radius: 8px 8px 0 0;   /* rounded top corners only */
     padding: 5px;
 }
 
 .navbox a {
-    color: #777;
+    color: var(--color-text-inactive);
     text-decoration: none;
     display: block;           /* full box is clickable */
 }
 
 .navbox.selected {
-    background: #ddd;
+    background: var(--bg-active);
 }
 .navbox.selected a {
-    color: black;
+    color: var(--color-text-active);
 }
 .navbar-border {
-    border-top: 3px solid #505050;
+    border-top: var(--border-wide);
     margin-bottom: 5px;
 }
 
-/*
+/**********************************************************************************
 ** Straight table layout for table with titles on the top
 */
+
 table.list {
     margin: 0 auto;
     font-size: 12pt;
     border-collapse: collapse;
-    border-bottom: 1px solid #505050;
+    border-bottom: var(--border-narrow);
 }
 
 table.list > thead > tr > th,
 table.list > tbody > tr > th {
-    background: #e0e0e0;
-    border-top: 3px solid #505050;
-    border-bottom: 1px solid #505050;
+    background: var(--bg-titles);
+    border-top: var(--border-wide);
+    border-bottom: var(--border-narrow);
 }
 
 table.list > tbody > tr > th:first-child,
@@ -71,19 +101,20 @@ table.list > tbody > tr > td {
 
 table.list > tbody > tr:nth-child(even)
 {
-    background: #f4f4f4;
+    background: var(--bg-even);
+}
+table.list > tbody > tr:nth-child(odd)
+{
+    background: var(--bg-odd);
 }
 
-/*
+
+/**********************************************************************************
 ** Tables with field names in column 1 and fields in column 2
 */
 
-/* table.field-table {
-    border-collapse: collapse;
-} */
-
 table.field-table > thead > tr > th {   /* if it has a head, thin line at bottom of head */
-    border-bottom: 3px solid #505050;
+    border-bottom: var(--border-wide);
 }
 
 table.field-table > tbody > tr > th {   /* headers in each row */
@@ -98,7 +129,7 @@ table.field-table > tbody > tr > th {   /* headers in each row */
 table.field-table input {               /* input field style within table */
     background: transparent;
     border: none;
-    border-bottom: 1px solid #505050;
+    border-bottom: var(--border-narrow);
 }
 
 .block-layout .content table.field-table { /* Special case: eliminate parent padding if in block-layoud */
@@ -108,8 +139,8 @@ table.field-table input {               /* input field style within table */
 }
 
 
-/*
-**
+/**********************************************************************************
+** Table for lists of sensors when monitoring
 */
 
 table.monitor-table {
@@ -122,7 +153,7 @@ table.monitor-table > thead > tr > th:first-child {
 }
 
 table.monitor-table > thead > tr > th {
-    border-bottom: 1px solid #505050;
+    border-bottom: var(--border-narrow);
 }
 
 table.monitor-table > tbody > tr > th {
@@ -142,7 +173,11 @@ table.monitor-table > tbody > tr > td {
 
 table.monitor-table > tbody > tr:nth-child(even)
 {
-    background: #f4f4f4;
+    background: var(--bg-even);
+}
+table.monitor-table > tbody > tr:nth-child(odd)
+{
+    background: var(--bg-odd);
 }
 
 .block-layout .content table.monitor-table { /* Special case: eliminate parent padding if in block-layoud */
@@ -150,12 +185,12 @@ table.monitor-table > tbody > tr:nth-child(even)
     margin-left: -5px;
 }
 
-/*
+/**********************************************************************************
 ** re-usable styles for all tables
 */
 
 th.gap-right {
-    border-right: 5px solid white;
+    border-right: 5px solid var(--bg-global);
 }
 
 table.tight > thead > tr >  th,
@@ -181,21 +216,7 @@ input.num-4em {
     width: 4em;
 }
 
-/*
-** Buttons
-*/
-
-input.save-button {
-    border: 3px solid #505050;
-    display:block;
-    font-weight: bold;
-    padding: 5px;
-    background-color: orange;
-    margin: 10px auto 0px auto;
-}
-
-
-/*
+/**********************************************************************************
 ** Insert / Delete / Drag-Drop styling
 */
 
@@ -206,7 +227,7 @@ input.save-button {
     width: 21px;
     cursor: pointer;
     text-align: center;
-    color: red;
+    color: var(--color-red);
 }
 .delete-row::before {
     content: "\2716";
@@ -218,7 +239,7 @@ input.save-button {
     width: 21px;
     cursor: pointer;
     text-align: center;
-    color: darkgreen;
+    color: var(--color-green);
 }
 .add-row > div::before {
     content: "\271A";
@@ -230,21 +251,31 @@ input.save-button {
 }
 
 .sortable-placeholder {
-    background: #f5f5f5;
+    background: var(--bg-even);
     visibility: visible !important;
 }
+
+/**********************************************************************************
+** Buttons
+*/
+
+input.save-button {
+    border: var(--border-wide);
+    display:block;
+    font-weight: bold;
+    padding: 5px;
+    background-color: var(--color-call-to-action);
+    margin: 10px auto 0px auto;
+}
+
 
 /* "Block Layout" with bold titles on the left and content on the right;
 ** adapts to titles on top on narrow screens (mobile)
 */
-.page-div {
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 800px;
-}
+
 /* bottom border for the whole block */
 .block-layout {
-    border-bottom: 3px solid #505050;
+    border-bottom: var(--border-wide);
 }
 
 .block-layout * {
@@ -259,19 +290,19 @@ input.save-button {
     width: 180px;
     flex-shrink: 0;
     padding: 8px;
-    background: #e0e0e0;
+    background: var(--bg-titles);
     font-weight: bold;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    border-top: 3px solid #505050;
+    border-top: var(--border-wide);
     /* same element as background */
 }
 
 .block-layout .content {
     flex: 1;
     padding: 8px;
-    border-top: 3px solid #505050;
+    border-top: var(--border-wide);
     /* same element as background */
 }
 
@@ -283,13 +314,13 @@ input.save-button {
 
     .block-layout .title {
         width: 100%;
-        border-top: 3px solid #505050;
+        border-top: var(--border-wide);
         /* top of the pair */
     }
 
     .block-layout .content {
         width: 100%;
-        border-top: 1px solid #505050;
+        border-top: var(--border-narrow);
         /* only 1px between title and content */
     }
 }
