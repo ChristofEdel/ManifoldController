@@ -26,7 +26,7 @@ class CConfig {
 
         double roomSetpoint;
         double roomProportionalGain;
-        double roomIntegralSeconds;
+        double roomIntegralMinutes;
 
     public:
         inline const String &getHostname()              const { return hostname; }; 
@@ -45,7 +45,7 @@ class CConfig {
 
         inline double getRoomSetpoint()                 const { return roomSetpoint; };
         inline double getRoomProportionalGain()         const { return roomProportionalGain; };
-        inline double getRoomIntegralSeconds()          const { return roomIntegralSeconds; };
+        inline double getRoomIntegralMinutes()          const { return roomIntegralMinutes; };
 
         inline void setHostname(const String &value)         { hostname = value;};
 
@@ -63,7 +63,7 @@ class CConfig {
 
         inline void setRoomSetpoint(double value)            { roomSetpoint = value; };
         inline void setRoomProportionalGain(double value)    { roomProportionalGain = value; };
-        inline void setRoomIntegralSeconds(double value)     { roomIntegralSeconds = value; };
+        inline void setRoomIntegralMinutes(double value)     { roomIntegralMinutes = value; };
 
 
         void saveToSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, const SensorMap &sensorMap, CNeohubManager &neohub) const;

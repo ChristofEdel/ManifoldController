@@ -31,8 +31,8 @@ void ValveManager::loadConfig() {
         Config.getFlowMaxSetpoint()
     );
     this->m_flowController.configureSeconds(
-        Config.getRoomProportionalGain(),   // proportionalGain
-        Config.getRoomIntegralSeconds(),    // integralTimeSeconds
+        Config.getRoomProportionalGain(),       // proportionalGain
+        Config.getRoomIntegralMinutes() * 60,   // integralTimeSeconds
         0
     );
 

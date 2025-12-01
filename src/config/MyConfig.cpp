@@ -22,7 +22,7 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
 
     configJson["roomSetpoint"]          = roomSetpoint;
     configJson["roomProportionalGain"]  = roomProportionalGain;  
-    configJson["roomIntegralSeconds"]   = roomIntegralSeconds;
+    configJson["roomIntegralMinutes"]   = roomIntegralMinutes;
 
     for (int i = 0; i < sensorMap.getCount(); i++) {
         SensorMapEntry * entry = sensorMap[i];
@@ -105,7 +105,7 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
 
     roomSetpoint         = configJson["roomSetpoint"].as<double>();
     roomProportionalGain = configJson["roomProportionalGain"].as<double>();
-    roomIntegralSeconds  = configJson["roomIntegralSeconds"].as<double>();
+    roomIntegralMinutes  = configJson["roomIntegralMinutes"].as<double>();
 
     // Iterate over sensors
     JsonArray sensorsArray = configJson["sensors"].as<JsonArray>();

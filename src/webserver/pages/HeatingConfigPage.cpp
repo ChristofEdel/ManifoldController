@@ -82,8 +82,8 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             html.print("<td>&deg;C flow per &deg;C error</td>");
           });
           html.fieldTableRow("Integral Term", [&html]{
-            html.fieldTableInput("name='room-is' type='text' class='num-3em'", Config.getRoomIntegralSeconds(), 1);
-            html.print("<td>seconds to correct 1&deg;C flow per &deg;C error</td>");
+            html.fieldTableInput("name='room-is' type='text' class='num-3em'", Config.getRoomIntegralMinutes(), 1);
+            html.print("<td>minutes to correct 1&deg;C flow per &deg;C error</td>");
           });
           html.fieldTableRow("", [this, &html]{
             html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(this->m_valveManager->getRoomIntegralGain(),3) + "</small></td>").c_str());
@@ -223,7 +223,7 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
       pidReconfigured |= update(Config.getRoomProportionalGain(), &CConfig::setRoomProportionalGain, p->value().toFloat());
     }
     else if (key == "room-is") {
-      pidReconfigured |= update(Config.getRoomIntegralSeconds(), &CConfig::setRoomIntegralSeconds, p->value().toFloat());
+      pidReconfigured |= update(Config.getRoomIntegralMinutes(), &CConfig::setRoomIntegralMinutes, p->value().toFloat());
     }
     else if (key == "flow-setpoint") {
       if (update(Config.getFlowSetpoint(), &CConfig::setFlowSetpoint, p->value().toFloat())) {
