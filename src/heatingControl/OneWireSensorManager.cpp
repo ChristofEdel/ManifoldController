@@ -108,7 +108,7 @@ void OneWireManager::readAllSensors()
 {
   if (this->m_count == 0) return;
   ds18b20_convert_all(this->m_oneWireBus);
-  ds18b20_wait_for_conversion(&this->m_sensors[0].ds18b20_info);
+  ds18b20_wait_for_conversion_r(this->m_oneWireBus, DS18B20_RESOLUTION_12_BIT);
 
   for (int i = 0; i < this->m_count; i++) {
     OneWireSensor *si = &this->m_sensors[i];

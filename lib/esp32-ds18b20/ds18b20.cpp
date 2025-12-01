@@ -156,38 +156,46 @@ static float _wait_for_duration(DS18B20_RESOLUTION resolution)
     return (float)(end_time - start_time) / 1000000.0f;
 }
 
+static float _wait_for_device_signal_r(const OneWireBus *bus, DS18B20_RESOLUTION resolution) {
+
+    float elapsed_time = 0.0f;
+
+    int divisor = 1 << (DS18B20_RESOLUTION_12_BIT - resolution);
+
+    // allow for 10% overtime
+    float max_conversion_time = (float)T_CONV / (float)divisor * 1.1;
+    int max_conversion_ticks = ceil(max_conversion_time / portTICK_PERIOD_MS);
+    ESP_LOGD(TAG, "wait for conversion: max %.0f ms, %d ticks", max_conversion_time, max_conversion_ticks);
+
+    // wait for conversion to complete - all devices will pull bus low once complete
+    TickType_t start_ticks = xTaskGetTickCount();
+    TickType_t duration_ticks = 0;
+    uint8_t status = 0;
+    do
+    {
+        vTaskDelay(1);
+        owb_read_bit(bus, &status);
+        duration_ticks = xTaskGetTickCount() - start_ticks;
+    } while (status == 0 && duration_ticks < max_conversion_ticks);
+
+    elapsed_time = duration_ticks * portTICK_PERIOD_MS;
+    if (duration_ticks >= max_conversion_ticks)
+    {
+        ESP_LOGW(TAG, "conversion timed out at %.0f ms", elapsed_time);
+    }
+    else
+    {
+        ESP_LOGD(TAG, "conversion took at most %.0f ms", elapsed_time);
+    }
+    return elapsed_time;
+}
+
 static float _wait_for_device_signal(const DS18B20_Info * ds18b20_info)
 {
     float elapsed_time = 0.0f;
     if (_check_resolution(ds18b20_info->resolution))
     {
-        int divisor = 1 << (DS18B20_RESOLUTION_12_BIT - ds18b20_info->resolution);
-
-        // allow for 10% overtime
-        float max_conversion_time = (float)T_CONV / (float)divisor * 1.1;
-        int max_conversion_ticks = ceil(max_conversion_time / portTICK_PERIOD_MS);
-        ESP_LOGD(TAG, "wait for conversion: max %.0f ms, %d ticks", max_conversion_time, max_conversion_ticks);
-
-        // wait for conversion to complete - all devices will pull bus low once complete
-        TickType_t start_ticks = xTaskGetTickCount();
-        TickType_t duration_ticks = 0;
-        uint8_t status = 0;
-        do
-        {
-            vTaskDelay(1);
-            owb_read_bit(ds18b20_info->bus, &status);
-            duration_ticks = xTaskGetTickCount() - start_ticks;
-        } while (status == 0 && duration_ticks < max_conversion_ticks);
-
-        elapsed_time = duration_ticks * portTICK_PERIOD_MS;
-        if (duration_ticks >= max_conversion_ticks)
-        {
-            ESP_LOGW(TAG, "conversion timed out");
-        }
-        else
-        {
-            ESP_LOGD(TAG, "conversion took at most %.0f ms", elapsed_time);
-        }
+        elapsed_time = _wait_for_device_signal_r(ds18b20_info->bus, ds18b20_info->resolution);
     }
     return elapsed_time;
 }
@@ -522,6 +530,11 @@ float ds18b20_wait_for_conversion(const DS18B20_Info * ds18b20_info)
         }
     }
     return elapsed_time;
+}
+
+float ds18b20_wait_for_conversion_r(const OneWireBus * bus, DS18B20_RESOLUTION resolution)
+{
+    return _wait_for_device_signal_r(bus, resolution);
 }
 
 DS18B20_ERROR ds18b20_read_temp(const DS18B20_Info * ds18b20_info, float * value)

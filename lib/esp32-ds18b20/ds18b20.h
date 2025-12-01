@@ -182,6 +182,15 @@ void ds18b20_convert_all(const OneWireBus * bus);
 float ds18b20_wait_for_conversion(const DS18B20_Info * ds18b20_info);
 
 /**
+ * @brief Wait for the maximum conversion time according to the given resolution.
+ *        Only suitable in external power mode, the device devicessignal when conversion has completed.
+ *        The timeout is detemined by the resolution given.
+ * @param[in] ds18b20_info Pointer to device info instance.
+ * @return An estimate of the time elapsed, in milliseconds. Actual elapsed time may be greater.
+ */
+float ds18b20_wait_for_conversion_r(const OneWireBus * bus, DS18B20_RESOLUTION resolution);
+
+/**
  * @brief Read last temperature measurement from device.
  *
  * This is typically called after ds18b20_start_mass_conversion(), provided enough time
