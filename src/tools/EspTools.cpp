@@ -3,9 +3,9 @@
 #include <ArduinoOTA.h>
 #include "EspTools.h"
 #include "MyLog.h"
+#include <nvs.h>
+#include <nvs_flash.h>
 
-
-RTC_NOINIT_ATTR uint32_t lastSoftwareResetReason;
 
 // Print a human-readable reset reason
 String getResetReason() {
@@ -25,6 +25,7 @@ String getResetReason() {
     case ESP_RST_SDIO:       result = "SDIO"; break;
     default:                 result = "Other (" + String(reason) + ")"; break;
   }
+  uint32_t lastSoftwareResetReason = getSoftwareResetReason();
   if (lastSoftwareResetReason != 0) {
     if (reason == ESP_RST_PANIC || (reason == ESP_RST_SW && lastSoftwareResetReason == SW_RESET_OTA_UPDATE)) {
       switch (lastSoftwareResetReason)
@@ -39,20 +40,62 @@ String getResetReason() {
 
 }
 
+RTC_NOINIT_ATTR uint32_t lastSoftwareResetReason;
+
 void clearSoftwareResetReason() {
-  lastSoftwareResetReason = 0;
+  setSoftwareResetReason(0);
 }
 
-void setSoftwareResetReason(uint8_t reason) {
+void setSoftwareResetReason(uint32_t reason) {
   lastSoftwareResetReason = reason;
 }
 
-void softwareReset(uint8_t reason) {
+uint32_t getSoftwareResetReason() {
+  return lastSoftwareResetReason;
+}
+
+// void ensureNvs() {
+//   esp_err_t err = nvs_flash_init();
+//   DEBUG_LOG ("ensureNvs: %d", err);
+//   if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
+//   {
+//     DEBUG_LOG ("Erase/Init");
+//     nvs_flash_erase();
+//     nvs_flash_init();
+//   }
+// }
+
+// void setSoftwareResetReason(uint8_t reason) {
+//   ensureNvs();
+//   nvs_handle_t h;
+//   nvs_open("sys", NVS_READWRITE, &h);
+//   nvs_set_u8(h, "srflag", reason);
+//   nvs_commit(h);
+//   nvs_close(h);
+// }
+
+// uint8_t getSoftwareResetReason() {
+//   ensureNvs();
+//   nvs_handle_t h;
+//   uint32_t result = 0;
+//   int err = nvs_open("sys", NVS_READONLY, &h);
+//   if (err == ESP_OK) {
+//     nvs_get_u8(h, "srflag", &result);
+//     nvs_close(h);
+//   }
+//   else {
+//     DEBUG_LOG ("nvs_open: %d", err);
+//   }
+//   DEBUG_LOG ("getSoftwareResetReason: %d", result);
+//   return result;
+// }
+
+void softwareReset(uint32_t reason) {
   setSoftwareResetReason(reason);
   esp_restart();
 }
 
-void softwareAbort(uint8_t reason) {
+void softwareAbort(uint32_t reason) {
   setSoftwareResetReason(reason);
   abort();
 }

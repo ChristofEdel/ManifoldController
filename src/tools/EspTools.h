@@ -3,10 +3,12 @@
 
 #include <Arduino.h>
 String getResetReason();
-void softwareReset(uint8_t reason);
-void softwareAbort(uint8_t reason);
-void setSoftwareResetReason(uint8_t reason);
+void softwareReset(uint32_t reason);
+void softwareAbort(uint32_t reason);
+void setSoftwareResetReason(uint32_t reason);
 void clearSoftwareResetReason();
+uint32_t getSoftwareResetReason();
+
 void setupOta();
 
 #define SW_RESET_OUT_OF_MEMORY 0xabcabcab
