@@ -55,7 +55,7 @@ class CMyWebServer {
       void processSystemConfigPagePost(AsyncWebServerRequest *request);
  
       void generateSensorOptions(HtmlGenerator &html, const String &selectedSensor);
-      void generateThermostatOptions(HtmlGenerator &html, int selectedThermostat);
+      void generateZoneOptions(HtmlGenerator &html, int selectedThermostat);
       const String &mapSensorName(const String &name) const;
 
       // json 

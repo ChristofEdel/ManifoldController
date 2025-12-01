@@ -3,29 +3,29 @@
 
 extern CNeohubManager NeohubManager;
 
-NeohubThermostatData * CNeohubManager::getThermostatData(const String &name) {
-    if (this->m_thermostatData.empty()) loadThermostatNames();
+NeohubZoneData * CNeohubManager::getZoneData(const String &name) {
+    if (this->m_zoneData.empty()) loadZoneNames();
     
-    // Find the matching entry in the thermostat list
-    NeohubThermostatData * result = nullptr;
-    for (NeohubThermostatData & data: this->m_thermostatData) {
-        if (data.name == name) return &data;
+    // Find the matching entry in the zone list
+    NeohubZoneData * result = nullptr;
+    for (NeohubZoneData & data: this->m_zoneData) {
+        if (data.zone.name == name) return &data;
     }
     return result;
 }
 
-NeohubThermostatData * CNeohubManager::getThermostatData(int id) {
-    if (this->m_thermostatData.empty()) loadThermostatNames();
+NeohubZoneData * CNeohubManager::getZoneData(int id) {
+    if (this->m_zoneData.empty()) loadZoneNames();
     
-    // Find the matching entry in the thermostat list
-    NeohubThermostatData * result = nullptr;
-    for (NeohubThermostatData & data: this->m_thermostatData) {
-        if (data.id == id) return &data;
+    // Find the matching entry in the zone list
+    NeohubZoneData * result = nullptr;
+    for (NeohubZoneData & data: this->m_zoneData) {
+        if (data.zone.id == id) return &data;
     }
     return result;
 }
 
-bool CNeohubManager::loadFromNeohub(NeohubThermostatData *data) {
+bool CNeohubManager::loadFromNeohub(NeohubZoneData *data) {
     if (!ensureNeohubConnection()) return false;
     return false;
 }
@@ -114,13 +114,13 @@ String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /
     return result;
 }
 
-void CNeohubManager::ensureThermostatNames() {
-    if (m_thermostatData.empty()) {
-        loadThermostatNames();
+void CNeohubManager::ensureZoneNames() {
+    if (m_zoneData.empty()) {
+        loadZoneNames();
     }
 }
 
-void CNeohubManager::loadThermostatNames() {
+void CNeohubManager::loadZoneNames() {
     if (!ensureNeohubConnection()) return;
 
     String response = neohubCommand("{ 'GET_ZONES': 0 }");
@@ -133,17 +133,17 @@ void CNeohubManager::loadThermostatNames() {
 
     JsonObjectConst obj = json.as<JsonObjectConst>();
 
-    for (NeohubThermostatData & data: this->m_thermostatData) data.found = false;
+    for (NeohubZoneData & data: this->m_zoneData) data.found = false;
 
     for (JsonPairConst line : obj) {
         String name = line.key().c_str();
         int id = line.value().as<int>();
-        NeohubThermostatData *data = this->getOrCreateThermostatData(id, name);
+        NeohubZoneData *data = this->getOrCreateZoneData(id, name);
         data->found = true;
     }
-    for (auto iterator = this->m_thermostatData.begin(); iterator != this->m_thermostatData.end(); ) {
+    for (auto iterator = this->m_zoneData.begin(); iterator != this->m_zoneData.end(); ) {
         if (!iterator->found) {
-            iterator = this->m_thermostatData.erase(iterator);
+            iterator = this->m_zoneData.erase(iterator);
         }
         else {
             iterator++;
@@ -151,29 +151,56 @@ void CNeohubManager::loadThermostatNames() {
     }
 }
 
-NeohubThermostatData * CNeohubManager::getOrCreateThermostatData(int id, const String &name){
+NeohubZoneData * CNeohubManager::getOrCreateZoneData(int id, const String &name){
 
-    for (NeohubThermostatData & existingData: this->m_thermostatData) {
-        if (existingData.id == id) return &existingData;
+    for (NeohubZoneData & existingData: this->m_zoneData) {
+        if (existingData.zone.id == id) return &existingData;
     }
-    this->m_thermostatData.emplace_back();
-    NeohubThermostatData *result = &this->m_thermostatData.back();
-    result->id = id;
-    result->name = name;
+    this->m_zoneData.emplace_back();
+    NeohubZoneData *result = &this->m_zoneData.back();
+    result->zone.id = id;
+    result->zone.name = name;
     return result;
 }
 
 void CNeohubManager::loadAllFromNeohub(bool flaggedAsPollInLoopOnly /* = false */) {
     this->ensureNeohubConnection();
-    for(NeohubThermostatData &stat : this->m_thermostatData) {
+    for(NeohubZoneData &stat : this->m_zoneData) {
         if (flaggedAsPollInLoopOnly && !stat.pollInLoop) continue;
         loadFromNeohub(&stat);
     }
 }
 
+void CNeohubManager::addActiveZone(const NeohubZone &z) {
+    for (NeohubZone az: m_activeZones) {
+        if(az.id == z.id && az.name == z.name) return;  // already there
+    }
+    m_activeZones.emplace_back(z);
+}
+bool CNeohubManager::hasActiveZone(int id) {
+    for (NeohubZone az: m_activeZones) {
+        if(az.id == id) return true;
+    }
+    return false;
+}
+
+
+void CNeohubManager::addMonitoredZone(const NeohubZone &z) {
+    for (NeohubZone az: m_monitoredZones) {
+        if(az.id == z.id && az.name == z.name) return;  // already there
+    }
+    m_monitoredZones.emplace_back(z);
+}
+bool CNeohubManager::hasMonitoredZone(int id) {
+    for (NeohubZone az: m_monitoredZones) {
+        if(az.id == id) return true;
+    }
+    return false;
+}
+
 void CNeohubManager::loop() {
 
-    const unsigned long pollInterval      = 5000;     // How often we poll the thermostats (ms)
+    const unsigned long pollInterval      = 5000;     // How often we poll the zones (ms)
     const unsigned long connectInterval   = 30000;    // How often we make sure the connection exists (ms)
                                                       // Note that polling also ensures the connection
                                                       // exists so this is for when no polling happens

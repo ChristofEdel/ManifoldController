@@ -27,6 +27,7 @@ class HtmlGenerator {
     void option (const char*value, const char *text, bool selected);
     void blockLayout(std::function<void()> func) { element("div", "class='block-layout'", func); };
     void block(const char *title, std::function<void()> func);
+    void block(const char *title, const char *contentParameters, std::function<void()> func);
 
     void fieldTable(std::function<void()> func) { element("table", "class='field-table'", func); };
     void fieldTableRow(const char *label, const char *parameters, std::function<void()> func);

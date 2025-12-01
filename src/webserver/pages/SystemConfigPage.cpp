@@ -35,7 +35,6 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
 
 void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
 
-  int sensorIndex = 0;
   bool hostnameChanged = false;     // Flag if we have to redirect to the new hostname
 
   int count = request->params();
@@ -52,7 +51,7 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
   }
 
   if (hostnameChanged) {
-    Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap);
+    Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap, NeohubManager);
     Config.print(MyLog);
   }
 

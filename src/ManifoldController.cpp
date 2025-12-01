@@ -14,6 +14,7 @@
 #include <ArduinoOTA.h>
 #include "Arduino.h"
 #include "ValveManager.h"
+#include "NeohubManager.h"
 #include <cppQueue.h>
 
 // Pin Assignments - digital pins --------------------------------
@@ -109,7 +110,7 @@ void setup() {
   MyCrashLog.enableSdCardLog("crashlog.txt", &sd, &sdCardMutex);
 
   MyLog.println("-------------------------------------------------------------------------------------------");
-  Config.loadFromSdCard(sd, sdCardMutex, "config.json", sensorMap , &oneWireSensors);
+  Config.loadFromSdCard(sd, sdCardMutex, "config.json", sensorMap , &oneWireSensors, NeohubManager);
   sensorMap.clearChanged();
 
   MyLog.printlnSdOnly("-------------------------------------------------------------------------------------------");
@@ -122,6 +123,7 @@ void setup() {
 
   MyWiFi.updateRtcFromTimeServer(&MyRtc);
   String resetReason = getResetReason();
+  clearSoftwareResetReason();
   MyLog.print("Last reset reason: ");
   MyLog.println(resetReason);
   MyCrashLog.print("RESTART - Last reset reason: ");
@@ -131,7 +133,7 @@ void setup() {
   setupOta();
   oneWireSensors.setup(oneWirePin);
   valveManager.setup();
-  valveManager.setSetpoint(Config.getFlowTargetTemp());
+  valveManager.setSetpoint(Config.getFlowSetpoint());
   valveManager.setValvePosition(lastKownValvePosition);
   MyWebServer.setup(&sd, &sdCardMutex, &sensorMap, &valveManager, &oneWireSensors);
   ledBlinkSetup();

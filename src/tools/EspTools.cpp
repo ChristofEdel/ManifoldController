@@ -5,7 +5,7 @@
 #include "MyLog.h"
 
 
-RTC_DATA_ATTR uint32_t lastSoftwareResetReason;
+RTC_NOINIT_ATTR uint32_t lastSoftwareResetReason;
 
 // Print a human-readable reset reason
 String getResetReason() {
@@ -34,10 +34,13 @@ String getResetReason() {
         default: result += " (unknown code 0x" + String(lastSoftwareResetReason, HEX) + ")"; break;
       }
     }
-    lastSoftwareResetReason = 0;
   }
   return result;
 
+}
+
+void clearSoftwareResetReason() {
+  lastSoftwareResetReason = 0;
 }
 
 void setSoftwareResetReason(uint8_t reason) {

@@ -12,63 +12,104 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
   html.navbar(NavbarPage::Config);
 
   html.element("form", "method='post'", [this, &html]{
-    html.blockLayout([this, &html]{
+    html.blockLayout([this, &html] {
 
-      html.block("Room Thermostats", [this, &html]{
-
+      html.block("Room Zones", "class='content flex-wrap'", [this, &html]{
         html.fieldTable( [this, &html] {
-          html.print("<thead></tr><th style='width: 21px'></th><th style='min-width: 8em'>Zone</th><th style='min-width: 5em'>Usage</th></tr></thead>");
-          html.element("tbody", "class='dragDropList'", [this, &html]{
+          html.print("<thead></tr><th style='width: 21px'></th><th style='min-width: 8em'>Active</th><th class='delete-header'></th></tr></thead>");
+          html.element("tbody", "class='dragDropListAcross'", [this, &html]{
             html.element("tr", "class='template-row'", [this,&html]{
               html.print("<td class='handle seq'/>0</td><td>");
-              html.select("name='z_id'", [this, &html]{
-                generateThermostatOptions(html, 0);
+              html.select("name='zone_a'", [this, &html]{
+                generateZoneOptions(html, 0);
               });
               html.print("</td>");
-              html.print("<td><select name='z_use'><option value='0'>Information</option><option value='1'>Regulate</option></select></td>");
               html.print("<td class='delete-row'></td>");
             });
-            int zoneCount = 2; // this->m_sensorMap->getCount();
-            for (int i = 0; i < zoneCount; i++) {
-              SensorMapEntry * entry = (*m_sensorMap)[i];
-              html.element("tr", [this, &html, i, entry]{
+            int i = 0;
+            for (NeohubZone z: NeohubManager.getActiveZones()) {
+              html.element("tr", [this, &html, i, z]{
                 html.print("<td class='handle seq'/>");
                 html.print(String(i+1).c_str());
                 html.print("</td>");
-                html.fieldTableSelect("name='z_use'", [this, &html]{
-                  this->generateThermostatOptions(html, 0);
+                html.fieldTableSelect("name='zone_a'", [this, &html, z]{
+                  this->generateZoneOptions(html, z.id);
                 });
-                html.print("<td><select name='z_use'><option value='0'>Information</option><option value='1'>Regulate</option></select></td>");
                 html.print("<td class='delete-row'></td>");
               });
+              i++;
             }
-            html.print("<tr><td class='add-row'><div></div></td></tr>");
+            html.print("<tr class='add-row'><td colspan=99><div></div></td></tr>");
+          });
+        });
+        html.fieldTable( [this, &html] {
+          html.print("<thead></tr><th style='width: 21px'></th><th style='min-width: 8em'>Monitored</th><th class='delete-header'></th></tr></thead>");
+          html.element("tbody", "class='dragDropListAcross'", [this, &html]{
+            html.element("tr", "class='template-row'", [this,&html]{
+              html.print("<td class='handle seq'/>0</td><td>");
+              html.select("name='zone_m'", [this, &html]{
+                generateZoneOptions(html, 0);
+              });
+              html.print("</td>");
+              html.print("<td class='delete-row'></td>");
+            });
+            int i = 0;
+            for (NeohubZone z: NeohubManager.getMonitoredZones()) {
+              html.element("tr", [this, &html, i, z]{
+                html.print("<td class='handle seq'/>");
+                html.print(String(i+1).c_str());
+                html.print("</td>");
+                html.fieldTableSelect("name='zone_m'", [this, &html, z]{
+                  this->generateZoneOptions(html, z.id);
+                });
+                html.print("<td class='delete-row'></td>");
+              });
+              i++;
+            }
+            html.print("<tr class='add-row'><td colspan=99><div></div></td></tr>");
           });
         });
       });
 
-      html.block("Control Parameters", [&html]{
+      html.block("Heating Parameters", [&html]{
         html.fieldTable( [&html] {
-          html.fieldTableRow("Flow Setpoint", [&html]{
-            html.fieldTableInput("name='tft' type='text' class='num-3em'", Config.getFlowTargetTemp(), 1);
+          html.fieldTableRow("Room Setpoint", [&html]{
+            html.fieldTableInput("name='r_sp' type='text' class='num-3em'", Config.getRoomSetpoint(), 1);
             html.print("<td>&deg;C</td>");
           });
           html.fieldTableRow("Proportional Gain", [&html]{
-            html.fieldTableInput("name='pid_pg' type='text' class='num-3em'", Config.getProportionalGain(), 1);
+            html.fieldTableInput("name='r_pg' type='text' class='num-3em'", Config.getRoomProportionalGain(), 1);
+            html.print("<td>&deg;C flow per &deg;C error</td>");
+          });
+          html.fieldTableRow("Integral Term", [&html]{
+            html.fieldTableInput("name='r_is' type='text' class='num-3em'", Config.getRoomIntegralSeconds(), 1);
+            html.print("<td>seconds to correct 1&deg;C flow per &deg;C error</td>");
+          });
+        });
+      });
+
+      html.block("Manifold Configuration", [&html]{
+        html.fieldTable( [&html] {
+          html.fieldTableRow("Flow Setpoint", [&html]{
+            html.fieldTableInput("name='f_sp' type='text' class='num-3em'", Config.getFlowSetpoint(), 1);
+            html.print("<td>&deg;C</td>");
+          });
+          html.fieldTableRow("Proportional Gain", [&html]{
+            html.fieldTableInput("name='f_pg' type='text' class='num-3em'", Config.getProportionalGain(), 1);
             html.print("<td>% per &deg;C error</td>");
           });
           html.fieldTableRow("Integral Term", [&html]{
-            html.fieldTableInput("name='pid_is' type='text' class='num-3em'", Config.getIntegralSeconds(), 1);
+            html.fieldTableInput("name='f_is' type='text' class='num-3em'", Config.getIntegralSeconds(), 1);
             html.print("<td>seconds to correct 1% per &deg;C error</td>");
           });
           html.fieldTableRow("Derivative Term", [&html]{
-            html.fieldTableInput("name='pid_ds' type='text' class='num-3em'", Config.getDerivativeSeconds(), 1);
+            html.fieldTableInput("name='f_ds' type='text' class='num-3em'", Config.getDerivativeSeconds(), 1);
             html.print("<td>seconds</td>");
           });
           html.fieldTableRow("Valve Direction", [&html]{
             html.fieldTableSelect("colspan=2", "name='vd'", [&html]{
               html.option("0", "Standard (clockwise)",  Config.getValveInverted() == false);
-              html.option("1", "Inverted (conter-clockwise)",  Config.getValveInverted() == true);
+              html.option("1", "Inverted (counter-clockwise)",  Config.getValveInverted() == true);
             });
           });
         });
@@ -76,7 +117,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
 
       html.block("Sensor Names", [this, &html]{
         html.fieldTable( [this, &html] {
-          html.print("<thead></tr><th>Sensor Id</th><th>Name</th></tr></thead>");
+          html.print("<thead></tr><th>Sensor Id</th><th>Name</th><th class='delete-header'></th></tr></thead>");
           html.element("tbody", "class='dragDropList'", [this, &html]{
             int sensorCount = this->m_sensorMap->getCount();
             for (int i = 0; i < sensorCount; i++) {
@@ -130,13 +171,13 @@ void CMyWebServer::generateSensorOptions(HtmlGenerator &html, const String &sele
   }
 }
 
-void CMyWebServer::generateThermostatOptions(HtmlGenerator &html, int selectedThermostat)
+void CMyWebServer::generateZoneOptions(HtmlGenerator &html, int selectedZone)
 {
-  const std::vector<NeohubThermostatData> &thermostats = NeohubManager.getThermostatData();
+  const std::vector<NeohubZoneData> &zones = NeohubManager.getZoneData();
   html.option("", "Not Selected", false);
-  for (auto &i: thermostats)
+  for (auto &i: zones)
   {
-    html.option(String(i.id).c_str(), i.name.c_str(), /* selected: */ selectedThermostat == i.id);
+    html.option(String(i.zone.id).c_str(), i.zone.name.c_str(), /* selected: */ selectedZone == i.zone.id);
   }
 }
 
@@ -157,6 +198,9 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
   bool pidReconfigured = false;     // Flag to determine if the PID controller ocnfiguration
                                     // has to be reloaded
 
+  NeohubManager.clearActiveZones();
+  NeohubManager.clearMonitoredZones();
+
   int count = request->params();
   for (int i = 0; i < count; i++) {
     const AsyncWebParameter* p = request->getParam(i);
@@ -168,18 +212,29 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
       // Handle sensor name updates
       this->m_sensorMap->updateAtIndex(sensorIndex++, key.substring(1), p->value());
     }
-    else if (key == "tft") {
-      if (update(Config.getFlowTargetTemp(), &CConfig::setFlowTargetTemp, p->value().toFloat())) {
-        this->m_valveManager->setSetpoint(Config.getFlowTargetTemp());
+    else if (key == "r_sp") {
+      if (update(Config.getRoomSetpoint(), &CConfig::setRoomSetpoint, p->value().toFloat())) {
+        // update the valve manager here...
       }
     }
-    else if (key == "pid_pg") {
+    else if (key == "r_pg") {
+      pidReconfigured |= update(Config.getRoomProportionalGain(), &CConfig::setRoomProportionalGain, p->value().toFloat());
+    }
+    else if (key == "r_is") {
+      pidReconfigured |= update(Config.getRoomIntegralSeconds(), &CConfig::setRoomIntegralSeconds, p->value().toFloat());
+    }
+    else if (key == "f_sp") {
+      if (update(Config.getFlowSetpoint(), &CConfig::setFlowSetpoint, p->value().toFloat())) {
+        this->m_valveManager->setSetpoint(Config.getFlowSetpoint());
+      }
+    }
+    else if (key == "f_pg") {
       pidReconfigured |= update(Config.getProportionalGain(), &CConfig::setProportionalGain, p->value().toFloat());
     }
-    else if (key == "pid_is") {
+    else if (key == "f_is") {
       pidReconfigured |= update(Config.getIntegralSeconds(), &CConfig::setIntegralSeconds, p->value().toFloat());
     }
-    else if (key == "pid_ds") {
+    else if (key == "f_ds") {
       pidReconfigured |= update(Config.getDerivativeSeconds(), &CConfig::setDerivativeSeconds, p->value().toFloat());
     }
     else if (key == "vd") {
@@ -194,10 +249,25 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     else if (key == "rs") {
       Config.setReturnSensorId(p->value());
     }
+    else if (key == "zone_a") {
+      int id = p->value().toInt();
+      NeohubZoneData *z = NeohubManager.getZoneData(id);
+      if (z) {
+        NeohubManager.addActiveZone(z->zone);
+      };
+    }
+    else if (key == "zone_m") {
+      int id = p->value().toInt();
+      NeohubZoneData *z = NeohubManager.getZoneData(id);
+      if (z) {
+        if (NeohubManager.hasActiveZone(z->zone.id)) break;
+        NeohubManager.addMonitoredZone(z->zone);
+      }
+    }
   }
 
   this->m_sensorMap->removeFromIndex(sensorIndex); // Remove any remaining sensors
-  Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap);
+  Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap, NeohubManager);
   if (pidReconfigured) this->m_valveManager->loadConfig();
   Config.print(MyLog);
 

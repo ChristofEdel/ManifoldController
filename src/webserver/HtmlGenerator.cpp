@@ -45,6 +45,15 @@ void HtmlGenerator::block(const char *title, std::function<void()> func) {
     r->println("</div>");
 }
 
+void HtmlGenerator::block(const char *title, const char *contentParameters, std::function<void()> func) { 
+    String combinedParameters = contentParameters ? contentParameters : "";
+    combinedParameters += " class='content'";
+    r->println("<div class='block'>");
+        element("div", "class='title'", title); 
+        element("div", combinedParameters.c_str(), func);
+    r->println("</div>");
+}
+
 void HtmlGenerator::input (const char *parameters, const char *value) {
     r->print("<input ");
     if (parameters && parameters[0]) {

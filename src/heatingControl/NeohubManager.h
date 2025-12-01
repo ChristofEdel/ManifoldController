@@ -1,3 +1,6 @@
+#ifndef __NEOHUB_MANAGER_H
+#define __NEOHUB_MANAGER_H
+
 #include "NeohubConnection.h"
 #include <vector>
 #include <ArduinoJson.h>
@@ -6,10 +9,21 @@
 // A NeohubManager is a global singleton that retrieves and maintains data
 // for a neohub using an underlying NeohibConnection.
 
-struct NeohubThermostatData {
-
+// Identifier for a zone.
+// the Neohub uses primarily names to identify zones, this structure is used to store zone references
+// in the configuration so we can (hopefully) deal with renamed zones
+struct NeohubZone {
     int id;
     String name;
+    NeohubZone(int id, const String &name) : id(id), name(name) {} ;
+    NeohubZone() {};
+};
+
+// Data associated with a zone 
+// (primarily temperature related)
+struct NeohubZoneData {
+
+    NeohubZone zone;
 
     time_t lastUpdated = 0;
     double temperature = NO_TEMPERATURE;
@@ -33,19 +47,34 @@ class CNeohubManager {
     public:
 
         CNeohubManager() {
-            m_thermostatData.reserve(15);
+            m_zoneData.reserve(15);
         }
 
-        const std::vector<NeohubThermostatData>& getThermostatData() { ensureThermostatNames(); return m_thermostatData; }
+        // Get a vector with all available zones
+        const std::vector<NeohubZoneData>& getZoneData() { ensureZoneNames(); return m_zoneData; }
 
-        // Get the data for a particular thermostat. If it has not been polled,
+        // Get the data for a particular zone. If it has not been polled,
         // it will be empty except for its name and id
-        NeohubThermostatData * getThermostatData(const String &name);
-        NeohubThermostatData * getThermostatData(int id);
+        NeohubZoneData * getZoneData(const String &name);
+        NeohubZoneData * getZoneData(int id);
+
+        // Get a vector with the  active zones (used for controlling temperature)
+        // these may or may not have zone data available in the hub
+        const std::vector<NeohubZone>& getActiveZones() { return m_activeZones; }
+        void clearActiveZones() { m_activeZones.clear(); };
+        void addActiveZone(const NeohubZone &z);
+        bool hasActiveZone(int id);
+
+        // Get a vector with the monitored zones (just used for display and in logs)
+        // these may or may not have zone data available in the hub
+        const std::vector<NeohubZone>& getMonitoredZones() { return m_monitoredZones; };
+        void clearMonitoredZones() { m_monitoredZones.clear(); };
+        void addMonitoredZone(const NeohubZone &z);
+        bool hasMonitoredZone(int id);
 
         // Lead data for sensors from the neohub. Establish the connection
         // if necessary
-        bool loadFromNeohub(NeohubThermostatData *data);
+        bool loadFromNeohub(NeohubZoneData *data);
         void loadAllFromNeohub(bool flaggedAsPollInLoopOnly = false);
 
         // Direct connection to the neohub
@@ -62,11 +91,14 @@ class CNeohubManager {
         NeohubConnection *m_connection;
 
 
-        // Vector with the data for all thermostats
-        std::vector<NeohubThermostatData> m_thermostatData;
-        NeohubThermostatData *getOrCreateThermostatData(int id, const String &name);
-        void ensureThermostatNames();
-        void loadThermostatNames();
+        // Vector with the data for all zones
+        std::vector<NeohubZoneData> m_zoneData;
+        NeohubZoneData *getOrCreateZoneData(int id, const String &name);
+        void ensureZoneNames();
+        void loadZoneNames();
+
+        std::vector<NeohubZone> m_activeZones;
+        std::vector<NeohubZone> m_monitoredZones;
 
         // loop function which regularly ensures the connection and polls data as requied
         void loop();
@@ -79,3 +111,5 @@ class CNeohubManager {
 };
 
 extern CNeohubManager NeohubManager;
+
+#endif
