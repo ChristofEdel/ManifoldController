@@ -127,40 +127,6 @@ void CMyWebServer::finishHttpHtmlResponse(AsyncResponseStream *response) {
   response->println("</div></body></html>");
 }
 
-void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
-  JsonDocument statusJson;
-
-  statusJson["flowSetpoint"]    = m_valveManager->getSetpoint();
-  statusJson["valvePosition"]   = m_valveManager->outputs.targetValvePosition;
-  
-  int sensorCount = this->m_sensorMap->getCount();
-
-  for (int i = 0; i < sensorCount; i++) {
-      SensorMapEntry * entry = (*this->m_sensorMap)[i];
-      Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
-      if (sensor) {
-        statusJson["sensors"][i]["id"] = entry->id;
-        statusJson["sensors"][i]["name"] = entry->name;
-        statusJson["sensors"][i]["temperature"] = sensor->calibratedTemperature();
-        statusJson["sensors"][i]["readings"] = sensor->readings;
-        statusJson["sensors"][i]["crcErrors"] = sensor->crcErrors;
-        statusJson["sensors"][i]["noResponseErrors"] = sensor->noResponseErrors;
-        statusJson["sensors"][i]["otherErrors"] = sensor->otherErrors;
-        statusJson["sensors"][i]["failures"] = sensor->failures;
-      }
-
-  }
-
-  String result;
-  serializeJsonPretty(statusJson, result);
-
-  AsyncWebServerResponse* response = request->beginResponse(200, "application/json", result);
-  response->addHeader("Access-Control-Allow-Origin", "*");
-  response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-  request->send(response);
-}
-
 void CMyWebServer::respondFromNeohub(AsyncWebServerRequest *r) {
 
   const int timeoutMillis = 2000;
@@ -169,7 +135,6 @@ void CMyWebServer::respondFromNeohub(AsyncWebServerRequest *r) {
   String responseString;
 
   String *body = (String *)r->_tempObject;
-  DEBUG_LOG("Request received: %s", body ? body->c_str() : "(null)");
   if (!body) {
     responseCode = 400;
     responseString = "{ \"error\": \"Empty request\" }";

@@ -152,12 +152,17 @@ table.monitor-table {
 }
 
 table.monitor-table > tbody > tr > th:first-child,
-table.monitor-table > thead > tr > th:first-child {
+table.monitor-table > thead > tr:first-child > th:first-child {
     text-align: left;
 }
 
 table.monitor-table > thead > tr > th {
     border-bottom: var(--border-narrow);
+}
+
+table.monitor-table > tbody  > tr > th {
+    font-weight: normal;
+    min-width: 120px;
 }
 
 table.monitor-table > tbody > tr > th {
@@ -189,6 +194,18 @@ table.monitor-table > tbody > tr:nth-child(odd)
     margin-left: -5px;
 }
 
+table.monitor-table > tbody > tr > td.on {
+    background-color: rgb(134, 190, 134);
+}
+table.monitor-table > tbody > tr > td.off {
+    background-color: red;
+    color: white;
+    font-weight: bold;
+}
+table.monitor-table > tbody > tr > th.active {
+    font-weight: bold;
+}
+
 /**********************************************************************************
 ** re-usable styles for all tables
 */
@@ -218,6 +235,11 @@ input.num-3em {
 input.num-4em {
     text-align: right;
     width: 4em;
+}
+
+table.center-all-td > thead > tr > td,
+table.center-all-td > tbody > tr > td {
+    text-align: center;
 }
 
 /**********************************************************************************

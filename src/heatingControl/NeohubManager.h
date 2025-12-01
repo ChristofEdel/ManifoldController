@@ -26,16 +26,31 @@ struct NeohubZoneData {
     NeohubZone zone;
 
     time_t lastUpdated = 0;
-    double temperature = NO_TEMPERATURE;
-    double temperatureSetpoint = NO_TEMPERATURE;
+    
+    double roomTemperature = NO_TEMPERATURE;
+    double roomTemperatureSetpoint = NO_TEMPERATURE;
+    bool demand = true;
+
     double floorTemperature = NO_TEMPERATURE;
-    double floorTemperatureLimit = NO_TEMPERATURE;
     bool floorLimitTriggered = false;
+
     bool online = false;
 
-    bool pollInLoop = false;
-
     static const int NO_TEMPERATURE = -50;
+
+    void clear() {
+        roomTemperature = NO_TEMPERATURE;
+        roomTemperatureSetpoint = NO_TEMPERATURE;
+        demand = true;
+
+        floorTemperature = NO_TEMPERATURE;
+        floorLimitTriggered = false;
+
+        online = false;
+    }
+
+    void storeZoneData(JsonVariant json);
+
 private:
     bool found = true;
     friend class CNeohubManager;
@@ -74,8 +89,9 @@ class CNeohubManager {
 
         // Lead data for sensors from the neohub. Establish the connection
         // if necessary
-        bool loadFromNeohub(NeohubZoneData *data);
-        void loadAllFromNeohub(bool flaggedAsPollInLoopOnly = false);
+        void loadZoneDataFromNeohub(bool all = true);
+        bool loadZoneDataFromNeohub(NeohubZoneData *data);
+        void loadZoneDataFromNeohub(std::vector<String> &zoneNames);
 
         // Direct connection to the neohub
         bool ensureNeohubConnection();
@@ -90,7 +106,6 @@ class CNeohubManager {
         String m_token = "6b4f25a5-9de5-460a-a3ac-5845d3fbe095";
         NeohubConnection *m_connection;
 
-
         // Vector with the data for all zones
         std::vector<NeohubZoneData> m_zoneData;
         NeohubZoneData *getOrCreateZoneData(int id, const String &name);
@@ -100,6 +115,7 @@ class CNeohubManager {
         std::vector<NeohubZone> m_activeZones;
         std::vector<NeohubZone> m_monitoredZones;
 
+
         // loop function which regularly ensures the connection and polls data as requied
         void loop();
 
@@ -107,6 +123,9 @@ class CNeohubManager {
         TaskHandle_t m_loopTaskHandle = nullptr;
         void ensureLoopTask();
         static void loopTask(void *parameter);
+
+        // Mutex to avoid parallel use by separate tasks
+        MyMutex m_neohubMutex;
 
 };
 

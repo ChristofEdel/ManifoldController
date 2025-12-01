@@ -3,6 +3,8 @@
 #include <ArduinoJson.h>
 #include "MyLog.h"
 
+#undef DEBUG_LOG
+#define DEBUG_LOG(fmt, ...) ;
 //
 
 bool NeohubConnection::open(int timeoutMillis /* = -1 */) {
@@ -255,7 +257,7 @@ void NeohubConnection::ensureLoopTask() {
     xTaskCreate(
         NeohubConnection::loopTask, // Task function
         "WebSocketLoop",            // Task name
-        4096 * 4,                       // Stack size (bytes)
+        4096 * 4,                   // Stack size (bytes)
         NULL,                       // Parameter to pass
         1,                          // Task priority
         &m_loopTaskHandle           // Task handle

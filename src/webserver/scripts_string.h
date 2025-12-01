@@ -95,14 +95,42 @@ function monitorPage_refreshData() {
     dataType: "json",
     timeout: 3000,
     success: function (data) {
-      $("#flowSetpoint").text(fmt(data.flowSetpoint, 1));
-      $("#valvePosition").text(fmt(data.valvePosition, 0) + "%");
+      $("#roomSetpoint")   .text(fmt(data.roomSetpoint, 1));
+      $("#roomTemperature").text(fmt(data.roomTemperature, 1));
+      $("#flowSetpoint")   .text(fmt(data.flowSetpoint, 1));
+      $("#flowTemperature").text(fmt(data.flowTemperature, 1));
+
+      var d = fmt(data.roomError, 1);
+      if (fmt != '0.0' && data.roomError > 0) d = '+' + d;
+      $("#roomError") .text(d);
+
+      d = fmt(data.roomError, 1);
+      if (fmt != '0.0' && data.flowError > 0) d = '+' + d;
+      $("#flowError").text(d);
+
+      $("#valvePosition")  .text(fmt(data.valvePosition, 0) + "%");
       data.sensors.forEach(function (sensor) {
         $("#" + sensor.id + "-temp").text(fmt(sensor.temperature, 1))
         $("#" + sensor.id + "-crc").text(fmt(sensor.crcErrors))
         $("#" + sensor.id + "-nr").text(fmt(sensor.noResponseErrors))
         $("#" + sensor.id + "-oe").text(fmt(sensor.otherErrors))
         $("#" + sensor.id + "-f").text(fmt(sensor.failures))
+      })
+      data.zones.forEach(function (zone) {
+        $("#z" + zone.id + "-room-temp").text(fmt(zone.roomTemperature, 1))
+        $("#z" + zone.id + "-floor-temp").text(fmt(zone.foorTemperature, 1))
+        if (zone.roomOff) {
+          $("#z" + zone.id + "-room-temp").closest("td").addClass("off");
+        }
+        else {
+          $("#z" + zone.id + "-room-temp").closest("td").removeClass("off");
+        }
+        if (zone.floorOff) {
+          $("#z" + zone.id + "-floor-temp").closest("td").addClass("off");
+        }
+        else {
+          $("#z" + zone.id + "-floor-temp").closest("td").removeClass("off");
+        }
       })
     },
     error: function (xhr, status)  {

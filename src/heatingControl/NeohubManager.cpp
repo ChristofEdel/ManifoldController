@@ -25,42 +25,83 @@ NeohubZoneData * CNeohubManager::getZoneData(int id) {
     return result;
 }
 
-bool CNeohubManager::loadFromNeohub(NeohubZoneData *data) {
+void NeohubZoneData::storeZoneData(JsonVariant obj)
+{
+    this->online = !obj["OFFLINE"].as<bool>();
+    if (!this->online) {
+        this->clear();
+    }
+    else {
+        this->roomTemperature = obj["CURRENT_TEMPERATURE"].as<float>();
+        String s = obj["CURRENT_TEMPERATURE"].as<String>();
+        this->roomTemperatureSetpoint = obj["CURRENT_SET_TEMPERATURE"].as<float>();
+        this->demand = obj["HEATING"].as<bool>();
+
+        this->floorTemperature = obj["CURRENT_FLOOR_TEMPERATURE"].as<float>();
+        if (this->floorTemperature > 100 || this->floorTemperature < 0) {
+            this->floorTemperature = NeohubZoneData::NO_TEMPERATURE;
+            this->floorLimitTriggered = false;
+        }
+        else {
+            this->floorLimitTriggered = obj["FLOOR_LIMIT"].as<bool>();
+        }
+    }
+}
+
+
+bool CNeohubManager::loadZoneDataFromNeohub(NeohubZoneData *data) {
     if (!ensureNeohubConnection()) return false;
+    
+    String response = this->neohubCommand("{'INFO':'"+data->zone.name+"'}");
+    JsonDocument json;
+    DeserializationError error = deserializeJson(json, response);
+    if (error) {
+        MyLog.printf("Failed to deserialise JSON for INFO: %s\n", error.c_str());
+        return false;
+    }
+
+    data->lastUpdated = time(nullptr);
+    data->storeZoneData(json["devices"][0]);
     return false;
 }
 
 bool CNeohubManager::ensureNeohubConnection() {
 
+        
     // we are connected --> done
     if (this->m_connection && this->m_connection->isConnected()) return true;
 
-    // Create connection object if necessary
-    if (!this->m_connection) {
-        this->m_connection = new NeohubConnection(this->m_url, this->m_token);
+    if (m_neohubMutex.lock("NeohubConnection")) {
+
+        // Create connection object if necessary
+        if (!this->m_connection) {
+            this->m_connection = new NeohubConnection(this->m_url, this->m_token);
+        }
+
+        // Connect
+        MyLog.printf("Connecting to NeoHub %s\n", this->m_url.c_str());
+        this->m_connection->onConnect([this]() {
+            MyLog.printf("Connection to NeoHub %s established\n", this->m_url.c_str());
+        });
+        this->m_connection->onDisconnect([this]() {
+            MyLog.printf("Connection to NeoHub %s disconnected\n", this->m_url.c_str());
+            this->m_connection->finish();
+            this->m_connection = nullptr;
+        });
+        this->m_connection->onError([this](String message) {
+            MyLog.printf("Error in NeoHub %s connection: %s\n", this->m_url.c_str(), message.c_str());
+        });
+        this->m_connection->open();
+
+        // Wait for connecetion
+        unsigned long startMillis = millis();
+        while (
+            millis() - startMillis < connectTimeoutMillis           // until timeout
+            && !this->m_connection->isConnected()                   // or until connected
+        ) delay(100);
+
+        m_neohubMutex.unlock();
     }
-
-    // Connect
-    MyLog.printf("Connecting to NeoHub %s\n", this->m_url.c_str());
-    this->m_connection->onConnect([this]() {
-        MyLog.printf("Connection to NeoHub %s established\n", this->m_url.c_str());
-    });
-    this->m_connection->onDisconnect([this]() {
-        MyLog.printf("Connection to NeoHub %s disconnected\n", this->m_url.c_str());
-        this->m_connection->finish();
-        this->m_connection = nullptr;
-    });
-    this->m_connection->onError([this](String message) {
-        MyLog.printf("Error in NeoHub %s connection: %s\n", this->m_url.c_str(), message.c_str());
-    });
-    this->m_connection->open();
-
-    // Wait for connecetion
-    unsigned long startMillis = millis();
-    while (
-        millis() - startMillis < connectTimeoutMillis           // until timeout
-        && !this->m_connection->isConnected()                   // or until connected
-    ) delay(100);
 
     if (!this->m_connection->isConnected()) {
         MyLog.printf("Establishing connection to Neohub %s failed\n", this->m_url.c_str());
@@ -68,37 +109,43 @@ bool CNeohubManager::ensureNeohubConnection() {
         return false;
     }
 
+    ensureLoopTask();
+
     return true;
 }
 
 String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /* = commandTimeoutMillis */) {
+
     if (!ensureNeohubConnection()) return emptyString;
 
     bool done = false;
     bool error = false;
     String result;
 
-    DEBUG_LOG ("Sending command: %s", command.c_str());
-    this->m_connection->send(
-        command,
-        [&done, &result](String response) {
-            result = response;
-            done = true;
-        },
-        [&error, &result](String message) {
-            result = message;
-            error = true;
-        },
-        timeoutMillis
-    );
+    if (m_neohubMutex.lock("NeohubCommand")) {
 
-    // Wait for response
-    unsigned long startMillis = millis();
-    timeoutMillis += 100; // extra 100ms grace so we don't time out before the send above does
-    while (
-        millis() - startMillis < timeoutMillis          // until timeout
-        && !done && !error                              // or until completed
-    ) delay(100);
+        this->m_connection->send(
+            command,
+            [&done, &result](String response) {
+                result = response;
+                done = true;
+            },
+            [&error, &result](String message) {
+                result = message;
+                error = true;
+            },
+            timeoutMillis
+        );
+
+        // Wait for response
+        unsigned long startMillis = millis();
+        timeoutMillis += 100; // extra 100ms grace so we don't time out before the send above does
+        while (
+            millis() - startMillis < timeoutMillis          // until timeout
+            && !done && !error                              // or until completed
+        ) delay(100);
+        m_neohubMutex.unlock();
+    }
 
     if (error) {
         MyLog.printf("Error when waiting for Neohub response: %s\n", result.c_str());
@@ -110,7 +157,7 @@ String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /
         MyLog.printf("Command was '%s'\n", command.c_str());
         return emptyString;
     }
-    DEBUG_LOG ("Response: %s", result.c_str());
+
     return result;
 }
 
@@ -163,12 +210,77 @@ NeohubZoneData * CNeohubManager::getOrCreateZoneData(int id, const String &name)
     return result;
 }
 
-void CNeohubManager::loadAllFromNeohub(bool flaggedAsPollInLoopOnly /* = false */) {
+void CNeohubManager::loadZoneDataFromNeohub(bool all /* = false */) {
     this->ensureNeohubConnection();
-    for(NeohubZoneData &stat : this->m_zoneData) {
-        if (flaggedAsPollInLoopOnly && !stat.pollInLoop) continue;
-        loadFromNeohub(&stat);
+
+    std::vector<String> zoneNames;
+    if (all) {
+        for(NeohubZoneData &d : this->m_zoneData) {
+            zoneNames.push_back(d.zone.name);
+        }
     }
+    else {
+        for(NeohubZone &z : this->m_activeZones) {
+            zoneNames.push_back(z.name);
+        }
+        for(NeohubZone &z : this->m_monitoredZones) {
+            zoneNames.push_back(z.name);
+        }
+    }
+
+    loadZoneDataFromNeohub(zoneNames);
+}
+
+static void _processZoneCommand (CNeohubManager *_this, const String &command) {
+
+    String response = _this->neohubCommand(command);
+    JsonDocument json;
+    DeserializationError error = deserializeJson(json, response);
+    if (error) {
+        MyLog.printf("Failed to deserialise JSON for INFO: %s\n", error.c_str());
+        return;
+    }
+    if (!json["error"].isNull()) {
+        String error = json["error"];
+        MyLog.printf("Error retrieving data from Neohub: %s", error.c_str());
+        MyLog.printf("Command: %s", command.c_str());
+        return;
+    }
+
+    JsonArray arr = json["devices"].as<JsonArray>();
+    for (JsonVariant obj : arr) {
+        String name = obj["device"];
+        NeohubZoneData *data = _this->getZoneData(name);
+        if (data) {
+            data->lastUpdated = time(nullptr);
+            data->storeZoneData(obj);
+        }
+    }
+    
+}
+
+void CNeohubManager::loadZoneDataFromNeohub(std::vector<String> &zoneNames) {
+
+    String command;
+    int i = 1;
+    const int maxZonesPerRequest = 6;   // to avoid responses too long to handle by the 
+                                        // websocket
+
+    for (String name: zoneNames) {
+        if (command == emptyString) command = "{'INFO':['";
+        command += name;
+        if (name != zoneNames.back() && i < maxZonesPerRequest) {
+            command += "','";
+            i++;
+        }
+        else {
+            command += "']}";
+            _processZoneCommand(this, command);
+            command= "";
+            i = 1;
+        }
+    }
+
 }
 
 void CNeohubManager::addActiveZone(const NeohubZone &z) {
@@ -216,12 +328,14 @@ void CNeohubManager::loop() {
     }
 
     if (first || timeNow - lastPoll >= pollInterval) {
-        this->loadAllFromNeohub(/* flaggedAsPollInLoopOnly: */ true);
+        this->loadZoneDataFromNeohub(/* all: */ false);
         lastPoll = timeNow;
     }
 
     // use delay so we don't use too much CPU going round and round in circles...
     delay (100);
+
+    first = false;
 }
 
 void CNeohubManager::loopTask(void *parameter) {
@@ -234,7 +348,7 @@ void CNeohubManager::ensureLoopTask() {
     xTaskCreate(
         CNeohubManager::loopTask, // Task function
         "NeohubLoop",             // Task name
-        4096,                     // Stack size (bytes)
+        8096,                     // Stack size (bytes)
         this,                     // Parameter to pass
         1,                        // Task priority
         &this->m_loopTaskHandle   // Task handle
