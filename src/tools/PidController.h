@@ -14,10 +14,6 @@ struct PidControllerConfig {
   double minOutput;
   double maxOutput;
 
-  PidControllerConfig(double minOutput, double maxOutput) {
-    this->minOutput = minOutput;
-    this->maxOutput = maxOutput;
-  };
 };
 
 struct PidControllerState {
@@ -25,14 +21,13 @@ struct PidControllerState {
 
   unsigned long previousTime;   // The time (millis) of the last calculation
 
+  double error;                 // The current error used calculating tle last output
   double previousError;         // The error value observed at the last calculation
   double cumulativeError;       // The cumulative error value (used for integral calculation)
 
-  // Variables - double - tuining
-  double Kp;
-  double Ki;
-  double Kd;
-  double divisor;
+  double proportionalTerm;
+  double integralTerm;
+  double derivativeTerm;
 
   bool constrain;
   double minOut;
@@ -48,7 +43,7 @@ class PidController {
     double m_output;
 
   public:
-    PidController(double minOutput, double maxOutput) : m_config(minOutput, maxOutput) { };
+    void setOutputRange(double minOutput, double maxOutput) { m_config.minOutput = minOutput; m_config.maxOutput = maxOutput; };
     
     void configureGains(double proportionalGain, double integralGain, double derivativeGain);
     void configureSeconds(double proportionalGain, double integralTimeSeconds, double derivativeTimeSeconds);
@@ -69,6 +64,10 @@ class PidController {
     void setOutput(double position);
     void calculateOutput();
     double getOutput() { return this->m_output; };
+
+    double getProportionalTerm() { return this->m_state.proportionalTerm; };
+    double getIntegralTerm() { return this->m_state.integralTerm; };
+    double getIntegralGain() { return this->m_config.integralGain; };
 };
 
 #endif

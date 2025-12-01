@@ -25,19 +25,41 @@ void ValveManager::setup()
 }
 
 void ValveManager::loadConfig() {
+
+    this->m_flowController.setOutputRange(
+        Config.getFlowMinSetpoint(),
+        Config.getFlowMaxSetpoint()
+    );
+    this->m_flowController.configureSeconds(
+        Config.getRoomProportionalGain(),   // proportionalGain
+        Config.getRoomIntegralSeconds(),    // integralTimeSeconds
+        0
+    );
+
+    this->m_valveController.setOutputRange(0, 100);
     this->m_valveController.configureSeconds(
         Config.getProportionalGain(),    // proportionalGain
         Config.getIntegralSeconds(),     // integralTimeSeconds
-        Config.getDerivativeSeconds()    // derivativeTimeSeconds
+        0                                // derivativeTimeSeconds
     );
     this->m_valveInverted = Config.getValveInverted();
 }
 
-void ValveManager::setInputs(double inputTemperature, double flowTemperature, double returnTemperature) {
-    this->inputs.inputTemperature = inputTemperature;
+void ValveManager::setInputs(
+    double roomTemperature, double flowTemperature, 
+    double inputTemperature, double returnTemperature
+) {
+    this->inputs.roomTemperature = roomTemperature;
     this->inputs.flowTemperature = flowTemperature; 
+    this->inputs.inputTemperature = inputTemperature;
     this->inputs.returnTemperature = returnTemperature;
-    this->m_valveController.setInput(flowTemperature);
+
+    if (this->m_fixedFlowSetpoint) {
+        this->m_valveController.setInput(flowTemperature);
+    }
+    else {
+        this->m_flowController.setInput(roomTemperature);
+    }
 };
 
 void ValveManager::calculateValvePosition() {

@@ -127,7 +127,7 @@ static bool _address_device(const DS18B20_Info * ds18b20_info)
         }
         else
         {
-            ESP_LOGE(TAG, "_address_device - ds18b20 device not responding");
+            ESP_LOGE(TAG, "_address_device - ds18b20 - no 'present' pulse on bus");
         }
     }
     return present;

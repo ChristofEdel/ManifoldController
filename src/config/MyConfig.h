@@ -22,7 +22,6 @@ class CConfig {
 
         double proportionalGain;
         double integralSeconds;
-        double derivativeSeconds;
         bool valveInverted;
 
         double roomSetpoint;
@@ -42,7 +41,6 @@ class CConfig {
 
         inline double getProportionalGain()             const { return proportionalGain; };
         inline double getIntegralSeconds()              const { return integralSeconds; };
-        inline double getDerivativeSeconds()            const { return derivativeSeconds; };
         inline bool getValveInverted()                  const { return valveInverted; };
 
         inline double getRoomSetpoint()                 const { return roomSetpoint; };
@@ -61,7 +59,6 @@ class CConfig {
 
         inline void setProportionalGain(double value)        { proportionalGain = value; };
         inline void setIntegralSeconds(double value)         { integralSeconds = value; };
-        inline void setDerivativeSeconds(double value)       { derivativeSeconds = value; };
         inline void setValveInverted(bool value)             { valveInverted = value; };
 
         inline void setRoomSetpoint(double value)            { roomSetpoint = value; };

@@ -93,8 +93,13 @@ function monitorPage_refreshData() {
     success: function (data) {
       $("#roomSetpoint")   .text(fmt(data.roomSetpoint, 1));
       $("#roomTemperature").text(fmt(data.roomTemperature, 1));
+      $("#roomD")          .text(fmt(data.roomProportionalTerm, 1));
+      $("#roomI")          .text(fmt(data.roomIntegralTerm, 1));
+
       $("#flowSetpoint")   .text(fmt(data.flowSetpoint, 1));
       $("#flowTemperature").text(fmt(data.flowTemperature, 1));
+      $("#flowD")          .text(fmt(data.flowProportionalTerm, 1));
+      $("#flowI")          .text(fmt(data.flowIntegralTerm, 1));
 
       var d = fmt(data.roomError, 1);
       if (fmt != '0.0' && data.roomError > 0) d = '+' + d;

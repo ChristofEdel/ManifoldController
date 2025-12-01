@@ -63,7 +63,8 @@ void startValveControlTask();
 void triggerValveControls();
 
 void setup() {
-
+  esp_log_level_set("*", ESP_LOG_ERROR);
+  
   // Get rid of all watchdogs - they cause problems since OTA was added.
   disableCore0WDT();
   disableCore1WDT();
@@ -133,7 +134,8 @@ void setup() {
   setupOta();
   oneWireSensors.setup(oneWirePin);
   valveManager.setup();
-  valveManager.setSetpoint(Config.getFlowSetpoint());
+  // valveManager.setRooomSetpoint(Config.getRoomSetpoint());
+  valveManager.setFlowSetpoint(Config.getFlowSetpoint());
   valveManager.setValvePosition(lastKownValvePosition);
   MyWebServer.setup(&sd, &sdCardMutex, &sensorMap, &valveManager, &oneWireSensors);
   ledBlinkSetup();
@@ -293,7 +295,7 @@ String getSensorLogLine() {
     result = MyRtc.getTime().getTimestampText();
 
     result += ",";
-    result += String(valveManager.getSetpoint(),1);
+    result += String(valveManager.getFlowSetpoint(),1);
     result += ",";
     if (valveManager.inputs.inputTemperature > -50) result += String(valveManager.inputs.inputTemperature,1);
     result += ",";
@@ -392,10 +394,23 @@ TaskHandle_t valveControlTaskHandle = NULL;          // Task for boiler control
 QueueHandle_t valveControlQueue = NULL;
 
 void manageValveControls() {
+  int tempCount = 0;
+  double temperatureTotal = 0;
+  for (NeohubZone z: NeohubManager.getActiveZones()) {
+    NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+    if (d && d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+      temperatureTotal += d->roomTemperature;
+      tempCount++;
+    }
+  }
+  float roomTemperature = NeohubZoneData::NO_TEMPERATURE;
+  if (tempCount > 0) roomTemperature = temperatureTotal / tempCount;
+
   float inputTemperature = oneWireSensors.getCalibratedTemperature(Config.getInputSensorId().c_str());
   float flowTemperature = oneWireSensors.getCalibratedTemperature(Config.getFlowSensorId().c_str());
   float returnTemperature = oneWireSensors.getCalibratedTemperature(Config.getReturnSensorId().c_str());
-  valveManager.setInputs(inputTemperature, flowTemperature, returnTemperature);  
+
+  valveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);  
   valveManager.calculateValvePosition();
   valveManager.sendOutputs();
   // Serial.printf(

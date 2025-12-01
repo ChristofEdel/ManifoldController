@@ -18,7 +18,6 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
 
     configJson["proportionalGain"]      = proportionalGain;
     configJson["integralSeconds"]       = integralSeconds;  
-    configJson["derivativeSeconds"]     = derivativeSeconds;
     configJson["valveInverted"]         = valveInverted;
 
     configJson["roomSetpoint"]          = roomSetpoint;
@@ -102,7 +101,6 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
 
     proportionalGain   = configJson["proportionalGain"].as<double>();
     integralSeconds    = configJson["integralSeconds"].as<double>(); 
-    derivativeSeconds  = configJson["derivativeSeconds"].as<double>();
     valveInverted      = configJson["valveInverted"].as<bool>();
 
     roomSetpoint         = configJson["roomSetpoint"].as<double>();

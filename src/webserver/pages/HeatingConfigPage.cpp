@@ -71,43 +71,45 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
         });
       });
 
-      html.block("Heating Parameters", [&html]{
-        html.fieldTable( [&html] {
+      html.block("Heating Parameters", [this, &html]{
+        html.fieldTable( [this, &html] {
           html.fieldTableRow("Room Setpoint", [&html]{
-            html.fieldTableInput("name='r_sp' type='text' class='num-3em'", Config.getRoomSetpoint(), 1);
+            html.fieldTableInput("name='room-setpoint' type='text' class='num-3em'", Config.getRoomSetpoint(), 1);
             html.print("<td>&deg;C</td>");
           });
           html.fieldTableRow("Proportional Gain", [&html]{
-            html.fieldTableInput("name='r_pg' type='text' class='num-3em'", Config.getRoomProportionalGain(), 1);
+            html.fieldTableInput("name='room-pg' type='text' class='num-3em'", Config.getRoomProportionalGain(), 1);
             html.print("<td>&deg;C flow per &deg;C error</td>");
           });
           html.fieldTableRow("Integral Term", [&html]{
-            html.fieldTableInput("name='r_is' type='text' class='num-3em'", Config.getRoomIntegralSeconds(), 1);
+            html.fieldTableInput("name='room-is' type='text' class='num-3em'", Config.getRoomIntegralSeconds(), 1);
             html.print("<td>seconds to correct 1&deg;C flow per &deg;C error</td>");
+          });
+          html.fieldTableRow("", [this, &html]{
+            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(this->m_valveManager->getRoomIntegralGain(),3) + "</small></td>").c_str());
           });
         });
       });
 
-      html.block("Manifold Configuration", [&html]{
-        html.fieldTable( [&html] {
+      html.block("Manifold Configuration", [this, &html]{
+        html.fieldTable( [this, &html] {
           html.fieldTableRow("Flow Setpoint", [&html]{
-            html.fieldTableInput("name='f_sp' type='text' class='num-3em'", Config.getFlowSetpoint(), 1);
+            html.fieldTableInput("name='flow-setpoint' type='text' class='num-3em'", Config.getFlowSetpoint(), 1);
             html.print("<td>&deg;C</td>");
           });
           html.fieldTableRow("Proportional Gain", [&html]{
-            html.fieldTableInput("name='f_pg' type='text' class='num-3em'", Config.getProportionalGain(), 1);
+            html.fieldTableInput("name='flow-pg' type='text' class='num-3em'", Config.getProportionalGain(), 1);
             html.print("<td>% per &deg;C error</td>");
           });
           html.fieldTableRow("Integral Term", [&html]{
-            html.fieldTableInput("name='f_is' type='text' class='num-3em'", Config.getIntegralSeconds(), 1);
+            html.fieldTableInput("name='flow-is' type='text' class='num-3em'", Config.getIntegralSeconds(), 1);
             html.print("<td>seconds to correct 1% per &deg;C error</td>");
           });
-          html.fieldTableRow("Derivative Term", [&html]{
-            html.fieldTableInput("name='f_ds' type='text' class='num-3em'", Config.getDerivativeSeconds(), 1);
-            html.print("<td>seconds</td>");
+          html.fieldTableRow("", [this, &html]{
+            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(this->m_valveManager->getFlowIntegralGain(),3) + "</small></td>").c_str());
           });
           html.fieldTableRow("Valve Direction", [&html]{
-            html.fieldTableSelect("colspan=2", "name='vd'", [&html]{
+            html.fieldTableSelect("colspan=2", "name='valve-direction'", [&html]{
               html.option("0", "Standard (clockwise)",  Config.getValveInverted() == false);
               html.option("1", "Inverted (counter-clockwise)",  Config.getValveInverted() == true);
             });
@@ -122,7 +124,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             int sensorCount = this->m_sensorMap->getCount();
             for (int i = 0; i < sensorCount; i++) {
               SensorMapEntry * entry = (*m_sensorMap)[i];
-              String fieldParameter = "name='s" + entry->id + "' type='text'";
+              String fieldParameter = "name='s-" + entry->id + "' type='text'";
               html.fieldTableRow(entry->id.c_str(), "class='handle'", [this, &html, fieldParameter, entry]{
                 html.fieldTableInput(fieldParameter.c_str(), entry->name.c_str());
                 html.print("<td class='delete-row'></td>");
@@ -135,17 +137,17 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
       html.block("Sensor Functions", [this, &html]{
         html.fieldTable( [this, &html] {
           html.fieldTableRow("Input temperature", [this, &html]{
-            html.fieldTableSelect("name='is'", [this, &html]{
+            html.fieldTableSelect("name='sensor-input'", [this, &html]{
               this->generateSensorOptions(html, Config.getInputSensorId());
             });
           });
           html.fieldTableRow("Flow temperature", [this, &html]{
-            html.fieldTableSelect("name='fs'", [this, &html]{
+            html.fieldTableSelect("name='sensor-flow'", [this, &html]{
               this->generateSensorOptions(html, Config.getFlowSensorId());
             });
           });
           html.fieldTableRow("Return temperature", [this, &html]{
-            html.fieldTableSelect("name='rs'", [this, &html]{
+            html.fieldTableSelect("name='sensor-return'", [this, &html]{
               this->generateSensorOptions(html, Config.getReturnSensorId());
             });
           });
@@ -208,45 +210,42 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     const String & key = p->name();
 
     // Process the key-value pair
-    if (key.startsWith("s")) {
+    if (key.startsWith("s-")) {
       // Handle sensor name updates
-      this->m_sensorMap->updateAtIndex(sensorIndex++, key.substring(1), p->value());
+      this->m_sensorMap->updateAtIndex(sensorIndex++, key.substring(2), p->value());
     }
-    else if (key == "r_sp") {
+    else if (key == "room-setpoint") {
       if (update(Config.getRoomSetpoint(), &CConfig::setRoomSetpoint, p->value().toFloat())) {
         // update the valve manager here...
       }
     }
-    else if (key == "r_pg") {
+    else if (key == "room-pg") {
       pidReconfigured |= update(Config.getRoomProportionalGain(), &CConfig::setRoomProportionalGain, p->value().toFloat());
     }
-    else if (key == "r_is") {
+    else if (key == "room-is") {
       pidReconfigured |= update(Config.getRoomIntegralSeconds(), &CConfig::setRoomIntegralSeconds, p->value().toFloat());
     }
-    else if (key == "f_sp") {
+    else if (key == "flow-setpoint") {
       if (update(Config.getFlowSetpoint(), &CConfig::setFlowSetpoint, p->value().toFloat())) {
-        this->m_valveManager->setSetpoint(Config.getFlowSetpoint());
+        this->m_valveManager->setFlowSetpoint(Config.getFlowSetpoint());
       }
     }
-    else if (key == "f_pg") {
+    else if (key == "flow-pg") {
       pidReconfigured |= update(Config.getProportionalGain(), &CConfig::setProportionalGain, p->value().toFloat());
     }
-    else if (key == "f_is") {
+    else if (key == "flow-is") {
       pidReconfigured |= update(Config.getIntegralSeconds(), &CConfig::setIntegralSeconds, p->value().toFloat());
     }
-    else if (key == "f_ds") {
-      pidReconfigured |= update(Config.getDerivativeSeconds(), &CConfig::setDerivativeSeconds, p->value().toFloat());
-    }
-    else if (key == "vd") {
+    else if (key == "valve-direction") {
       pidReconfigured |= update(Config.getValveInverted(), &CConfig::setValveInverted, (bool) p->value().toInt());
     }
-    else if (key == "is") {
+    else if (key == "sensor-input") {
       Config.setInputSensorId(p->value());
     }
-    else if (key == "fs") {
+    else if (key == "sensor-flow") {
       Config.setFlowSensorId(p->value());
     }
-    else if (key == "rs") {
+    else if (key == "sensor-return") {
       Config.setReturnSensorId(p->value());
     }
     else if (key == "zone_a") {
