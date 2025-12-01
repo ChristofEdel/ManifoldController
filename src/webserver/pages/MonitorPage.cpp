@@ -29,6 +29,19 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.element("td", "id='roomTemperature' class='has-data'", "??.?");
           html.element("td", "id='roomError' class='has-data'", "??.?");
         });
+        if (NeohubManager.getActiveZones().size() == 1 && NeohubManager.getMonitoredZones().size() == 0) {
+          NeohubZoneData *d = NeohubManager.getZoneData(NeohubManager.getActiveZones().back().id);
+          if (d && d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+            html.fieldTableRow("Floor", [d, &html]{
+              html.print("<td></td>");
+              double ft = d->floorTemperature;
+              String p = "id=z" + String(d->zone.id) + "-floor-temp class='has-data";
+              if (d->floorLimitTriggered) p += " off";
+              p += "'";
+              html.element("td", p.c_str(),  String(ft,1).c_str());
+            });
+          }
+        }
         html.fieldTableRow("Flow", [this, &html]{
           double sp = Config.getFlowSetpoint();
           double t = this->m_valveManager->inputs.flowTemperature;
@@ -43,77 +56,79 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
       });
     });
 
-    html.block("Zones", [this, &html]{
-      html.element("table", "class='monitor-table tight'", [this, &html]{
-        html.print("<thead>");
-        html.print("<tr class='tight'><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Zone</th><th colspan=4>Temperatures</th></tr>");
-        html.print("<tr class='tight'><th>Air</th><th>Floor</th></tr>");
-        html.print("</thead>");
-        html.element("tbody", [this, &html]{
-          for (NeohubZone z: NeohubManager.getActiveZones()) {
-            NeohubZoneData *d = NeohubManager.getZoneData(z.id);
-            if (!d) continue;
-            html.element("tr", [this, &html, d] {
+    if (NeohubManager.getActiveZones().size() > 1 || NeohubManager.getMonitoredZones().size() > 0) {
+      html.block("Zones", [this, &html]{
+        html.element("table", "class='monitor-table tight'", [this, &html]{
+          html.print("<thead>");
+          html.print("<tr class='tight'><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Zone</th><th colspan=4>Temperatures</th></tr>");
+          html.print("<tr class='tight'><th>Air</th><th>Floor</th></tr>");
+          html.print("</thead>");
+          html.element("tbody", [this, &html]{
+            for (NeohubZone z: NeohubManager.getActiveZones()) {
+              NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+              if (!d) continue;
+              html.element("tr", [this, &html, d] {
 
-              html.element("th", "class='gap-right active'", [d, &html]{
-                html.print(d->zone.name.c_str());
+                html.element("th", "class='gap-right active'", [d, &html]{
+                  html.print(d->zone.name.c_str());
+                });
+
+                String p = "id=z" + String(d->zone.id) + "-room-temp class='has-data";
+                if (!d->demand) p += " off";
+                p += "'";
+
+                html.element("td", p.c_str(), [d, &html]{
+                  if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                    html.print(String(d->roomTemperature,1).c_str());
+                  }
+                });
+
+                p = "id=z" + String(d->zone.id) + "-floor-temp class='has-data";
+                if (d->floorLimitTriggered) p += " off";
+                p += "'";
+
+                html.element("td", p.c_str(), [d, &html]{
+                  if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                    html.print(String(d->floorTemperature,1).c_str());
+                  }
+                });
               });
+            }
 
-              String p = "id=z" + String(d->zone.id) + "-room-temp class='has-data";
-              if (!d->demand) p += " off";
-              p += "'";
+            for (NeohubZone z: NeohubManager.getMonitoredZones()) {
+              NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+              if (!d) continue;
+              html.element("tr", [this, &html, d] {
 
-              html.element("td", p.c_str(), [d, &html]{
-                if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
-                  html.print(String(d->roomTemperature,1).c_str());
-                }
+                html.element("th", "class='gap-right'", [d, &html]{
+                  html.print(d->zone.name.c_str());
+                });
+
+                String p = "id=z" + String(d->zone.id) + "-room-temp class='has-data";
+                if (!d->demand) p += " off";
+                p += "'";
+
+                html.element("td", p.c_str(), [d, &html]{
+                  if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                    html.print(String(d->roomTemperature,1).c_str());
+                  }
+                });
+
+                p = "id=z" + String(d->zone.id) + "-floor-temp class='has-data";
+                if (d->floorLimitTriggered) p += " off";
+                p += "'";
+
+                html.element("td", p.c_str(), [d, &html]{
+                  if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                    html.print(String(d->floorTemperature,1).c_str());
+                  }
+                });
               });
-
-              p = "id=z" + String(d->zone.id) + + "-floor-temp class='has-data";
-              if (d->floorLimitTriggered) p += " off";
-              p += "'";
-
-              html.element("td", p.c_str(), [d, &html]{
-                if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
-                  html.print(String(d->floorTemperature,1).c_str());
-                }
-              });
-            });
-          }
-
-          for (NeohubZone z: NeohubManager.getMonitoredZones()) {
-            NeohubZoneData *d = NeohubManager.getZoneData(z.id);
-            if (!d) continue;
-            html.element("tr", [this, &html, d] {
-
-              html.element("th", "class='gap-right'", [d, &html]{
-                html.print(d->zone.name.c_str());
-              });
-
-              String p = "id=z" + String(d->zone.id) + + "-room-temp class='has-data";
-              if (!d->demand) p += " off";
-              p += "'";
-
-              html.element("td", p.c_str(), [d, &html]{
-                if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
-                  html.print(String(d->roomTemperature,1).c_str());
-                }
-              });
-
-              p = "id=z" + String(d->zone.id) + + "-floor-temp class='has-data";
-              if (d->floorLimitTriggered) p += " off";
-              p += "'";
-
-              html.element("td", p.c_str(), [d, &html]{
-                if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
-                  html.print(String(d->floorTemperature,1).c_str());
-                }
-              });
-            });
-          }
+            }
+          });
         });
       });
-    });
+    }
 
     html.block("Sensors", [this, &html]{
       html.element("table", "class='monitor-table'", [this, &html]{

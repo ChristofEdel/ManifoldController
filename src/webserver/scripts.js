@@ -100,7 +100,7 @@ function monitorPage_refreshData() {
       if (fmt != '0.0' && data.roomError > 0) d = '+' + d;
       $("#roomError") .text(d);
 
-      d = fmt(data.roomError, 1);
+      d = fmt(data.flowError, 1);
       if (fmt != '0.0' && data.flowError > 0) d = '+' + d;
       $("#flowError").text(d);
 
