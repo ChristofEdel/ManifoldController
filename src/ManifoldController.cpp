@@ -249,7 +249,10 @@ char * getSensorDataFileName() {
 
 void readAndLogSensors() {
 
+  UBaseType_t prio = uxTaskPriorityGet(NULL);
+  vTaskPrioritySet(NULL, 3);
   oneWireSensors.readAllSensors();
+  vTaskPrioritySet(NULL, prio);
 
   if (sdCardMutex.lock()) {
     char * dataFileName = getSensorDataFileName();

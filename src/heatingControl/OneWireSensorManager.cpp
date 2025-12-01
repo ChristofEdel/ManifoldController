@@ -131,6 +131,7 @@ void OneWireManager::readAllSensors()
       }
       else {
         si->otherErrors++;
+        break;// no retries for these, this makes it worse
       }
     }
 
