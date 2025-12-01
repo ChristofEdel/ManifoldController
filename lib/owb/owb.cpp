@@ -421,7 +421,7 @@ owb_status owb_read_rom(const OneWireBus * bus, OneWireBus_ROMCode *rom_code)
         else
         {
             status = OWB_STATUS_DEVICE_NOT_RESPONDING;
-            ESP_LOGE(TAG, "ds18b20 device not responding");
+            ESP_LOGE(TAG, "owb_read_rom - ds18b20 device not responding");
         }
     }
 
