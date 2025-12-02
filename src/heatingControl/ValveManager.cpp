@@ -57,6 +57,21 @@ void ValveManager::setInputs(
 
 void ValveManager::calculateValvePosition() {
 
+    // Initialisation bump avoidance - if we have no
+    // data yet, we initialise the flow setpoint with its current value
+    // to avoid a massive swing.
+    static bool first = true;
+    if (first && this->inputs.flowTemperature > -50) {
+        if (
+            this->m_flowController.getOutput() == Config.getFlowMinSetpoint()
+            || this->m_flowController.getOutput() == Config.getFlowMaxSetpoint()
+         ) {
+            MyLog.printf("Initialising flow setpoint to %.1f degrees\n", (this->inputs.flowTemperature));
+            this->m_flowController.setOutput(this->inputs.flowTemperature);
+        }
+        first = false;
+    }
+
     // If we have a valid room temperature, we recalculate the flow
     // temperature
     if (this->inputs.roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
