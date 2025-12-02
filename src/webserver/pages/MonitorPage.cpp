@@ -19,7 +19,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
       html.element("table", "class='field-table center-all-td'", [this, expertMode, &html] {
         html.print("<thead><tr>");
         html.print("<th style='border-bottom: none; min-width: 130px'></th><th style='width: 5em' class='gap-right'>Setpoint</th>");
-        html.print("<th style='width: 5em' class='gap-right'>Actual</th><th style='width: 5em' >Diff.</th>");
+        html.print("<th style='width: 5em' class='gap-right'>Actual</th><th style='width: 5em' class='gap-right' >Diff.</th>");
         if (expertMode) {
           html.print("<th style='width: 5em' class='gap-right'>P</th><th style='width: 5em' >I</th>");
         }

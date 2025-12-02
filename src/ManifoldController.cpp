@@ -54,13 +54,14 @@ RTC_NOINIT_ATTR double lastKownValvePosition;
 RTC_NOINIT_ATTR double lastKnownFlowSetpoint;
 
 void checkForNewSensors();
-void readAndLogSensors();
+void readSensors();
+void logSensors();
 String getSensorHeaderLine();
 String getSensorLogLine();
 void logSensorIssues();
 bool dayChanged();
 void startValveControlTask();
-void triggerValveControls();
+void triggerValveControls(bool);
 
 void setup() {
   esp_log_level_set("*", ESP_LOG_ERROR);
@@ -162,15 +163,17 @@ void loop() {
   // How often we do what
   const unsigned long timeSyncInterval             = 60 * 60 * 1000; // Synchronise time every hour
   const unsigned long sensorCheckInterval          = 60000;          // Check for new or removed sensors
-  const unsigned long valvePositionControlInterval = 1000;           // Read sensors and set control vale poistion
+  const unsigned long controlLoopInterval          = 1000;           // Read sensors and set control vale poistion
+  const unsigned long logFileInterval              = 5000;           // log sensor and control values
   const unsigned long memoryCheckInterval          = 10000;          // Check for possible memory leaks
-  const unsigned long blinkInterval                = 100;            // Blink so we can see
+  const unsigned long blinkInterval                = 100;            // Blink so we can see the loop is running
   const unsigned long otaCheckInterval             = 1000;           // Over-The-Air updates
   
   // When we last did that
   static unsigned long lastTimeSync = 0;
   static unsigned long lastSensorCheck = 0;
-  static unsigned long lastValvePositionControl = 0;
+  static unsigned long lastControlLoop = 0;
+  static unsigned long lastLogFile = 0;
   static unsigned long lastMemoryCheck = 0;
   static unsigned long lastBlink = 0;
   static unsigned long lastOtaCheck = 0;
@@ -194,9 +197,15 @@ void loop() {
     }
   }
 
-  if (first || timeNow - lastValvePositionControl >= valvePositionControlInterval) {
-    lastValvePositionControl = timeNow;
-    triggerValveControls();
+  if (first || timeNow - lastControlLoop >= controlLoopInterval) {
+    lastControlLoop = timeNow;
+    if (first || timeNow - lastLogFile >= memoryCheckInterval) {
+      lastLogFile = timeNow;
+      triggerValveControls(true); // emit a log line
+    }
+    else {
+      triggerValveControls(false);  // no log line
+    }
   }
 
   if (first || timeNow - lastMemoryCheck >= memoryCheckInterval) {
@@ -257,14 +266,17 @@ char * getSensorDataFileName() {
   return sensorDataFileName;
 }
 
-void readAndLogSensors() {
+void readSensors() {
 
   UBaseType_t prio = uxTaskPriorityGet(NULL);
   vTaskPrioritySet(NULL, 3);
   oneWireSensors.readAllSensors();
   vTaskPrioritySet(NULL, prio);
 
-  if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
+
+}
+void logSensors() {
+if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
     char * dataFileName = getSensorDataFileName();
 
     bool printHeaderLine = !sd.exists(dataFileName);
@@ -307,6 +319,20 @@ String getSensorLogLine() {
     String result;
     result = MyRtc.getTime().getTimestampText();
 
+    // Room control
+    //  - Setpoint
+    //  - Actual
+    result += ",";
+    result += String(valveManager.getRoomSetpoint(),1);
+    result += ",";
+    if (valveManager.inputs.roomTemperature > -50) result += String(valveManager.inputs.flowTemperature,1);
+
+    // Manifold control
+    //   - Setpoint
+    //   - input temperature
+    //   - return temperature
+    //   - valve position
+    //   - flow temperature
     result += ",";
     result += String(valveManager.getFlowSetpoint(),1);
     result += ",";
@@ -318,6 +344,35 @@ String getSensorLogLine() {
     result += "%,";
     if (valveManager.inputs.flowTemperature > -50) result += String(valveManager.inputs.flowTemperature,1);
 
+    // All room sensors
+
+    for (NeohubZone z: NeohubManager.getActiveZones()) {
+      NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+      if (!d) { result += ",,"; continue; }
+      result += ",";
+      if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        result += String(d->roomTemperature,1);
+      }
+      result += ",";
+      if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        result += String(d->floorTemperature,1);
+      }
+    }
+    
+    for (NeohubZone z: NeohubManager.getMonitoredZones()) {
+      NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+      if (!d) { result += ",,"; continue; }
+      result += ",";
+      if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        result += String(d->roomTemperature,1);
+      }
+      result += ",";
+      if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        result += String(d->floorTemperature,1);
+      }
+    }
+
+    // All other sensors 
     String inputSensorId = Config.getInputSensorId();
     String flowSensorId = Config.getFlowSensorId();
     String returnSensorId = Config.getReturnSensorId();
@@ -343,11 +398,25 @@ String getSensorLogLine() {
 
 String getSensorHeaderLine() {
     String result;
-    result = "Time,Setpoint,Input,Return,Valve,Flow";
+    result = "Time,Room Setpoint,Room,Flow Setpoint,Input,Return,Valve,Flow";
 
     String inputSensorId = Config.getInputSensorId();
     String flowSensorId = Config.getFlowSensorId();
     String returnSensorId = Config.getReturnSensorId();
+
+    for (NeohubZone z: NeohubManager.getActiveZones()) {
+      result += ",";
+      result += z.name;
+      result += ",";
+      result += z.name + "Floor";
+    }
+    
+    for (NeohubZone z: NeohubManager.getMonitoredZones()) {
+      result += ",";
+      result += z.name;
+      result += ",";
+      result += z.name + "Floor";
+    }
 
     int n = sensorMap.getCount();
     for (int i = 0; i < n; i++) {
@@ -426,6 +495,10 @@ void manageValveControls() {
   valveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);  
   valveManager.calculateValvePosition();
   valveManager.sendOutputs();
+
+  lastKnownFlowSetpoint = valveManager.outputs.targetFlowTemperature;
+  lastKownValvePosition = valveManager.outputs.targetValvePosition;
+
   // Serial.printf(
   //   "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf\n", 
   //   inputTemperature, 
@@ -437,27 +510,35 @@ void manageValveControls() {
   // );
 }
 
-void triggerValveControls() {
-  // Send the hot water call state to the background task which manages the boiler controls
-  static bool dummyParameter = false;
-  xQueueSend(valveControlQueue, &dummyParameter, 0);
+void triggerValveControls(bool writeLogLine) {
+  xQueueSend(valveControlQueue, &writeLogLine, 0);
 }
 
 // Task function that runs the boiler control in the background
 void valveControlTask(void *parameter) {
-  bool dummyParameter = false;
+  bool writeLogLine = false;
+  readSensors();
   for(;;) {
     // Wait for notification from main loop
-    if(xQueueReceive(valveControlQueue, &dummyParameter, portMAX_DELAY) == pdTRUE) {
+    if(xQueueReceive(valveControlQueue, &writeLogLine, portMAX_DELAY) == pdTRUE) {
       // Drain any additional messages — only the last one is kept
       bool tmp;
       while (xQueueReceive(valveControlQueue, &tmp, 0) == pdTRUE) {
-        dummyParameter = tmp;
+        writeLogLine = tmp;
       }
+
+      // Control loop first
       manageValveControls();
-      lastKnownFlowSetpoint = valveManager.outputs.targetFlowTemperature;
-      lastKownValvePosition = valveManager.outputs.targetValvePosition;
-      readAndLogSensors();
+
+      // Then log if requested
+      if (writeLogLine) logSensors(); 
+
+      // Finally, read the sensors for the next iteration
+      // This is done last because reading takes around 600-800 ms so this prepares
+      // the next iteration 
+      readSensors();
+
+      // For a loop rate slower than 1/s this should be changed!
     }
   }
 }
