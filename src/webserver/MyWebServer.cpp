@@ -38,6 +38,7 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
   this->m_sensorManager = sensorManager;
   this->m_server.on(AsyncURIMatcher::exact("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
   this->m_server.on(AsyncURIMatcher::exact("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
+  this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });
   this->m_server.on(AsyncURIMatcher::dir  ("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
   this->m_server.on(AsyncURIMatcher::exact("/monitor"),       HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
   this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });

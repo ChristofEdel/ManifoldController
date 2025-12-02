@@ -39,6 +39,7 @@ class CMyWebServer {
       void respondWithDirectory(AsyncWebServerRequest *request, const String &path);
       void respondWithFileContents(AsyncWebServerRequest *request, const String &fileName);
       size_t sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t index);
+      void processDeleteFileRequest(AsyncWebServerRequest *request);
 
       // Heatmiser Neohub pass-through
       void respondFromNeohub(AsyncWebServerRequest *request);

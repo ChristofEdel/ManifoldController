@@ -249,15 +249,22 @@ table.center-all-td > tbody > tr > td {
 .template-row {
     display: none;
 }
-.delete-row {
+
+.delete-row, 
+.delete-file 
+{
     width: 21px;
     cursor: pointer;
     text-align: center;
     color: var(--color-red);
 }
-.delete-row::before {
+
+.delete-file::before,
+.delete-row::before 
+{
     content: "\2716";
 }
+
 .delete-header {
     width: 21px;
 }

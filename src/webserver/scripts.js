@@ -42,6 +42,24 @@ $(function () {
     renumberTable($table);
   });
 
+  /* row deletion and addition for tables that support it*/
+  $('.delete-file').on('click', function (e) {
+    e.preventDefault();
+    const $row = $(this).closest('tr');
+    const fileName = $row.find("a").first().text();
+    $.ajax({
+        url: "/delete-file",
+        method: "POST",
+        data: { filename: fileName },
+        success: function () {
+            $row.remove();
+        },
+        error: function () {
+            console.error("Failed to delete " + fileName);
+        }
+    });
+  });
+
   $('.dragDropList').sortable({
     handle: '.handle',
     helper: fixedWidthHelper,

@@ -134,7 +134,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const St
   HtmlGenerator html(response);
   html.navbar(NavbarPage::Files);
   response->println("<div class='navbar-border'></div>");
-  response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th><th>Modified</th></tr></thead><tbody>");
+  response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th><th>Modified</th><th class='delete-header'></th></tr></thead><tbody>");
   for (DirectoryEntry &e : entries)
   {
     response->print("<tr>");
@@ -143,9 +143,38 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const St
 
     char buf[25];
     response->printf("<td>%s</td>", e.formatDate(buf, sizeof(buf)));
-    response->println("</tr>");
+    response->println("<td class='delete-file'></td></tr>");
   }
   response->println("</tbody></table>");
   finishHttpHtmlResponse(response);
   request->send(response);
+}
+
+void CMyWebServer::processDeleteFileRequest(AsyncWebServerRequest *request) {
+
+  const AsyncWebParameter *p = request->getParam("filename", true);
+  if (!p) {
+    request->send(400, "text/plain", "missing filename");
+    return;
+  }
+
+  String filename = p->value();
+  if (filename.startsWith("/files")) filename = filename.substring(6); // strip leading /files
+  if (!filename.startsWith("/")) // SdFat needs leading slash
+    filename = "/" + filename;
+
+  if (filename.indexOf("..") != -1) { // prevent navigating up
+    request->send(400, "text/plain", "relative navigation not permitted");
+    return;
+  }
+
+  bool result = false;;
+  if (this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
+    result = this->m_sd->remove(filename.c_str());
+    this->m_sdMutex->unlock();
+  }
+  if (result)
+    request->send(200, "text/plain", "file deleted");
+  else
+    request->send(500, "text/plain", "delete failed");
 }
