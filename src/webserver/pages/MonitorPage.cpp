@@ -51,7 +51,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           }
         }
         html.fieldTableRow("Flow", [this, expertMode, &html]{
-          double sp = Config.getFlowSetpoint();
+          double sp = this->m_valveManager->getFlowSetpoint();
           double t = this->m_valveManager->inputs.flowTemperature;
           double d = t - sp;
           html.element("td", "id='flowSetpoint' class='has-data'", String(sp,1).c_str());
@@ -218,7 +218,7 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     statusJson["roomIntegralTerm"] = this->m_valveManager->getRoomIntegralTerm();
   }
   {
-    double sp = Config.getFlowSetpoint();
+    double sp = this->m_valveManager->getFlowSetpoint();
     double t = this->m_valveManager->inputs.flowTemperature;
     statusJson["flowSetpoint"]    = sp;
     if (t != NeohubZoneData::NO_TEMPERATURE) {

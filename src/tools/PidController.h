@@ -20,9 +20,13 @@ struct PidControllerState {
   bool first;                   // In the first iteration, supporess D calculation
 
   unsigned long previousTime;   // The time (millis) of the last calculation
+                                // used to scale the calculation of 
+                                // integral and derivative terms if there is jitter
+
+  double previousInput;         // The input observerd in the last iteration
+                                // used to calculate the derivative term
 
   double error;                 // The current error used calculating tle last output
-  double previousError;         // The error value observed at the last calculation
   double cumulativeError;       // The cumulative error value (used for integral calculation)
 
   double proportionalTerm;
@@ -39,7 +43,7 @@ class PidController {
     double m_output;
 
   public:
-    void setOutputRange(double minOutput, double maxOutput) { m_config.minOutput = minOutput; m_config.maxOutput = maxOutput; };
+    void setOutputRange(double minOutput, double maxOutput) { m_config.minOutput = minOutput; m_config.maxOutput = maxOutput; this->setOutput(m_output); };
     
     void configureGains(double proportionalGain, double integralGain, double derivativeGain);
     void configureSeconds(double proportionalGain, double integralTimeSeconds, double derivativeTimeSeconds);
@@ -48,13 +52,11 @@ class PidController {
     void resetState();                                  // Start for the beginning with no accumulater error (yet),
                                                         // output remains unchanged from the current position, but will not
                                                         // be updated until the second-to-next cycle
-    void resetState(double initialOutput);              // Start for the beginning with no accumulater error (yet)
-                                                        // output starts at the value given
 
     void setInput(double input);                        // Get/set the current input variable
     double getInput() { return this->m_input; };
 
-    void setSetpoint(double setpoint);                  // Set a new setpoint
+    void setSetpoint(double setpoint);                  // Get/set the setpoint
     double getSetpoint() { return this->m_setpoint; };
 
     void setOutput(double position);

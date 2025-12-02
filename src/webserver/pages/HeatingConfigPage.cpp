@@ -79,11 +79,11 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
           });
           html.fieldTableRow("Proportional Gain", [&html]{
             html.fieldTableInput("name='room-pg' type='text' class='num-3em'", Config.getRoomProportionalGain(), 1);
-            html.print("<td>&deg;C flow per &deg;C error</td>");
+            html.print("<td>&deg;C flow per &deg;C room temperature</td>");
           });
-          html.fieldTableRow("Integral Term", [&html]{
+          html.fieldTableRow("Integral Time", [&html]{
             html.fieldTableInput("name='room-is' type='text' class='num-3em'", Config.getRoomIntegralMinutes(), 1);
-            html.print("<td>minutes to correct 1&deg;C flow per &deg;C error</td>");
+            html.print("<td>minutes for 1x proportional gain</td>");
           });
           html.fieldTableRow("", [this, &html]{
             html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(this->m_valveManager->getRoomIntegralGain(),3) + "</small></td>").c_str());
@@ -93,25 +93,27 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
 
       html.block("Manifold Configuration", [this, &html]{
         html.fieldTable( [this, &html] {
-          html.fieldTableRow("Flow Setpoint", [&html]{
-            html.fieldTableInput("name='flow-setpoint' type='text' class='num-3em'", Config.getFlowSetpoint(), 1);
-            html.print("<td>&deg;C</td>");
+          html.fieldTableRow("Flow Range", [&html]{
+            html.fieldTableInput("name='flow-setpoint-min' type='text' class='num-3em'", Config.getFlowMinSetpoint(), 1);
+            html.print("<td>&mdash;");
+            html.input("name='flow-setpoint-max' type='text' class='num-3em'", Config.getFlowMaxSetpoint(), 1);
+            html.print("&deg;C</td>");
           });
           html.fieldTableRow("Proportional Gain", [&html]{
-            html.fieldTableInput("name='flow-pg' type='text' class='num-3em'", Config.getProportionalGain(), 1);
-            html.print("<td>% per &deg;C error</td>");
+            html.fieldTableInput("name='flow-pg' type='text' class='num-3em'", Config.getFlowProportionalGain(), 1);
+            html.print("<td>% per &deg;C flow temperature</td>");
           });
-          html.fieldTableRow("Integral Term", [&html]{
-            html.fieldTableInput("name='flow-is' type='text' class='num-3em'", Config.getIntegralSeconds(), 1);
-            html.print("<td>seconds to correct 1% per &deg;C error</td>");
+          html.fieldTableRow("Integral Time", [&html]{
+            html.fieldTableInput("name='flow-is' type='text' class='num-3em'", Config.getFlowIntegralSeconds(), 1);
+            html.print("<td>minutes for 1x proportional gain</td>");
           });
           html.fieldTableRow("", [this, &html]{
             html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(this->m_valveManager->getFlowIntegralGain(),3) + "</small></td>").c_str());
           });
           html.fieldTableRow("Valve Direction", [&html]{
             html.fieldTableSelect("colspan=2", "name='valve-direction'", [&html]{
-              html.option("0", "Standard (clockwise)",  Config.getValveInverted() == false);
-              html.option("1", "Inverted (counter-clockwise)",  Config.getValveInverted() == true);
+              html.option("0", "Standard (clockwise)",  Config.getFlowValveInverted() == false);
+              html.option("1", "Inverted (counter-clockwise)",  Config.getFlowValveInverted() == true);
             });
           });
         });
@@ -197,8 +199,10 @@ bool update(bool oldValue, void (CConfig::*setter)(bool), bool newValue) {
 void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) {
 
   int sensorIndex = 0;
-  bool pidReconfigured = false;     // Flag to determine if the PID controller ocnfiguration
-                                    // has to be reloaded
+  bool pidReconfigured = false;       // Flag to determine if the PID controller ocnfiguration
+                                      // has to be reloaded
+  bool flowRangeReconfigured = false; // Flag to determine if the flow range in the
+                                      // controller has to be updated
 
   NeohubManager.clearActiveZones();
   NeohubManager.clearMonitoredZones();
@@ -225,19 +229,20 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     else if (key == "room-is") {
       pidReconfigured |= update(Config.getRoomIntegralMinutes(), &CConfig::setRoomIntegralMinutes, p->value().toFloat());
     }
-    else if (key == "flow-setpoint") {
-      if (update(Config.getFlowSetpoint(), &CConfig::setFlowSetpoint, p->value().toFloat())) {
-        this->m_valveManager->setFlowSetpoint(Config.getFlowSetpoint());
-      }
+    else if (key == "flow-setpoint-min") {
+      flowRangeReconfigured |= update(Config.getFlowMinSetpoint(), &CConfig::setFlowMinSetpoint, p->value().toFloat());
+    }
+    else if (key == "flow-setpoint-max") {
+      flowRangeReconfigured |= update(Config.getFlowMaxSetpoint(), &CConfig::setFlowMaxSetpoint, p->value().toFloat());
     }
     else if (key == "flow-pg") {
-      pidReconfigured |= update(Config.getProportionalGain(), &CConfig::setProportionalGain, p->value().toFloat());
+      pidReconfigured |= update(Config.getFlowProportionalGain(), &CConfig::setFlowProportionalGain, p->value().toFloat());
     }
     else if (key == "flow-is") {
-      pidReconfigured |= update(Config.getIntegralSeconds(), &CConfig::setIntegralSeconds, p->value().toFloat());
+      pidReconfigured |= update(Config.getFlowIntegralSeconds(), &CConfig::setFlowIntegralSeconds, p->value().toFloat());
     }
     else if (key == "valve-direction") {
-      pidReconfigured |= update(Config.getValveInverted(), &CConfig::setValveInverted, (bool) p->value().toInt());
+      pidReconfigured |= update(Config.getFlowValveInverted(), &CConfig::setFlowValveInverted, (bool) p->value().toInt());
     }
     else if (key == "sensor-input") {
       Config.setInputSensorId(p->value());
@@ -267,7 +272,14 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
 
   this->m_sensorMap->removeFromIndex(sensorIndex); // Remove any remaining sensors
   Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap, NeohubManager);
-  if (pidReconfigured) this->m_valveManager->loadConfig();
+  if (pidReconfigured) {
+    this->m_valveManager->loadConfig();
+    // includes loading the flow range
+  }
+  else if (flowRangeReconfigured) {
+    this->m_valveManager->setFlowSetpointRange(Config.getFlowMinSetpoint(), Config.getFlowMaxSetpoint());
+  }
+
   Config.print(MyLog);
 
   // After processing POST, respond with the config page again

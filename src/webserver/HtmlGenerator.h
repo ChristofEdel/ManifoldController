@@ -22,6 +22,7 @@ class HtmlGenerator {
     void element(const char *elementName, const char *parameters, std::function<void()> func);
     void element(const char *elementName, const char *parameters, const char *contents);
     void element(const char *elementName, std::function<void()> func) { element(elementName, nullptr, func); };
+    void input (const char *parameters, double value, int precision) { input(parameters, String(value,precision).c_str()); };
     void input (const char *parameters, const char *value);
     void select (const char *parameters, std::function<void()> func) { element("select", parameters, func); };
     void option (const char*value, const char *text, bool selected);

@@ -38,11 +38,11 @@ void ValveManager::loadConfig() {
 
     this->m_valveController.setOutputRange(0, 100);
     this->m_valveController.configureSeconds(
-        Config.getProportionalGain(),    // proportionalGain
-        Config.getIntegralSeconds(),     // integralTimeSeconds
-        0                                // derivativeTimeSeconds
+        Config.getFlowProportionalGain(),    // proportionalGain
+        Config.getFlowIntegralSeconds(),     // integralTimeSeconds
+        0                                    // derivativeTimeSeconds
     );
-    this->m_valveInverted = Config.getValveInverted();
+    this->m_valveInverted = Config.getFlowValveInverted();
 }
 
 void ValveManager::setInputs(
@@ -53,16 +53,25 @@ void ValveManager::setInputs(
     this->inputs.flowTemperature = flowTemperature; 
     this->inputs.inputTemperature = inputTemperature;
     this->inputs.returnTemperature = returnTemperature;
-
-    if (this->m_fixedFlowSetpoint) {
-        this->m_valveController.setInput(flowTemperature);
-    }
-    else {
-        this->m_flowController.setInput(roomTemperature);
-    }
 };
 
 void ValveManager::calculateValvePosition() {
+
+    // If we have a valid room temperature, we recalculate the flow
+    // temperature
+    if (this->inputs.roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        this->m_flowController.setInput(this->inputs.roomTemperature);
+        this->m_flowController.calculateOutput();
+    }
+    this->outputs.targetFlowTemperature = this->m_flowController.getOutput();
+    // If we don't have a valid room temperature, the target flow
+    // temperature remains unchanged. If we never had a room temperature,
+    // this is theconfigured minimum flow temperature
+
+    // Now that we know the target flow temperature, we recalculate
+    // the valve position
+    this->m_valveController.setInput(this->inputs.flowTemperature);
+    this->m_valveController.setSetpoint(this->outputs.targetFlowTemperature);
     this->m_valveController.calculateOutput();
     this->outputs.targetValvePosition = this->m_valveController.getOutput();
 }

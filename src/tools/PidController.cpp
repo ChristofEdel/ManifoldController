@@ -11,7 +11,7 @@ void PidController::configureGains(double proportionalGain, double integralGain,
     this->m_config.integralTimeSeconds = (integralGain != 0) ? (proportionalGain / integralGain) : 0;
     this->m_config.derivativeTimeSeconds = (proportionalGain != 0) ? (derivativeGain / proportionalGain) : 0;
 
-    this->resetState(this->m_output);
+    this->resetState();
 }
 
 void PidController::configureSeconds(double proportionalGain, double integralTimeSeconds, double derivativeTimeSeconds) {
@@ -20,13 +20,13 @@ void PidController::configureSeconds(double proportionalGain, double integralTim
     this->m_config.integralTimeSeconds = integralTimeSeconds;
     this->m_config.derivativeTimeSeconds = derivativeTimeSeconds;
     if (integralTimeSeconds != 0) {
-        this->m_config.integralGain = 1.0 / integralTimeSeconds;
+        this->m_config.integralGain = proportionalGain / integralTimeSeconds;
     } else {
         this->m_config.integralGain = 0;
     }
-    this->m_config.derivativeGain = 1.0 * derivativeTimeSeconds;
+    this->m_config.derivativeGain = proportionalGain * derivativeTimeSeconds;
 
-    this->resetState(this->m_output);
+    this->resetState();
 }
 
 void PidController::configureSeconds(
@@ -39,30 +39,35 @@ void PidController::configureSeconds(
     this->m_config.integralTimeSeconds = integralTimeSeconds;
     this->m_config.derivativeTimeSeconds = derivativeTimeSeconds;
     if (integralTimeSeconds != 0) {
-        this->m_config.integralGain = 1.0 / integralTimeSeconds;
+        this->m_config.integralGain = proportionalGain / integralTimeSeconds;
     } else {
         this->m_config.integralGain = 0;
     }
-    this->m_config.derivativeGain = 1.0 * derivativeTimeSeconds;
+    this->m_config.derivativeGain = proportionalGain * derivativeTimeSeconds;
 
-    this->resetState(this->m_output);
+    this->resetState();
 }
 
-void PidController::resetState(double initialOutput) {
-    this->m_state.first = true;
-    this->m_state.previousTime = 0;
+void PidController::resetState() {
 
+    // Initialise as at the beginning
+    this->m_state.first = true;
+    this->m_state.previousInput = 0;
+    this->m_state.previousTime = 0;
     this->m_state.error = 0;
-    this->m_state.previousError = 0;
+
+    // calculate an appropriate cumulative error to achieve
+    // the initial output
     if (this->m_config.integralGain) {
-        this->m_state.cumulativeError = initialOutput / this->m_config.integralGain;
+        this->m_state.cumulativeError = this->m_output / this->m_config.integralGain;
     }
     else {
         this->m_state.cumulativeError = 0;
     }
-
-    this->m_state.proportionalTerm = 0;
     this->m_state.integralTerm = this->m_config.integralGain * this->m_state.cumulativeError;
+
+    // Proportional and derivative terms are zero
+    this->m_state.proportionalTerm = 0;
     this->m_state.derivativeTerm = 0;
 
 }
@@ -73,21 +78,21 @@ void PidController::setInput(double input) {
 
 void PidController::setSetpoint(double setpoint) { 
     this->m_setpoint = setpoint; 
-    //  this->resetState();
 };
 
 void PidController::calculateOutput() {
 
     unsigned long now = millis();
 
+
     // if we have no measurement, we skip this iteration 
     if (this->m_input < -50) return;
 
-    // if this is the first time round, we only remember the time and do nothing
+    // if this is the first time round, we only remember the time and input and do nothing
     if (this->m_state.first) { 
         this->m_state.first = false;
         this->m_state.previousTime = now;
-        this->m_state.previousError = 0;
+        this->m_state.previousInput = this->m_input;
         return; 
     } 
 
@@ -99,7 +104,7 @@ void PidController::calculateOutput() {
     // Calculate current and cumulative errors
     this->m_state.error = this->m_setpoint - this->m_input;
     this->m_state.cumulativeError += this->m_state.error * timeChange;
-    double dErr = (this->m_state.error - this->m_state.previousError) / timeChange;
+    double dErr = (this->m_input - this->m_state.previousInput) / timeChange;
 
     // Prevent "integral windup" by constraining contribution of the cumulative error to the 
     // output range
@@ -124,11 +129,13 @@ void PidController::calculateOutput() {
 
     // Prepare for next iteration
     this->m_state.previousTime = now;
-    this->m_state.previousError = this->m_state.error;
+    this->m_state.previousInput = this->m_input;
 
 }
 
-void PidController::setOutput(double position) {
-    this->m_output = position;
-    this->resetState(position);
+void PidController::setOutput(double newOutput) {
+    if (newOutput < this->m_config.minOutput) newOutput = this->m_config.minOutput;
+    if (newOutput > this->m_config.maxOutput) newOutput = this->m_config.maxOutput;
+    this->m_output = newOutput;
+    this->resetState();
 }

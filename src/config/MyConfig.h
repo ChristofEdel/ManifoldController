@@ -12,7 +12,6 @@ class CConfig {
     private:
         String hostname;
 
-        double flowSetpoint;
         double flowMaxSetpoint;
         double flowMinSetpoint;
 
@@ -20,9 +19,9 @@ class CConfig {
         String inputSensorId;
         String returnSensorId;
 
-        double proportionalGain;
-        double integralSeconds;
-        bool valveInverted;
+        double flowProportionalGain;
+        double flowIntegralSeconds;
+        bool   flowValveInverted;
 
         double roomSetpoint;
         double roomProportionalGain;
@@ -31,7 +30,6 @@ class CConfig {
     public:
         inline const String &getHostname()              const { return hostname; }; 
 
-        inline double getFlowSetpoint()                 const { return flowSetpoint; }; 
         inline double getFlowMaxSetpoint()              const { return flowMaxSetpoint; }; 
         inline double getFlowMinSetpoint()              const { return flowMinSetpoint; }; 
 
@@ -39,9 +37,9 @@ class CConfig {
         inline const String &getInputSensorId()         const { return inputSensorId; };
         inline const String &getReturnSensorId()        const { return returnSensorId; };
 
-        inline double getProportionalGain()             const { return proportionalGain; };
-        inline double getIntegralSeconds()              const { return integralSeconds; };
-        inline bool getValveInverted()                  const { return valveInverted; };
+        inline double getFlowProportionalGain()         const { return flowProportionalGain; };
+        inline double getFlowIntegralSeconds()          const { return flowIntegralSeconds; };
+        inline bool   getFlowValveInverted()            const { return flowValveInverted; };
 
         inline double getRoomSetpoint()                 const { return roomSetpoint; };
         inline double getRoomProportionalGain()         const { return roomProportionalGain; };
@@ -49,7 +47,6 @@ class CConfig {
 
         inline void setHostname(const String &value)         { hostname = value;};
 
-        inline void setFlowSetpoint(double value)            { flowSetpoint = value; };
         inline void setFlowMaxSetpoint(double value)         { flowMaxSetpoint = value; };
         inline void setFlowMinSetpoint(double value)         { flowMinSetpoint = value; };
 
@@ -57,9 +54,9 @@ class CConfig {
         inline void setInputSensorId(const String &value)    { inputSensorId = value;};
         inline void setReturnSensorId(const String &value)   { returnSensorId = value;};
 
-        inline void setProportionalGain(double value)        { proportionalGain = value; };
-        inline void setIntegralSeconds(double value)         { integralSeconds = value; };
-        inline void setValveInverted(bool value)             { valveInverted = value; };
+        inline void setFlowProportionalGain(double value)    { flowProportionalGain = value; };
+        inline void setFlowIntegralSeconds(double value)     { flowIntegralSeconds = value; };
+        inline void setFlowValveInverted(bool value)         { flowValveInverted = value; };
 
         inline void setRoomSetpoint(double value)            { roomSetpoint = value; };
         inline void setRoomProportionalGain(double value)    { roomProportionalGain = value; };

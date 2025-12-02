@@ -8,17 +8,16 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
 
     configJson["hostname"]              = hostname;
 
-    configJson["flowSetpoint"]          = flowSetpoint;
-    configJson["flowMaxSetpoint"]          = flowSetpoint;
-    configJson["flowMinSetpoint"]       = flowSetpoint;
+    configJson["flowMaxSetpoint"]       = flowMaxSetpoint;
+    configJson["flowMinSetpoint"]       = flowMinSetpoint;
 
     configJson["flowSensorId"]          = flowSensorId;
     configJson["inputSensorId"]         = inputSensorId;
     configJson["returnSensorId"]        = returnSensorId;
 
-    configJson["proportionalGain"]      = proportionalGain;
-    configJson["integralSeconds"]       = integralSeconds;  
-    configJson["valveInverted"]         = valveInverted;
+    configJson["flowProportionalGain"]  = flowProportionalGain;
+    configJson["flowIntegralSeconds"]   = flowIntegralSeconds;  
+    configJson["flowValveInverted"]     = flowValveInverted;
 
     configJson["roomSetpoint"]          = roomSetpoint;
     configJson["roomProportionalGain"]  = roomProportionalGain;  
@@ -91,7 +90,6 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
 
     hostname = configJson["hostname"].as<String>();
 
-    flowSetpoint = configJson["flowSetpoint"];
     flowMaxSetpoint = configJson["flowMaxSetpoint"];
     flowMinSetpoint = configJson["flowMinSetpoint"];
 
@@ -99,9 +97,9 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
     inputSensorId  = configJson["inputSensorId"].as<String>();
     returnSensorId = configJson["returnSensorId"].as<String>();
 
-    proportionalGain   = configJson["proportionalGain"].as<double>();
-    integralSeconds    = configJson["integralSeconds"].as<double>(); 
-    valveInverted      = configJson["valveInverted"].as<bool>();
+    flowProportionalGain   = configJson["flowProportionalGain"].as<double>();
+    flowIntegralSeconds    = configJson["flowIntegralSeconds"].as<double>(); 
+    flowValveInverted      = configJson["flowValveInverted"].as<bool>();
 
     roomSetpoint         = configJson["roomSetpoint"].as<double>();
     roomProportionalGain = configJson["roomProportionalGain"].as<double>();
@@ -133,20 +131,20 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
 
 void CConfig::print(CMyLog &p) const {
     p.println("Config:");
-    p.print("  hostname: ");
-    p.println(hostname);
-    p.print("  flowSetpoint: ");
-    p.println(flowSetpoint);
-    p.print("  flowSensorId: ");
-    p.println(flowSensorId);
-    p.print("  inputSensorId: ");
-    p.println(inputSensorId);
-    p.print("  returnSensorId: ");
-    p.println(returnSensorId);
+    p.printf("  hostname: %s\n", hostname.c_str());
+    p.printf("  Room: %.1f, Kp = %.1f, Ti = %.0f minutes\n", roomSetpoint, roomProportionalGain, roomIntegralMinutes);
+    p.printf("  Flow: %.1f-%.1f, Kp = %.1f, Ti = %.0f seconds\n", flowMinSetpoint, flowMaxSetpoint, flowProportionalGain, flowIntegralSeconds);
 }
 
 void CConfig::applyDefaults(SensorMap &sensorMap, SensorManager *oneWireManager) {
-    flowSetpoint     = 35.0;
-    this->proportionalGain = 2;
-    this->integralSeconds = 10;
+
+    this->roomSetpoint = 20.0;
+    this->roomProportionalGain = 5.0;
+    this->roomIntegralMinutes = 180;
+
+    this->flowMinSetpoint     = 25.0;
+    this->flowMaxSetpoint     = 37.0;
+    
+    this->flowProportionalGain    = 3;
+    this->flowIntegralSeconds     = 10;
 }

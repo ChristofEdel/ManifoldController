@@ -134,8 +134,11 @@ void setup() {
   setupOta();
   oneWireSensors.setup(oneWirePin);
   valveManager.setup();
-  // valveManager.setRooomSetpoint(Config.getRoomSetpoint());
-  valveManager.setFlowSetpoint(Config.getFlowSetpoint());
+  valveManager.setRooomSetpoint(Config.getRoomSetpoint());
+  if (lastKnownFlowSetpoint > 1) { // sometimes after reset this value is -0.0
+    MyLog.printf("Initialising flow setpoint to %.1f degrees\n", lastKnownFlowSetpoint);
+    valveManager.setFlowSetpoint(lastKownValvePosition);
+  }
   if (lastKownValvePosition > 1) { // sometimes after reset this value is -0.0
     MyLog.printf("Initialising valve position to %.0f%%\n", lastKownValvePosition);
     valveManager.setValvePosition(lastKownValvePosition);

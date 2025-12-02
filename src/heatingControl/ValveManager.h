@@ -5,8 +5,8 @@
 #include "PidController.h"
 
 struct ValveManagerInputs {
-  double roomTemperature;
-  double flowTemperature;
+  double roomTemperature;   // Room temperature used to regulate the flow
+  double flowTemperature;   // Flow temperature used to regulate the valve
 
   double inputTemperature;      
   double returnTemperature;      
@@ -22,9 +22,7 @@ class ValveManager {
     PidController m_flowController;
     PidController m_valveController;
 
-    double m_roomSetpoint;      // Set by from configuration/setter
-    double m_flowSetpoint;      // Set by the n_flowController, or by setFlowSetpoint 
-    bool m_fixedFlowSetpoint = false;   
+    double m_roomSetpoint;            // Set by from configuration/setter
 
     bool m_valveInverted = false;
     bool m_dacInitialised = false;
@@ -44,9 +42,9 @@ class ValveManager {
     double getRoomSetpoint() { return this->m_roomSetpoint; };
 
     // get the (intermediate) setpoint for the flow temperature
-    void setFlowSetpoint(double setpoint) { this->m_flowSetpoint = setpoint; this->m_fixedFlowSetpoint = true; m_valveController.setSetpoint(setpoint); };
-    void clearFlowSetpoint() { this->m_fixedFlowSetpoint = false; }
-    double getFlowSetpoint() { return this->m_flowSetpoint; };
+    double getFlowSetpoint() { return this->outputs.targetFlowTemperature; };
+    void setFlowSetpointRange(double min, double max) { this->m_flowController.setOutputRange(min, max); };
+    void setFlowSetpoint(double setpoint) { this->m_flowController.setOutput(setpoint); this->m_valveController.setSetpoint(setpoint); };
 
     // Set the process variables that the controllers are managing
     void setInputs (
