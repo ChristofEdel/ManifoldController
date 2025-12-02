@@ -68,10 +68,13 @@ bool CNeohubManager::loadZoneDataFromNeohub(NeohubZoneData *data) {
 bool CNeohubManager::ensureNeohubConnection() {
 
         
-    // we are connected --> done
-    if (this->m_connection && this->m_connection->isConnected()) return true;
-
     if (m_neohubMutex.lock("NeohubConnection")) {
+
+        // we are connected --> done
+        if (this->m_connection && this->m_connection->isConnected()) {
+            m_neohubMutex.unlock();
+            return true;
+        }
 
         // Create connection object if necessary
         if (!this->m_connection) {
