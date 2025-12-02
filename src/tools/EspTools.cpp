@@ -3,14 +3,13 @@
 #include <ArduinoOTA.h>
 #include "EspTools.h"
 #include "MyLog.h"
-#include <nvs.h>
-#include <nvs_flash.h>
 
 
 // Print a human-readable reset reason
 String getResetReason() {
   esp_reset_reason_t reason = esp_reset_reason();
   String result;
+  if (mustClearRtcMemory()) clearSoftwareResetReason();
   switch (reason) {
     case ESP_RST_UNKNOWN:    result = "Unknown (probably software update)"; break;
     case ESP_RST_POWERON:    result = "Power-on"; break;
@@ -40,6 +39,23 @@ String getResetReason() {
 
 }
 
+bool mustClearRtcMemory() {
+  esp_reset_reason_t reason = esp_reset_reason();
+  switch (reason) {
+    // case ESP_RST_EXT:
+    case ESP_RST_SW:
+    case ESP_RST_PANIC:
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:
+    case ESP_RST_DEEPSLEEP:
+    // case ESP_RST_SDIO:
+      return false;
+    default:
+      return true;
+  }
+}
+
 RTC_NOINIT_ATTR uint32_t lastSoftwareResetReason;
 
 void clearSoftwareResetReason() {
@@ -53,6 +69,9 @@ void setSoftwareResetReason(uint32_t reason) {
 uint32_t getSoftwareResetReason() {
   return lastSoftwareResetReason;
 }
+
+// #include <nvs.h>
+// #include <nvs_flash.h>
 
 // void ensureNvs() {
 //   esp_err_t err = nvs_flash_init();

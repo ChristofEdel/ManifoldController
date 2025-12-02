@@ -2,6 +2,7 @@
 #define __ESPTOOLS_H__
 
 #include <Arduino.h>
+bool mustClearRtcMemory();
 String getResetReason();
 void softwareReset(uint32_t reason);
 void softwareAbort(uint32_t reason);

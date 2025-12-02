@@ -135,6 +135,10 @@ void setup() {
   oneWireSensors.setup(oneWirePin);
   valveManager.setup();
   valveManager.setRooomSetpoint(Config.getRoomSetpoint());
+  if (mustClearRtcMemory()) {
+    lastKnownFlowSetpoint = 0;
+    lastKownValvePosition = 0;
+  }
   if (lastKnownFlowSetpoint > 1) { // sometimes after reset this value is -0.0
     MyLog.printf("Initialising flow setpoint to %.1f degrees\n", lastKnownFlowSetpoint);
     valveManager.setFlowSetpoint(lastKownValvePosition);
