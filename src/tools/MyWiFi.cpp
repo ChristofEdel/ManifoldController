@@ -85,6 +85,15 @@ void CMyWiFi::printStatus() {
   MyLog.println(" dBm");
 }
 
+static void getSdFatdateTime(uint16_t* fatDate, uint16_t* fatTime) {
+    time_t now = time(nullptr);
+    struct tm t;
+    localtime_r(&now, &t);
+
+    *fatDate = FAT_DATE(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+    *fatTime = FAT_TIME(t.tm_hour, t.tm_min, t.tm_sec);
+}
+
 bool CMyWiFi::updateRtcFromTimeServer(CMyRtc *rtc) {
 
   NTPClient timeClient(this->m_udp);    // a NTP client to obtain the time
@@ -95,6 +104,7 @@ bool CMyWiFi::updateRtcFromTimeServer(CMyRtc *rtc) {
     time_t newUnixTime = timeClient.getEpochTime();
     time_t currentUnixTime = rtc->getTime().getUnixTime();
     timeClient.end();
+    FsDateTime::setCallback(getSdFatdateTime);
 
     long diff = newUnixTime - currentUnixTime;
     if (diff == 0 || abs(diff) == 1) {
@@ -120,6 +130,7 @@ bool CMyWiFi::updateRtcFromTimeServer(CMyRtc *rtc) {
     timeClient.end();
     return false;
   }
+
 }
 
 CMyWiFi MyWiFi;

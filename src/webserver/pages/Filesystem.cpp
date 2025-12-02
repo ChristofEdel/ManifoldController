@@ -49,47 +49,103 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest *request, const
   request->send(response);
 }
 
+struct DirectoryEntry {
+    String name;
+    uint16_t date;
+    uint16_t time;
+    bool isDirectory;
+    double sizeKb;
+    DirectoryEntry(FsFile &file) {
+      char nameBuffer[64];
+      file.getName(nameBuffer, sizeof(nameBuffer));
+      name = nameBuffer;
+      sizeKb = file.size()/1024.0;
+      isDirectory= file.isDirectory();
+      if (
+        isDirectory
+        || !file.getModifyDateTime(&date, &time)
+      ) {
+        date=0; time = 0;
+      }
+    }
+    const char *formatDate(char *buf, size_t len) {
+      if (date == 0) {
+        buf[0] = '\0';
+      }
+      else {
+        uint16_t y = ((date >> 9) & 0x7F) + 1980;
+        uint8_t  m = (date >> 5) & 0x0F;
+        uint8_t  d = date & 0x1F;
+
+        uint8_t  hh = time >> 11;
+        uint8_t  mm = (time >> 5) & 0x3F;
+        uint8_t  ss = (time & 0x1F) * 2;
+
+        snprintf(buf, len, "%02u/%02u/%04u %02u:%02u:%02u", d, m, y, hh, mm, ss);
+      }
+      return buf;
+    }
+};
+
 void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const String &path) {
+
+  // REad the directory information
+  std::vector<DirectoryEntry> entries;
   if (this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
-    AsyncResponseStream *response = startHttpHtmlResponse(request);
-    HtmlGenerator html(response);
-    html.navbar(NavbarPage::Files);
-    response->println("<div class='navbar-border'></div>");
+    // Collect all files in the directory
 
     FsFile dir = this->m_sd->open("/", O_RDONLY);
     if (!dir.isOpen()) {
-      response->println("Unable to open directory");
+      request->send(400, "text/plain", "Unable to open directory");
+      return;
     }
-    else if (!dir.isDir()) {
-      response->print(path);
-      response->println(" is not a directory");
+
+    if (!dir.isDir()) {
+      request->send(400, "text/plain", "Not a directory");
+      dir.close();
+      return;
     }
-    else {
-      FsBaseFile file; 
-      char nameBuffer[100];
-      response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th></tr></thead><tbody>");
-      while (file.openNext(&dir, O_RDONLY)) {
-        // indent for dir level
-        if (!file.isHidden()) {
-          file.getName(nameBuffer,sizeof(nameBuffer));
-          nameBuffer[sizeof(nameBuffer)-1] = '\0';
-          response->print("<tr><td><a href='/files/");
-          response->print(nameBuffer);
-          response->print("'>");
-          response->print(nameBuffer);
-          response->println("</a></td><td class='right'>");
-          response->print(file.fileSize() / 1024.0);
-          response->println("</a></td></tr>");
-        }
-        file.close();
-      }
+
+    FsFile file;
+    while (file.openNext(&dir, O_RDONLY)) {
+      if (file.isHidden()) continue;
+      entries.push_back(DirectoryEntry(file));
+      file.close();
     }
-    response->println("</tbody></table>");
+    dir.close();
+
     this->m_sdMutex->unlock();
-    finishHttpHtmlResponse(response);
-    request->send(response);
   }
+
+  // Sort by descending timestamp, with directories on top
+
+  auto cmp = [](const DirectoryEntry &a, const DirectoryEntry &b)
+  {
+    if (a.isDirectory != b.isDirectory) return a.isDirectory; // directories first
+    if (a.date != b.date) return a.date > b.date; // newest first
+    if (a.time != b.time) return a.time > b.time; // newest first
+    return a.name > b.name;
+  };
+
+  std::sort(entries.begin(), entries.end(), cmp);
+
+  // Now print HTML
+  AsyncResponseStream *response = startHttpHtmlResponse(request);
+  HtmlGenerator html(response);
+  html.navbar(NavbarPage::Files);
+  response->println("<div class='navbar-border'></div>");
+  response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th><th>Modified</th></tr></thead><tbody>");
+  for (DirectoryEntry &e : entries)
+  {
+    response->print("<tr>");
+    response->printf("<td><a href='/files/%s'>%s</a></td>", e.name.c_str(), e.name.c_str());
+    response->printf("<td class='right'>%.0f</td>", e.sizeKb);
+
+    char buf[25];
+    response->printf("<td>%s</td>", e.formatDate(buf, sizeof(buf)));
+    response->println("</tr>");
+  }
+  response->println("</tbody></table>");
+  finishHttpHtmlResponse(response);
+  request->send(response);
 }
-
-
-
