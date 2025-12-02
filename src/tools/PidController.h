@@ -28,10 +28,6 @@ struct PidControllerState {
   double proportionalTerm;
   double integralTerm;
   double derivativeTerm;
-
-  bool constrain;
-  double minOut;
-  double maxOut;
 };
 
 class PidController {

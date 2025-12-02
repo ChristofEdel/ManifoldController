@@ -50,14 +50,21 @@ void PidController::configureSeconds(
 
 void PidController::resetState(double initialOutput) {
     this->m_state.first = true;
+    this->m_state.previousTime = 0;
+
     this->m_state.error = 0;
+    this->m_state.previousError = 0;
     if (this->m_config.integralGain) {
         this->m_state.cumulativeError = initialOutput / this->m_config.integralGain;
     }
     else {
         this->m_state.cumulativeError = 0;
     }
-    this->m_state.previousTime = 0;
+
+    this->m_state.proportionalTerm = 0;
+    this->m_state.integralTerm = this->m_config.integralGain * this->m_state.cumulativeError;
+    this->m_state.derivativeTerm = 0;
+
 }
 
 void PidController::setInput(double input) {

@@ -50,8 +50,8 @@ MyMutex sdCardMutex;
 #define SD_CONFIG SdSpiConfig(sdCardCsPin, SD_SCK_MHZ(50))
 
 // The valve position (preserved across resets)
-RTC_DATA_ATTR double lastKownValvePosition;
-
+RTC_NOINIT_ATTR double lastKownValvePosition;
+RTC_NOINIT_ATTR double lastKnownFlowSetpoint;
 
 void checkForNewSensors();
 void readAndLogSensors();
@@ -64,7 +64,7 @@ void triggerValveControls();
 
 void setup() {
   esp_log_level_set("*", ESP_LOG_ERROR);
-  
+
   // Get rid of all watchdogs - they cause problems since OTA was added.
   disableCore0WDT();
   disableCore1WDT();
@@ -136,7 +136,10 @@ void setup() {
   valveManager.setup();
   // valveManager.setRooomSetpoint(Config.getRoomSetpoint());
   valveManager.setFlowSetpoint(Config.getFlowSetpoint());
-  valveManager.setValvePosition(lastKownValvePosition);
+  if (lastKownValvePosition > 1) { // sometimes after reset this value is -0.0
+    MyLog.printf("Initialising valve position to %.0f%%\n", lastKownValvePosition);
+    valveManager.setValvePosition(lastKownValvePosition);
+  }
   MyWebServer.setup(&sd, &sdCardMutex, &sensorMap, &valveManager, &oneWireSensors);
   ledBlinkSetup();
 
@@ -445,6 +448,7 @@ void valveControlTask(void *parameter) {
         dummyParameter = tmp;
       }
       manageValveControls();
+      lastKnownFlowSetpoint = valveManager.outputs.targetFlowTemperature;
       lastKownValvePosition = valveManager.outputs.targetValvePosition;
       readAndLogSensors();
     }
