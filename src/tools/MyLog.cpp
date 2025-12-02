@@ -4,7 +4,7 @@
 
 bool CMyLog::lockSdCard() {
   if(!this->m_sdMutex) return true;
-  return this->m_sdMutex->lock();
+  return this->m_sdMutex->lock(__PRETTY_FUNCTION__);
 }
 void CMyLog::unlockSdCard() {
   if(this->m_sdMutex) this->m_sdMutex->unlock();
@@ -12,7 +12,7 @@ void CMyLog::unlockSdCard() {
 
 // Single-byte write
 size_t CMyLog::write(uint8_t c) {
-  if (this->m_loggerMutex->lock()) {
+  if (this->m_loggerMutex->lock(__PRETTY_FUNCTION__)) {
     this->handleStartOfLine();
     if (this->m_logToSerial) MyDebugLog.write(c);
     if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.write(c); logFile.close(); } this->unlockSdCard(); }
@@ -26,7 +26,7 @@ size_t CMyLog::write(uint8_t c) {
 
 // Buffer write
 size_t CMyLog::write(const uint8_t *buffer, size_t size) {
-  if (this->m_loggerMutex->lock()) {
+  if (this->m_loggerMutex->lock(__PRETTY_FUNCTION__)) {
     this->handleStartOfLine();
     if (this->m_logToSerial) MyDebugLog.write(buffer, size);
     if (this->m_logToSdCard && this->lockSdCard()) { FsFile logFile = this->openLogFile(); if (logFile) { logFile.write(buffer, size); logFile.close(); } this->unlockSdCard(); }

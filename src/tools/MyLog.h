@@ -24,7 +24,7 @@ class CMyLog : public Print {
     void unlockSdCard();
 
   public:
-    CMyLog() : m_loggerMutex(new MyMutex()) {};
+    CMyLog() : m_loggerMutex(new MyMutex("CNyLog::m_loggerMutex")) {};
 
     void enableSdCardLog(const char *logFileName, SdFs *sdFs, MyMutex *sdMutex);
     void enableSerialLog();

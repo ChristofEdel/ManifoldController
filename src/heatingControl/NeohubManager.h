@@ -125,7 +125,7 @@ class CNeohubManager {
         static void loopTask(void *parameter);
 
         // Mutex to avoid parallel use by separate tasks
-        MyMutex m_neohubMutex;
+        MyMutex m_neohubMutex = MyMutex("CNeohubManager::m_neohubMutex");
 
 };
 

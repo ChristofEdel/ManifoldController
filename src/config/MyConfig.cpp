@@ -45,7 +45,7 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
 
     // Serialize to SD card
     MyLog.print("Saving configuration...");
-    if (fsMutex.lock()) {
+    if (fsMutex.lock(__PRETTY_FUNCTION__)) {
         FsFile file = fs.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
         if (!file) {
             MyLog.print("Failed to open config file for writing: ");
@@ -65,7 +65,7 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
     MyLog.print("Loading configuration...");
 
     String contents;
-    if (fsMutex.lock()) {
+    if (fsMutex.lock(__PRETTY_FUNCTION__)) {
         FsFile file = fs.open(filename, O_RDONLY);
         if (!file) { 
             fsMutex.unlock();

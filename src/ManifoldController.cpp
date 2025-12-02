@@ -46,7 +46,7 @@ ValveManager valveManager;
 
 // SD Card access
 SdFs sd;
-MyMutex sdCardMutex;
+MyMutex sdCardMutex("::sdCardMutex");
 #define SD_CONFIG SdSpiConfig(sdCardCsPin, SD_SCK_MHZ(50))
 
 // The valve position (preserved across resets)
@@ -264,7 +264,7 @@ void readAndLogSensors() {
   oneWireSensors.readAllSensors();
   vTaskPrioritySet(NULL, prio);
 
-  if (sdCardMutex.lock()) {
+  if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
     char * dataFileName = getSensorDataFileName();
 
     bool printHeaderLine = !sd.exists(dataFileName);
@@ -292,7 +292,7 @@ void readAndLogSensors() {
 }
 
 void logSensorHeaderLine() {
-  if (sdCardMutex.lock()) {
+  if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
     char * dataFileName = getSensorDataFileName();
     FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
     if (dataFile && dataFile.isOpen()) {

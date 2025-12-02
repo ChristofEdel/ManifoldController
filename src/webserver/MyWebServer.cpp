@@ -65,7 +65,7 @@ void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
   fileName = fileName.substring(6);
 
   // Open the file briefly and check for existence and what it is
-  if (!this->m_sdMutex->lock()) {
+  if (!this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
       request->send(400, "text/plain", "Unable to access SD card");
       return;
   }

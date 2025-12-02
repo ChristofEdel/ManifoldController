@@ -6,7 +6,7 @@
 size_t CMyWebServer::sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t fromPosition) {
 
   // Acquire a lock. If we can't we end this file.
-  if (!this->m_sdMutex->lock()) return 0;
+  if (!this->m_sdMutex->lock(__PRETTY_FUNCTION__)) return 0;
 
   // Open the file and stop if we can't
   FsFile file = this->m_sd->open(context->fileName, O_RDONLY);
@@ -50,7 +50,7 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest *request, const
 }
 
 void CMyWebServer::respondWithDirectory(AsyncWebServerRequest *request, const String &path) {
-  if (this->m_sdMutex->lock()) {
+  if (this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
     AsyncResponseStream *response = startHttpHtmlResponse(request);
     HtmlGenerator html(response);
     html.navbar(NavbarPage::Files);

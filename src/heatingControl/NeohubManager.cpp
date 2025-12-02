@@ -68,7 +68,7 @@ bool CNeohubManager::loadZoneDataFromNeohub(NeohubZoneData *data) {
 bool CNeohubManager::ensureNeohubConnection() {
 
         
-    if (m_neohubMutex.lock("NeohubConnection")) {
+    if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
 
         // we are connected --> done
         if (this->m_connection && this->m_connection->isConnected()) {
@@ -125,7 +125,7 @@ String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /
     bool error = false;
     String result;
 
-    if (m_neohubMutex.lock("NeohubCommand")) {
+    if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
 
         this->m_connection->send(
             command,

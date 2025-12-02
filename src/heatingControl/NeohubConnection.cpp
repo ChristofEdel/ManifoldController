@@ -39,7 +39,7 @@ bool NeohubConnection::send (
 
 
     // Do not do anythinh while processing in the loop is ongoing
-    if (m_loopMutex.lock("NeohubConnection::send")) {
+    if (m_loopMutex.lock(__PRETTY_FUNCTION__)) {
 
         // If there are no live conversations, send immediately
         if (m_conversations.empty()) {
@@ -61,7 +61,7 @@ bool NeohubConnection::send (
         else {
             m_conversations.push_back(c);
         }
-        m_loopMutex.unlock("NeohubConnection::send");
+        m_loopMutex.unlock();
     }
     return success;
 }
@@ -223,11 +223,11 @@ void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t * payload, s
 
 TaskHandle_t NeohubConnection::m_loopTaskHandle = 0;
 std::unordered_set<NeohubConnection *> NeohubConnection::m_liveConnections;
-MyMutex NeohubConnection::m_loopMutex;
+MyMutex NeohubConnection::m_loopMutex("NeohubConnection::m_loopMutex");
 
 void NeohubConnection::loopTask(void *parameter) {
     for(;;) {
-        if (m_loopMutex.lock("NeohubConnection::loopTask")) {
+        if (m_loopMutex.lock(__PRETTY_FUNCTION__)) {
             for (auto iterator = m_liveConnections.begin(); iterator != m_liveConnections.end(); ) {
                 NeohubConnection *connection = *iterator;
                 if (connection->m_deleted) {
@@ -239,16 +239,16 @@ void NeohubConnection::loopTask(void *parameter) {
                     iterator++;
                 }
             }
-            m_loopMutex.unlock("NeohubConnection::loopTask");
+            m_loopMutex.unlock();
         }
         delay(10);
     }
 }
 
 void NeohubConnection::addToLoopTask() {
-    if (m_loopMutex.lock("NeohubConnection::addToLoopTask")) {
+    if (m_loopMutex.lock(__PRETTY_FUNCTION__)) {
         m_liveConnections.insert(this);
-        m_loopMutex.unlock("NeohubConnection::addToLoopTask");
+        m_loopMutex.unlock();
     }
 }
 
