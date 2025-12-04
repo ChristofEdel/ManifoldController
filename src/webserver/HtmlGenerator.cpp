@@ -1,5 +1,6 @@
 #include "HtmlGenerator.h"
-
+#include "commit.h"
+#include "version.h"
 
 void HtmlGenerator::text(const char *s){
     r->print(s);    // TODO: Should escape special characters and < here
@@ -112,6 +113,7 @@ void HtmlGenerator::navbar(NavbarPage activePage) {
     r->print("<div class='navbox"); if (activePage == NavbarPage::Files) r->print(" selected"); r->print("'><a href='/files'>Files</a></div>");
     r->print("<div class='navbox"); if (activePage == NavbarPage::Config) r->print(" selected"); r->print("'><a href='/config'>Config</a></div>");
     r->print("<div class='navbox"); if (activePage == NavbarPage::System) r->print(" selected"); r->print("'><a href='/config-system'>System</a></div>");    
+    r->print("<div class='version' title='"); r->print(COMMIT); r->print("'>"); r->print(VERSION); r->print("</div>");    
     r->print("</div>");
 }
 

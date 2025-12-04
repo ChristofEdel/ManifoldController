@@ -121,13 +121,20 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
 
       html.block("Sensor Names", [this, &html]{
         html.fieldTable( [this, &html] {
-          html.print("<thead></tr><th>Sensor Id</th><th>Name</th><th class='delete-header'></th></tr></thead>");
+          html.print("<thead></tr><th>Sensor Id</th><th>Temp.</th><th>Name</th><th class='delete-header'></th></tr></thead>");
           html.element("tbody", "class='dragDropList'", [this, &html]{
             int sensorCount = this->m_sensorMap->getCount();
             for (int i = 0; i < sensorCount; i++) {
               SensorMapEntry * entry = (*m_sensorMap)[i];
               String fieldParameter = "name='s-" + entry->id + "' type='text'";
               html.fieldTableRow(entry->id.c_str(), "class='handle'", [this, &html, fieldParameter, entry]{
+                html.print("<td id='"); html.print(entry->id.c_str()); html.print("-temp' class='has-data'>");
+                float temperature = SensorManager::SENSOR_NOT_FOUND;
+                Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
+                if (sensor) temperature = sensor->calibratedTemperature();
+                if (temperature == SensorManager::SENSOR_NOT_FOUND) html.print("???");
+                if (temperature > -50) html.print(String(temperature, 1).c_str());
+                html.print("</td>");
                 html.fieldTableInput(fieldParameter.c_str(), entry->name.c_str());
                 html.print("<td class='delete-row'></td>");
               });
@@ -160,6 +167,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
     html.print("<input type='submit' class='save-button' value='Save Changes'/>");
   }); // </form>
 
+  html.print("<script>setInterval(monitorPage_refreshData, 5000)</script>");
   finishHttpHtmlResponse(response);
   request->send(response);
 }

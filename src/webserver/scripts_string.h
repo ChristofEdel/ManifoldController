@@ -28,6 +28,22 @@ function renumberTable($table) {
 }
 
 $(function () {
+
+  /* Click on the version nhumber copies the commit ID into the clipboard */
+  $('.navbar > .version').on('click', function () {
+    var title = $(this).attr('title')
+    title = title.match(/^[A-Za-z0-9]+/)[0]
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(title);
+    } else {
+        // fallback
+        var tmp = $('<input>');
+        $('body').append(tmp);
+        tmp.val(title).select();
+        document.execCommand('copy');
+        tmp.remove();
+    }
+  });
   
   /* row deletion and addition for tables that support it*/
   $('.delete-row').on('click', function (e) {
@@ -93,6 +109,8 @@ $(function () {
     update: function (event, ui) {
       const $table = $(this).closest("table");
       renumberTable($table);
+      var inputName = $table.find('.template-row select').first().attr('name')
+      $table.find('select').attr('name', inputName);
     },
     sort: function (e, ui) {
       // get the insert row (if any)

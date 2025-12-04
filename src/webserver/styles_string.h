@@ -45,7 +45,7 @@ const char STYLES_CSS_STRING[] PROGMEM = R"RAW_STRING(
     gap: 5px;                 /* 5px between boxes */
 }
 
-.navbox {
+.navbar > .navbox {
     width: 5em;
     text-align: center;
     font-weight: bold;
@@ -55,19 +55,28 @@ const char STYLES_CSS_STRING[] PROGMEM = R"RAW_STRING(
     border-radius: 8px 8px 0 0;   /* rounded top corners only */
     padding: 5px;
 }
+.navbar > .version {
+    margin-left: auto;
+    align-self: flex-end;
+    display: flex;
+    align-items: flex-end;
+    font-size: small;
+    color: var(--bg-active);
+}
 
-.navbox a {
+.navbar > .navbox > a {
     color: var(--color-text-inactive);
     text-decoration: none;
     display: block;           /* full box is clickable */
 }
 
-.navbox.selected {
+.navbar > .navbox.selected {
     background: var(--bg-active);
 }
-.navbox.selected a {
+.navbar > .navbox.selected a {
     color: var(--color-text-active);
 }
+
 .navbar-border {
     border-top: var(--border-wide);
     margin-bottom: 5px;
