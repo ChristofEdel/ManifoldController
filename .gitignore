@@ -8,3 +8,4 @@ build/
 CMakeLists.txt
 /compile_commands.json
 /sdkconfig.arduino_nano_esp32*
+/src/commit.h
