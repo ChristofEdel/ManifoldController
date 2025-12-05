@@ -11,6 +11,7 @@
 #include "styles_string.h"
 #include "scripts_string.h"
 #include "NeohubManager.h"
+#include "EspTools.h"
 
 CMyWebServer MyWebServer;
 
@@ -46,7 +47,7 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
   this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithHeatingConfigPage(r); });
   this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->processHeatingConfigPagePost(r); });
   this->m_server.on(AsyncURIMatcher::exact("/tasks"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
-  this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { abort(); /* Force a crash to test crash logging */ });
+  this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
   this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
   this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
   this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
@@ -112,6 +113,7 @@ AsyncResponseStream *CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest *
   response->setCode(200);
   response->println("<!DOCTYPE HTML>");
   response->println("<html>");
+  response->println("<meta name='viewport' content='width=device-width, initial-scale=1'>");
   response->println("  <head>");
   response->println("    <link rel='icon' href='data:,'>");
   response->println("    <script src='https://code.jquery.com/jquery-3.7.1.min.js'></script>");

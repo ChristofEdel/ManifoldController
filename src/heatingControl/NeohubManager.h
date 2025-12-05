@@ -95,6 +95,7 @@ class CNeohubManager {
 
         // Direct connection to the neohub
         bool ensureNeohubConnection();
+        void reconnect();
         String neohubCommand(const String & command, int timeoutMillis = commandTimeoutMillis);
 
         static const int connectTimeoutMillis = 5000;

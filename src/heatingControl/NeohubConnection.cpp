@@ -21,7 +21,7 @@ bool NeohubConnection::close(int timeoutMillis /* = -1 */) {
 }
 
 bool NeohubConnection::isConnected() {
-    return this->m_websocketClient.isConnected();
+    return !this->m_deleted && this->m_websocketClient.isConnected();
 }
 
 bool NeohubConnection::send (

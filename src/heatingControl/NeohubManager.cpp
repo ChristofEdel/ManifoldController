@@ -117,6 +117,16 @@ bool CNeohubManager::ensureNeohubConnection() {
     return true;
 }
 
+void CNeohubManager::reconnect() {
+    if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
+        if (!this->m_connection) return;
+        this->m_connection->close();
+        this->m_connection->finish();
+        this->m_connection = nullptr;
+    }
+    ensureNeohubConnection();
+}
+
 String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /* = commandTimeoutMillis */) {
 
     if (!ensureNeohubConnection()) return emptyString;

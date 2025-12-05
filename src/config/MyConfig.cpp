@@ -7,6 +7,8 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
     JsonDocument configJson;
 
     configJson["hostname"]              = hostname;
+    configJson["neohubAddress"]         = neohubAddress;
+    configJson["neohubToken"]           = neohubToken;
 
     configJson["flowMaxSetpoint"]       = flowMaxSetpoint;
     configJson["flowMinSetpoint"]       = flowMinSetpoint;
@@ -89,6 +91,8 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
     }
 
     hostname = configJson["hostname"].as<String>();
+    neohubAddress = configJson["neohubAddress"].as<String>();
+    neohubToken = configJson["neohubToken"].as<String>();
 
     flowMaxSetpoint = configJson["flowMaxSetpoint"];
     flowMinSetpoint = configJson["flowMinSetpoint"];

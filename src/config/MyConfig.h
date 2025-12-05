@@ -11,6 +11,8 @@
 class CConfig {
     private:
         String hostname;
+        String neohubAddress;
+        String neohubToken;
 
         double flowMaxSetpoint;
         double flowMinSetpoint;
@@ -29,6 +31,8 @@ class CConfig {
 
     public:
         inline const String &getHostname()              const { return hostname; }; 
+        inline const String &getNeohubAddress()         const { return neohubAddress; }; 
+        inline const String &getNeohubToken()           const { return neohubToken; }; 
 
         inline double getFlowMaxSetpoint()              const { return flowMaxSetpoint; }; 
         inline double getFlowMinSetpoint()              const { return flowMinSetpoint; }; 
@@ -45,7 +49,9 @@ class CConfig {
         inline double getRoomProportionalGain()         const { return roomProportionalGain; };
         inline double getRoomIntegralMinutes()          const { return roomIntegralMinutes; };
 
-        inline void setHostname(const String &value)         { hostname = value;};
+        inline void setHostname(const String &value)         { hostname = value; };
+        inline void setNeohubAddress(const String &value)    { neohubAddress = value; }; 
+        inline void setNeohubToken(const String &value)      { neohubToken = value; }; 
 
         inline void setFlowMaxSetpoint(double value)         { flowMaxSetpoint = value; };
         inline void setFlowMinSetpoint(double value)         { flowMinSetpoint = value; };
