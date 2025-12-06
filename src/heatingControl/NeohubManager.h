@@ -103,8 +103,6 @@ class CNeohubManager {
 
     private:
         // Connecetion to Neohub
-        String m_url = "192.168.1.139";
-        String m_token = "6b4f25a5-9de5-460a-a3ac-5845d3fbe095";
         NeohubConnection *m_connection;
 
         // Vector with the data for all zones

@@ -70,9 +70,9 @@ class CConfig {
 
 
         void saveToSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, const SensorMap &sensorMap, CNeohubManager &neohub) const;
-        void loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, SensorMap &sensorMap, SensorManager *oneWireManager, CNeohubManager &neohub);
+        void loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, SensorMap &sensorMap, OneWireManager *oneWireManager, CNeohubManager &neohub);
 
-        void applyDefaults(SensorMap &sensorMap, SensorManager *oneWireManager);
+        void applyDefaults(SensorMap &sensorMap, OneWireManager *oneWireManager);
         void print(CMyLog &p) const;
 
 };

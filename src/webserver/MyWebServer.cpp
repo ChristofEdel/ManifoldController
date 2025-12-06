@@ -31,7 +31,7 @@ String methodToString(WebRequestMethodComposite m) {
   }
 }
 
-void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager * valveManager, SensorManager *sensorManager) {
+void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager * valveManager, OneWireManager *sensorManager) {
   this->m_sd = sd;
   this->m_sdMutex = sdMutex;
   this->m_sensorMap = sensorMap;
@@ -50,6 +50,7 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, Valve
   this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
   this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
   this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
+  this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_POST,[this](AsyncWebServerRequest *r) { this->executeCommand(r); }, nullptr, CMyWebServer::assemblePostBody);
   this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
   this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
   this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });

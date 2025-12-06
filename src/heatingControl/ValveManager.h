@@ -27,6 +27,9 @@ class ValveManager {
     bool m_valveInverted = false;
     bool m_dacInitialised = false;
 
+    bool m_manualValveControl = false;
+    double m_manualValvePosition;
+
   public:
     volatile ValveManagerInputs inputs;
     volatile ValveManagerOutputs outputs;
@@ -44,7 +47,6 @@ class ValveManager {
     // get the (intermediate) setpoint for the flow temperature
     double getFlowSetpoint() { return this->outputs.targetFlowTemperature; };
     void setFlowSetpointRange(double min, double max) { this->m_flowController.setOutputRange(min, max); };
-    void setFlowSetpoint(double setpoint) { this->m_flowController.setOutput(setpoint); this->m_valveController.setSetpoint(setpoint); };
 
     // Set the process variables that the controllers are managing
     void setInputs (
@@ -54,11 +56,21 @@ class ValveManager {
 
     // Calculate the outputs and send them to the control hardware
     void calculateValvePosition();
-    void sendOutputs();
+    double getValvePosition();
+    void sendCurrentOutput();
 
+    // Direct setting of a particular PID controller OUTPUT.
+    // "Debumps" the corresponding controller so it will initially hold that output 
+    void setFlowSetpoint(double setpoint) { this->m_flowController.setOutput(setpoint); this->m_valveController.setSetpoint(setpoint); };
     void setValvePosition(double position);
 
-    //
+    // Manual valve control. The controllers continue as normal, but the actual valve position 
+    // can be controlled by hand through the UI
+    void setManualValvePosition (double position) { m_manualValveControl = true;  m_manualValvePosition = position; }
+    void resumeAutomaticValveControl() { m_manualValveControl = false; this->sendCurrentOutput(); };
+    bool valveUnderManualControl() { return m_manualValveControl; };
+
+    // Information: get the individual components of the full PID output calculation 
     double getRoomProportionalTerm() { return this->m_flowController.getProportionalTerm(); };
     double getRoomIntegralTerm() { return this->m_flowController.getIntegralTerm(); };
     double getFlowProportionalTerm() { return this->m_valveController.getProportionalTerm(); };
@@ -67,6 +79,9 @@ class ValveManager {
     double getRoomIntegralGain() { return this->m_flowController.getIntegralGain(); };
     double getFlowIntegralGain() { return this->m_valveController.getIntegralGain(); };
 
+
+  private: 
+    void sendOutput (double valvePosition);
 
 };
 

@@ -63,7 +63,13 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           }
         });
         html.fieldTableRow("Valve", [this, &html]{
-          html.element("td", "id='valvePosition' class='has-data'", (String(this->m_valveManager->outputs.targetValvePosition,0) + "%").c_str());
+          html.element("td", "id='valvePosition' class='has-data'", (String(this->m_valveManager->getValvePosition(),0) + "%").c_str());
+          if (this->m_valveManager->valveUnderManualControl()) {
+            html.print("<td id='valveManualFlag' colspan=2 class='manual-control'>Manual Control</td>");
+          }
+          else {
+            html.print("<td id='valveManualFlag' colspan=2 class='manual-control' style='display: none'>Manual Control</td>");
+          }
         });
       });
     });
@@ -157,8 +163,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           int totalFailures = 0;
           for (int i = 0; i < sensorCount; i++) {
             SensorMapEntry * entry = (*m_sensorMap)[i];
-            Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
-            float temperature = SensorManager::SENSOR_NOT_FOUND;
+            OneWireSensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
+            float temperature = OneWireManager::SENSOR_NOT_FOUND;
             if (sensor) {
               temperature = sensor->calibratedTemperature();
               totalReadings += sensor->readings;
@@ -173,7 +179,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             html.print(entry->name.c_str());
             html.print("</th>");
             html.print("<td id='"); html.print(entry->id.c_str()); html.print("-temp' class='has-data'>");
-            if (temperature == SensorManager::SENSOR_NOT_FOUND) html.print("???");
+            if (temperature == OneWireManager::SENSOR_NOT_FOUND) html.print("???");
             if (temperature > -50) html.print(String(temperature, 1).c_str());
             html.print("</td>");
             if (sensor) {
@@ -229,13 +235,15 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     statusJson["flowIntegralTerm"] = this->m_valveManager->getFlowIntegralTerm();
   }
 
-  statusJson["valvePosition"]   = m_valveManager->outputs.targetValvePosition;
+  statusJson["valvePosition"]   = m_valveManager->getValvePosition();
+  statusJson["valveManualControl"]   = m_valveManager->valveUnderManualControl();
   
   int sensorCount = this->m_sensorMap->getCount();
 
-  for (int i = 0; i < sensorCount; i++) {
-      SensorMapEntry * entry = (*this->m_sensorMap)[i];
-      Sensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
+  int i = 0;
+  for (int sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
+      SensorMapEntry * entry = (*this->m_sensorMap)[sensorIndex];
+      OneWireSensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
       if (sensor) {
         statusJson["sensors"][i]["id"] = entry->id;
         statusJson["sensors"][i]["name"] = entry->name;
@@ -245,9 +253,11 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
         statusJson["sensors"][i]["noResponseErrors"] = sensor->noResponseErrors;
         statusJson["sensors"][i]["otherErrors"] = sensor->otherErrors;
         statusJson["sensors"][i]["failures"] = sensor->failures;
+        i++;
       }
   }
-  int i = 0;
+
+  i = 0;
   for (NeohubZone z: NeohubManager.getActiveZones()) {
     NeohubZoneData *d = NeohubManager.getZoneData(z.id);
     if (d) {

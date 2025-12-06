@@ -62,7 +62,7 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
     MyLog.println("done");
 }
 
-void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, SensorMap &sensorMap, SensorManager *oneWireManager, CNeohubManager &neohub) {
+void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, SensorMap &sensorMap, OneWireManager *oneWireManager, CNeohubManager &neohub) {
 
     MyLog.print("Loading configuration...");
 
@@ -140,7 +140,7 @@ void CConfig::print(CMyLog &p) const {
     p.printf("  Flow: %.1f-%.1f, Kp = %.1f, Ti = %.0f seconds\n", flowMinSetpoint, flowMaxSetpoint, flowProportionalGain, flowIntegralSeconds);
 }
 
-void CConfig::applyDefaults(SensorMap &sensorMap, SensorManager *oneWireManager) {
+void CConfig::applyDefaults(SensorMap &sensorMap, OneWireManager *oneWireManager) {
 
     this->roomSetpoint = 20.0;
     this->roomProportionalGain = 5.0;

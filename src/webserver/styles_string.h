@@ -307,6 +307,35 @@ table.center-all-td > tbody > tr > td {
 }
 
 /**********************************************************************************
+// Sliders
+*/
+
+td.slider {
+    display:flex; align-items:center; gap:8px;
+}
+
+.manual-control {
+    background-color: red;
+    color: white;
+    font-weight: bold;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.sensor-scan {
+    font-size: small;
+    color: var(--color-text-inactive);
+    padding-right: 5px;
+    padding-bottom: 2px;
+    text-decoration: none;
+    position: absolute; bottom: 0; right: 0;
+}
+.sensor-scan :visited {
+    color: var(--color-text-inactive);
+}
+
+
+/**********************************************************************************
 ** Buttons
 */
 
@@ -347,14 +376,13 @@ input.save-button {
     overflow: hidden;
     text-overflow: ellipsis;
     border-top: var(--border-wide);
-    /* same element as background */
+    position: relative;
 }
 
 .block-layout .content {
     flex: 1;
     padding: 8px;
     border-top: var(--border-wide);
-    /* same element as background */
 }
 
 .flex-wrap {

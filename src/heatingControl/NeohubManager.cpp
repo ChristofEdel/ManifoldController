@@ -1,5 +1,6 @@
 #include "NeohubManager.h"
 #include "MyLog.h"
+#include "MyConfig.h"
 
 extern CNeohubManager NeohubManager;
 
@@ -67,32 +68,53 @@ bool CNeohubManager::loadZoneDataFromNeohub(NeohubZoneData *data) {
 
 bool CNeohubManager::ensureNeohubConnection() {
 
-        
+    static bool noUrlReported = false;
+    static bool noTokenReported = false;
+
+    const String &url = Config.getNeohubAddress();
+    const String &token = Config.getNeohubToken();
+    if (url == "null" || url == "") {
+        if (!noUrlReported) {
+            MyLog.printf("Unable to connecet  to NeoHub - no URL: %s\n", url.c_str());
+            noUrlReported = true;
+        }
+        return false;
+    }
+    if (token == "null" || token == "") {
+        if (!noTokenReported) {
+            MyLog.printf("Unable to connecet to NeoHub - no token: %s\n", url.c_str());
+            noTokenReported = true;
+        }
+        return false;
+    }
+
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
 
         // we are connected --> done
         if (this->m_connection && this->m_connection->isConnected()) {
             m_neohubMutex.unlock();
+            noUrlReported = false;
+            noTokenReported = false;
             return true;
         }
 
         // Create connection object if necessary
         if (!this->m_connection) {
-            this->m_connection = new NeohubConnection(this->m_url, this->m_token);
+            this->m_connection = new NeohubConnection(url, token);
         }
 
         // Connect
-        MyLog.printf("Connecting to NeoHub %s\n", this->m_url.c_str());
-        this->m_connection->onConnect([this]() {
-            MyLog.printf("Connection to NeoHub %s established\n", this->m_url.c_str());
+        MyLog.printf("Connecting to NeoHub %s\n", url.c_str());
+        this->m_connection->onConnect([this, url]() {
+            MyLog.printf("Connection to NeoHub %s established\n", url.c_str());
         });
-        this->m_connection->onDisconnect([this]() {
-            MyLog.printf("Connection to NeoHub %s disconnected\n", this->m_url.c_str());
+        this->m_connection->onDisconnect([this, url]() {
+            MyLog.printf("Connection to NeoHub %s disconnected\n", url.c_str());
             this->m_connection->finish();
             this->m_connection = nullptr;
         });
-        this->m_connection->onError([this](String message) {
-            MyLog.printf("Error in NeoHub %s connection: %s\n", this->m_url.c_str(), message.c_str());
+        this->m_connection->onError([this, url](String message) {
+            MyLog.printf("Error in NeoHub %s connection: %s\n", url.c_str(), message.c_str());
         });
         this->m_connection->open();
 
@@ -100,14 +122,15 @@ bool CNeohubManager::ensureNeohubConnection() {
         unsigned long startMillis = millis();
         while (
             millis() - startMillis < connectTimeoutMillis           // until timeout
+            && this->m_connection                                   // or until deleted, e.g., by disconnect after error
             && !this->m_connection->isConnected()                   // or until connected
         ) delay(100);
 
         m_neohubMutex.unlock();
     }
 
-    if (!this->m_connection->isConnected()) {
-        MyLog.printf("Establishing connection to Neohub %s failed\n", this->m_url.c_str());
+    if (!this->m_connection || !this->m_connection->isConnected()) {
+        MyLog.printf("Establishing connection to Neohub %s failed\n", url.c_str());
         this->m_connection = nullptr;
         return false;
     }

@@ -95,7 +95,25 @@ void ValveManager::setValvePosition(double position) {
     this->m_valveController.setOutput(position);
 }
 
-void ValveManager::sendOutputs() {
+double ValveManager::getValvePosition() {
+    if (this->m_manualValveControl) {
+        return this->m_manualValvePosition;
+    }
+    else {
+        return this->outputs.targetValvePosition;
+    }
+}
+
+void ValveManager::sendCurrentOutput() {
+    if (this->m_manualValveControl) {
+        sendOutput(this->m_manualValvePosition);
+    }
+    else {
+        sendOutput(this->outputs.targetValvePosition);
+    }
+}
+
+void ValveManager::sendOutput(double position) {
     // If the DAC has not been initialised successfully, we try it once again here
     if (!m_dacInitialised) {
         m_dacInitialised = dac.begin() == 0;

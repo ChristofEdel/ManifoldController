@@ -23,6 +23,20 @@ function renumberTable($table) {
   });
 }
 
+function sendCommand(payload) {
+  $.ajax({
+    url: '/command',
+    method: 'POST',
+    contentType: 'application/json',
+    data: JSON.stringify(payload),
+    success: function (response) {
+      if (response && response.reload === true) {
+        location.reload();
+      }
+    }
+  });
+}
+
 $(function () {
 
   /* Click on the version nhumber copies the commit ID into the clipboard */
@@ -118,6 +132,49 @@ $(function () {
       }
     }
   }).disableSelection();
+
+  var $slider = $('#valveControlPositionSlider');
+  var $sliderValue = $('#valveControlPositionValue');
+  var $checkbox = $('#valveControlManual');
+
+  $checkbox.on('change', function (e) {
+      // Ignore programmatic changes (from slider logic)
+      if (!e.originalEvent) return;
+
+      var isChecked = $checkbox.is(':checked');
+      var automatic = !isChecked; // true if unchecked, false if checked
+
+      var value = parseInt($slider.val(), 10) || 0;
+      $sliderValue.text(value);
+
+      sendCommand({
+        command: 'SetValvePosition',
+        parameters: {
+          automatic: automatic,
+          position: value
+        }
+      });
+    });
+
+    $('#valveControlPositionSlider').on('change', function () {
+
+      var value = parseInt($slider.val(), 10) || 0;
+      $sliderValue.text(value);
+
+      // Ensure checkbox is checked; do not trigger its AJAX handler
+      if (!$checkbox.is(':checked')) {
+        $checkbox.prop('checked', true).triggerHandler('change');
+      }
+
+      sendCommand({
+        command: 'SetValvePosition',
+        parameters: {
+          automatic: false,
+          position: value
+        }
+      });
+    });
+
 });
 
 // Data refresh - used by both monitor and config pages
@@ -146,29 +203,34 @@ function monitorPage_refreshData() {
       $("#flowError").text(d);
 
       $("#valvePosition")  .text(fmt(data.valvePosition, 0) + "%");
-      data.sensors.forEach(function (sensor) {
-        $("#" + sensor.id + "-temp").text(fmt(sensor.temperature, 1))
-        $("#" + sensor.id + "-crc").text(fmt(sensor.crcErrors))
-        $("#" + sensor.id + "-nr").text(fmt(sensor.noResponseErrors))
-        $("#" + sensor.id + "-oe").text(fmt(sensor.otherErrors))
-        $("#" + sensor.id + "-f").text(fmt(sensor.failures))
-      })
-      data.zones.forEach(function (zone) {
-        $("#z" + zone.id + "-room-temp").text(fmt(zone.roomTemperature, 1))
-        $("#z" + zone.id + "-floor-temp").text(fmt(zone.foorTemperature, 1))
-        if (zone.roomOff) {
-          $("#z" + zone.id + "-room-temp").closest("td").addClass("off");
-        }
-        else {
-          $("#z" + zone.id + "-room-temp").closest("td").removeClass("off");
-        }
-        if (zone.floorOff) {
-          $("#z" + zone.id + "-floor-temp").closest("td").addClass("off");
-        }
-        else {
-          $("#z" + zone.id + "-floor-temp").closest("td").removeClass("off");
-        }
-      })
+      $("#valveManualFlag").toggle(data.valveManualControl)
+      if (data.sensors) {
+        data.sensors.forEach(function (sensor) {
+          $("#" + sensor.id + "-temp").text(fmt(sensor.temperature, 1))
+          $("#" + sensor.id + "-crc").text(fmt(sensor.crcErrors))
+          $("#" + sensor.id + "-nr").text(fmt(sensor.noResponseErrors))
+          $("#" + sensor.id + "-oe").text(fmt(sensor.otherErrors))
+          $("#" + sensor.id + "-f").text(fmt(sensor.failures))
+        })
+      }
+      if (data.zones) {
+        data.zones.forEach(function (zone) {
+          $("#z" + zone.id + "-room-temp").text(fmt(zone.roomTemperature, 1))
+          $("#z" + zone.id + "-floor-temp").text(fmt(zone.foorTemperature, 1))
+          if (zone.roomOff) {
+            $("#z" + zone.id + "-room-temp").closest("td").addClass("off");
+          }
+          else {
+            $("#z" + zone.id + "-room-temp").closest("td").removeClass("off");
+          }
+          if (zone.floorOff) {
+            $("#z" + zone.id + "-floor-temp").closest("td").addClass("off");
+          }
+          else {
+            $("#z" + zone.id + "-floor-temp").closest("td").removeClass("off");
+          }
+        })
+      }
     },
     error: function (xhr, status)  {
       $(".has-data").text("");

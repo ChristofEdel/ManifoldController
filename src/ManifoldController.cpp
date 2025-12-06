@@ -2,7 +2,7 @@
 #include "MyWiFi.h"               // WiFi access
 #include "MyLog.h"                // Logging to serial and, if available, SD card
 #include "MyRtc.h"                // Real time clock
-#include "OneWireSensorManager.h" // OneWire temperature sensor reading and management
+#include "OneWireManager.h" // OneWire temperature sensor reading and management
 #include "webserver/MyWebServer.h"// Request handing and web page generator
 #include "SensorMap.h"            // Sensor name mapping
 #include "MemDebug.h"
@@ -53,7 +53,6 @@ MyMutex sdCardMutex("::sdCardMutex");
 RTC_NOINIT_ATTR double lastKownValvePosition;
 RTC_NOINIT_ATTR double lastKnownFlowSetpoint;
 
-void checkForNewSensors();
 void readSensors();
 void logSensors();
 String getSensorHeaderLine();
@@ -134,6 +133,10 @@ void setup() {
   // Initialisations for several modules
   setupOta();
   oneWireSensors.setup(oneWirePin);
+  for (int i = 0; i < sensorMap.getCount(); i++) {
+    oneWireSensors.addKnownSensor(sensorMap[i]->id.c_str());
+  }
+
   valveManager.setup();
   valveManager.setRooomSetpoint(Config.getRoomSetpoint());
   if (mustClearRtcMemory()) {
@@ -162,7 +165,6 @@ void loop() {
 
   // How often we do what
   const unsigned long timeSyncInterval             = 60 * 60 * 1000; // Synchronise time every hour
-  const unsigned long sensorCheckInterval          = 60000;          // Check for new or removed sensors
   const unsigned long controlLoopInterval          = 1000;           // Read sensors and set control vale poistion
   const unsigned long logFileInterval              = 5000;           // log sensor and control values
   const unsigned long memoryCheckInterval          = 10000;          // Check for possible memory leaks
@@ -171,7 +173,6 @@ void loop() {
   
   // When we last did that
   static unsigned long lastTimeSync = 0;
-  static unsigned long lastSensorCheck = 0;
   static unsigned long lastControlLoop = 0;
   static unsigned long lastLogFile = 0;
   static unsigned long lastMemoryCheck = 0;
@@ -189,22 +190,17 @@ void loop() {
     }
   }
 
-  if (first || timeNow - lastSensorCheck >= sensorCheckInterval) {
-    lastSensorCheck = timeNow;
-    checkForNewSensors();
-    if (dayChanged()) {
-      logSensorIssues();
-    }
-  }
-
   if (first || timeNow - lastControlLoop >= controlLoopInterval) {
     lastControlLoop = timeNow;
-    if (first || timeNow - lastLogFile >= memoryCheckInterval) {
+    if (first || timeNow - lastLogFile >= logFileInterval) {
       lastLogFile = timeNow;
       triggerValveControls(true); // emit a log line
     }
     else {
       triggerValveControls(false);  // no log line
+    }
+    if (dayChanged()) {
+      logSensorIssues();
     }
   }
 
@@ -248,18 +244,6 @@ bool dayChanged() {
     return changed;
 }
 
-void checkForNewSensors() {
-  // Add any new OneWire sensors to the map if they are not there
-  oneWireSensors.scanForSensors();
-  for (int i = 0; i < oneWireSensors.getCount(); i++) {
-    const char *id = oneWireSensors[i].id;
-    if (sensorMap.getNameForId(id).isEmpty()) {
-      sensorMap.setNameForId(id, id);
-    }
-  }
-  oneWireSensors.readAllSensors();
-}
-
 char sensorDataFileName[] = "Sensor Values yyyy-mm-dd.csv";
 char * getSensorDataFileName() {
   sprintf(sensorDataFileName, "Sensor Values %s.csv", MyRtc.getTime().getDateText().c_str());
@@ -272,7 +256,6 @@ void readSensors() {
   vTaskPrioritySet(NULL, 3);
   oneWireSensors.readAllSensors();
   vTaskPrioritySet(NULL, prio);
-
 
 }
 void logSensors() {
@@ -383,8 +366,8 @@ String getSensorLogLine() {
       if (entry->id == inputSensorId) continue;
       if (entry->id == flowSensorId) continue;
       if (entry->id == returnSensorId) continue;
-      Sensor * sensor = oneWireSensors.getSensor(entry->id.c_str());
-      float temperature = SensorManager::SENSOR_NOT_FOUND;
+      OneWireSensor * sensor = oneWireSensors.getSensor(entry->id.c_str());
+      float temperature = OneWireManager::SENSOR_NOT_FOUND;
       if (sensor) {
         temperature = sensor->calibratedTemperature();
       }
@@ -494,7 +477,7 @@ void manageValveControls() {
 
   valveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);  
   valveManager.calculateValvePosition();
-  valveManager.sendOutputs();
+  valveManager.sendCurrentOutput();
 
   lastKnownFlowSetpoint = valveManager.outputs.targetFlowTemperature;
   lastKownValvePosition = valveManager.outputs.targetValvePosition;
@@ -600,7 +583,7 @@ void startValveControlTask() {
 //   // float returnTemp = oneWireSensors.getCalibratedTemperature(Config.getReturnSensorId().c_str());
 //   valveManager.setInputs(inputTemperature, measuredFlowTemperature, returnTemperature);  
 //   valveManager.calculateValvePosition();
-//   valveManager.sendOutputs();
+//   valveManager.sendCurrentOutputs();
 //   Serial.printf(
 //     "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf (calculated flow: %0.1lf)\n", 
 //     inputTemperature, 

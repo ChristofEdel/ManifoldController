@@ -54,21 +54,29 @@ void PidController::resetState() {
     this->m_state.first = true;
     this->m_state.previousInput = 0;
     this->m_state.previousTime = 0;
-    this->m_state.error = 0;
 
-    // calculate an appropriate cumulative error to achieve
-    // the initial output
+    // If we don't have a sensible existing input, we do nothing else
+    if (this->m_input == NeohubZoneData::NO_TEMPERATURE) {
+        this->m_state.error = 0;
+        this->m_state.cumulativeError = 0;
+        this->m_state.proportionalTerm = 0;
+        this->m_state.integralTerm = 0;
+        this->m_state.derivativeTerm = 0;
+        return;
+    }
+
+    // If we have a sensible input, we tweak the integral term so we achieve the current output
+    this->m_state.error = this->m_setpoint - this->m_input;
+    this->m_state.derivativeTerm = 0; 
+    this->m_state.proportionalTerm = this->m_config.proportionalGain * this->m_state.error;
     if (this->m_config.integralGain) {
-        this->m_state.cumulativeError = this->m_output / this->m_config.integralGain;
+        this->m_state.integralTerm = this->m_output - this->m_state.proportionalTerm - this->m_state.derivativeTerm;
+        this->m_state.cumulativeError = this->m_state.integralTerm / this->m_config.integralGain;
     }
     else {
+        this->m_state.integralTerm = 0;
         this->m_state.cumulativeError = 0;
     }
-    this->m_state.integralTerm = this->m_config.integralGain * this->m_state.cumulativeError;
-
-    // Proportional and derivative terms are zero
-    this->m_state.proportionalTerm = 0;
-    this->m_state.derivativeTerm = 0;
 
 }
 

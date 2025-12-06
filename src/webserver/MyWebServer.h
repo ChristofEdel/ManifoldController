@@ -6,7 +6,7 @@
 #include <ESPAsyncWebServer.h>
 #include "NeohubConnection.h"
 #include "MyWifi.h"
-#include "OneWireSensorManager.h" // OneWire sensor reading and management
+#include "OneWireManager.h" // OneWire sensor reading and management
 #include "SensorMap.h"            // Sensor name mapping
 #include "ValveManager.h"
 #include "MyMutex.h"
@@ -24,10 +24,10 @@ class CMyWebServer {
     MyMutex *m_sdMutex;
     SensorMap *m_sensorMap;
     ValveManager *m_valveManager;
-    SensorManager *m_sensorManager;
+    OneWireManager *m_sensorManager;
   public:
     CMyWebServer(void);
-    void setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager *valveManager, SensorManager *sensorManager);
+    void setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager *valveManager, OneWireManager *sensorManager);
 
   private:
       // Simple responses
@@ -61,6 +61,7 @@ class CMyWebServer {
 
       // json 
       void respondWithStatusData(AsyncWebServerRequest *response);
+      void executeCommand(AsyncWebServerRequest *response);
 
       // Other pages for debugging
       void respondWithTaskList(AsyncWebServerRequest *request);

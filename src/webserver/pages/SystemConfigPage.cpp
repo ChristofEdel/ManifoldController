@@ -5,6 +5,10 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
   HtmlGenerator html(response);
 
+  m_valveManager->resumeAutomaticValveControl();
+  // Instead of showing the current value on the page, we show "automatic"
+  // on the page and make sure the system behaves accordingly.
+
   html.navbar(NavbarPage::System);
 
   html.element("form", "method='post'", [this, &html]{
@@ -21,6 +25,20 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
           });
           html.fieldTableRow("Token", [&html]{
             html.fieldTableInput("name='nh_token' style='width: 20em'",Config.getNeohubToken().c_str());
+          });
+        });
+      });
+
+      html.block("Valve Test", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("Manual Control", [&html]{
+            html.element("td", "style='text-align: left'", "<input type='checkbox' id='valveControlManual'>");
+          });
+          html.fieldTableRow("Position", [&html]{
+            html.element("td", "style='text-align: left'", [&html] {
+              html.print("<input type='range' id='valveControlPositionSlider' min='0' max='100' value='0'>");
+              html.print("<span id='valveControlPositionValue'>0</span>");
+            });
           });
         });
       });
@@ -81,8 +99,6 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     response->addHeader("Location", "http://" + Config.getHostname() + ".local" + request->url());  
     request->send(response);
   }
-
-
 
 }
 
