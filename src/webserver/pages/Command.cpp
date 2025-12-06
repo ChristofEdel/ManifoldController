@@ -24,7 +24,9 @@ extern OneWireManager oneWireSensors;
 
 static AsyncWebServerResponse* makeCommandResponse(
     AsyncWebServerRequest* request, int responseCode,
-    const String& responseString) {
+    const String& responseString
+)
+{
     AsyncWebServerResponse* response = request->beginResponse(responseCode, "application/json", responseString);
     response->addHeader("Access-Control-Allow-Origin", "*");
     response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -32,7 +34,8 @@ static AsyncWebServerResponse* makeCommandResponse(
     return response;
 };
 
-void CMyWebServer::executeCommand(AsyncWebServerRequest* request) {
+void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
+{
     JsonDocument commandJson;
     JsonDocument responseJson;
     int responseCode = 200;

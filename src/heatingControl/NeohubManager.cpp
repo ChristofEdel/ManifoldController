@@ -1,31 +1,10 @@
 #include "NeohubManager.h"
-#include "MyLog.h"
+
 #include "MyConfig.h"
+#include "MyLog.h"
 
-extern CNeohubManager NeohubManager;
-
-NeohubZoneData * CNeohubManager::getZoneData(const String &name) {
-    if (this->m_zoneData.empty()) loadZoneNames();
-    
-    // Find the matching entry in the zone list
-    NeohubZoneData * result = nullptr;
-    for (NeohubZoneData & data: this->m_zoneData) {
-        if (data.zone.name == name) return &data;
-    }
-    return result;
-}
-
-NeohubZoneData * CNeohubManager::getZoneData(int id) {
-    if (this->m_zoneData.empty()) loadZoneNames();
-    
-    // Find the matching entry in the zone list
-    NeohubZoneData * result = nullptr;
-    for (NeohubZoneData & data: this->m_zoneData) {
-        if (data.zone.id == id) return &data;
-    }
-    return result;
-}
-
+// Store the data obtained from the Neohub in form of a JSON object
+// in this NeohubZoneData object
 void NeohubZoneData::storeZoneData(JsonVariant obj)
 {
     this->online = !obj["OFFLINE"].as<bool>();
@@ -49,30 +28,54 @@ void NeohubZoneData::storeZoneData(JsonVariant obj)
     }
 }
 
+// Clear the data and set it to "no data" values
+void NeohubZoneData::clear()
+{
+    roomTemperature = NO_TEMPERATURE;
+    roomTemperatureSetpoint = NO_TEMPERATURE;
+    demand = true;
 
-bool CNeohubManager::loadZoneDataFromNeohub(NeohubZoneData *data) {
-    if (!ensureNeohubConnection()) return false;
-    
-    String response = this->neohubCommand("{'INFO':'"+data->zone.name+"'}");
-    JsonDocument json;
-    DeserializationError error = deserializeJson(json, response);
-    if (error) {
-        MyLog.printf("Failed to deserialise JSON for INFO: %s\n", error.c_str());
-        return false;
-    }
+    floorTemperature = NO_TEMPERATURE;
+    floorLimitTriggered = false;
 
-    data->lastUpdated = time(nullptr);
-    data->storeZoneData(json["devices"][0]);
-    return false;
+    online = false;
 }
 
-bool CNeohubManager::ensureNeohubConnection() {
 
+// Get the data for the zone with the given name (if it exits)
+NeohubZoneData* CNeohubManager::getZoneData(const String& name)
+{
+    if (this->m_zoneData.empty()) loadZoneNames();
+
+    // Find the matching entry in the zone list
+    NeohubZoneData* result = nullptr;
+    for (NeohubZoneData& data : this->m_zoneData) {
+        if (data.zone.name == name) return &data;
+    }
+    return result;
+}
+
+// Get the data for the zone with the given id (if it exits)
+NeohubZoneData* CNeohubManager::getZoneData(int id)
+{
+    if (this->m_zoneData.empty()) loadZoneNames();
+
+    // Find the matching entry in the zone list
+    NeohubZoneData* result = nullptr;
+    for (NeohubZoneData& data : this->m_zoneData) {
+        if (data.zone.id == id) return &data;
+    }
+    return result;
+}
+
+// Ensure that the connection to the NeoHub exists.
+bool CNeohubManager::ensureNeohubConnection()
+{
     static bool noUrlReported = false;
     static bool noTokenReported = false;
 
-    const String &url = Config.getNeohubAddress();
-    const String &token = Config.getNeohubToken();
+    const String& url = Config.getNeohubAddress();
+    const String& token = Config.getNeohubToken();
     if (url == "null" || url == "") {
         if (!noUrlReported) {
             MyLog.printf("Unable to connecet  to NeoHub - no URL: %s\n", url.c_str());
@@ -89,7 +92,6 @@ bool CNeohubManager::ensureNeohubConnection() {
     }
 
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
-
         // we are connected --> done
         if (this->m_connection && this->m_connection->isConnected()) {
             m_neohubMutex.unlock();
@@ -116,14 +118,14 @@ bool CNeohubManager::ensureNeohubConnection() {
         this->m_connection->onError([this, url](String message) {
             MyLog.printf("Error in NeoHub %s connection: %s\n", url.c_str(), message.c_str());
         });
-        this->m_connection->open();
+        this->m_connection->connect();
 
         // Wait for connecetion
         unsigned long startMillis = millis();
         while (
-            millis() - startMillis < connectTimeoutMillis           // until timeout
-            && this->m_connection                                   // or until deleted, e.g., by disconnect after error
-            && !this->m_connection->isConnected()                   // or until connected
+            millis() - startMillis < connectTimeoutMillis  // until timeout
+            && this->m_connection                          // or until deleted, e.g., by disconnect after error
+            && !this->m_connection->isConnected()          // or until connected
         ) delay(100);
 
         m_neohubMutex.unlock();
@@ -140,18 +142,22 @@ bool CNeohubManager::ensureNeohubConnection() {
     return true;
 }
 
-void CNeohubManager::reconnect() {
+// Disconnect (if necessary) from the Neohub end reestablish the connection
+void CNeohubManager::reconnect()
+{
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
         if (!this->m_connection) return;
-        this->m_connection->close();
+        if (this->m_connection->isConnected())
+        this->m_connection->disconnect();
         this->m_connection->finish();
         this->m_connection = nullptr;
     }
     ensureNeohubConnection();
 }
 
-String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /* = commandTimeoutMillis */) {
-
+// Send a command to the Neohub and synchronously wait for the respnse
+String CNeohubManager::neohubCommand(const String& command, int timeoutMillis /* = commandTimeoutMillis */)
+{
     if (!ensureNeohubConnection()) return emptyString;
 
     bool done = false;
@@ -159,7 +165,6 @@ String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /
     String result;
 
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
-
         this->m_connection->send(
             command,
             [&done, &result](String response) {
@@ -170,16 +175,15 @@ String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /
                 result = message;
                 error = true;
             },
-            timeoutMillis
-        );
+            timeoutMillis);
 
         // Wait for response
         unsigned long startMillis = millis();
-        timeoutMillis += 100; // extra 100ms grace so we don't time out before the send above does
+        timeoutMillis += 100;  // extra 100ms grace so we don't time out before the send above does
         while (
-            millis() - startMillis < timeoutMillis          // until timeout
-            && !done && !error                              // or until completed
-        ) delay(100);
+            millis() - startMillis < timeoutMillis  // until timeout
+            && !done && !error                      // or until completed
+            ) delay(100);
         m_neohubMutex.unlock();
     }
 
@@ -197,13 +201,16 @@ String CNeohubManager::neohubCommand(const String & command, int timeoutMillis /
     return result;
 }
 
-void CNeohubManager::ensureZoneNames() {
+void CNeohubManager::ensureZoneNames()
+{
     if (m_zoneData.empty()) {
         loadZoneNames();
     }
 }
 
-void CNeohubManager::loadZoneNames() {
+// Load the names and ids of all zones from the Neohub
+void CNeohubManager::loadZoneNames()
+{
     if (!ensureNeohubConnection()) return;
 
     String response = neohubCommand("{ 'GET_ZONES': 0 }");
@@ -216,15 +223,15 @@ void CNeohubManager::loadZoneNames() {
 
     JsonObjectConst obj = json.as<JsonObjectConst>();
 
-    for (NeohubZoneData & data: this->m_zoneData) data.found = false;
+    for (NeohubZoneData& data : this->m_zoneData) data.found = false;
 
     for (JsonPairConst line : obj) {
         String name = line.key().c_str();
         int id = line.value().as<int>();
-        NeohubZoneData *data = this->getOrCreateZoneData(id, name);
+        NeohubZoneData* data = this->getOrCreateZoneData(id, name);
         data->found = true;
     }
-    for (auto iterator = this->m_zoneData.begin(); iterator != this->m_zoneData.end(); ) {
+    for (auto iterator = this->m_zoneData.begin(); iterator != this->m_zoneData.end();) {
         if (!iterator->found) {
             iterator = this->m_zoneData.erase(iterator);
         }
@@ -234,41 +241,108 @@ void CNeohubManager::loadZoneNames() {
     }
 }
 
-NeohubZoneData * CNeohubManager::getOrCreateZoneData(int id, const String &name){
-
-    for (NeohubZoneData & existingData: this->m_zoneData) {
+// Find a zone with the given Id, or add it if it already exists
+NeohubZoneData* CNeohubManager::getOrCreateZoneData(int id, const String& name)
+{
+    for (NeohubZoneData& existingData : this->m_zoneData) {
         if (existingData.zone.id == id) return &existingData;
     }
     this->m_zoneData.emplace_back();
-    NeohubZoneData *result = &this->m_zoneData.back();
+    NeohubZoneData* result = &this->m_zoneData.back();
     result->zone.id = id;
     result->zone.name = name;
     return result;
 }
 
-void CNeohubManager::loadZoneDataFromNeohub(bool all /* = false */) {
+// Add a zone to the list of the "active" zones, which are zones
+// used for temperature control
+void CNeohubManager::addActiveZone(const NeohubZone& z)
+{
+    for (NeohubZone az : m_activeZones) {
+        if (az.id == z.id && az.name == z.name) return;  // already there
+    }
+    m_activeZones.emplace_back(z);
+}
+
+// Check if the zone with the given id is an "active" zone
+bool CNeohubManager::hasActiveZone(int id)
+{
+    for (NeohubZone az : m_activeZones) {
+        if (az.id == id) return true;
+    }
+    return false;
+}
+
+// Add a zone to the list of zones which are monitored (display only)
+void CNeohubManager::addMonitoredZone(const NeohubZone& z)
+{
+    for (NeohubZone az : m_monitoredZones) {
+        if (az.id == z.id && az.name == z.name) return;  // already there
+    }
+    m_monitoredZones.emplace_back(z);
+}
+
+// Check if the zone with the given id is a monitored zone
+bool CNeohubManager::hasMonitoredZone(int id)
+{
+    for (NeohubZone az : m_monitoredZones) {
+        if (az.id == id) return true;
+    }
+    return false;
+}
+
+
+// Load the data for the active and monitored zones from the nehub
+// (or for all zones if the parameter all is set to ture)
+void CNeohubManager::loadZoneDataFromNeohub(bool all /* = false */)
+{
     this->ensureNeohubConnection();
 
     std::vector<String> zoneNames;
     if (all) {
-        for(NeohubZoneData &d : this->m_zoneData) {
+        for (NeohubZoneData& d : this->m_zoneData) {
             zoneNames.push_back(d.zone.name);
         }
     }
     else {
-        for(NeohubZone &z : this->m_activeZones) {
+        for (NeohubZone& z : this->m_activeZones) {
             zoneNames.push_back(z.name);
         }
-        for(NeohubZone &z : this->m_monitoredZones) {
+        for (NeohubZone& z : this->m_monitoredZones) {
             zoneNames.push_back(z.name);
         }
     }
-
     loadZoneDataFromNeohub(zoneNames);
 }
 
-static void _processZoneCommand (CNeohubManager *_this, const String &command) {
+static void _processZoneCommand(CNeohubManager* _this, const String& command);
 
+// Load the data for the given list of zones (given by name) from the neohub
+void CNeohubManager::loadZoneDataFromNeohub(std::vector<String>& zoneNames)
+{
+    String command;
+    int i = 1;
+    const int maxZonesPerRequest = 6;  // to avoid responses too long to handle by the
+                                       // websocket
+
+    for (String name : zoneNames) {
+        if (command == emptyString) command = "{'INFO':['";
+        command += name;
+        if (name != zoneNames.back() && i < maxZonesPerRequest) {
+            command += "','";
+            i++;
+        }
+        else {
+            command += "']}";
+            _processZoneCommand(this, command);
+            command = "";
+            i = 1;
+        }
+    }
+}
+
+static void _processZoneCommand(CNeohubManager* _this, const String& command)
+{
     String response = _this->neohubCommand(command);
     JsonDocument json;
     DeserializationError error = deserializeJson(json, response);
@@ -286,72 +360,25 @@ static void _processZoneCommand (CNeohubManager *_this, const String &command) {
     JsonArray arr = json["devices"].as<JsonArray>();
     for (JsonVariant obj : arr) {
         String name = obj["device"];
-        NeohubZoneData *data = _this->getZoneData(name);
+        NeohubZoneData* data = _this->getZoneData(name);
         if (data) {
             data->lastUpdated = time(nullptr);
             data->storeZoneData(obj);
         }
     }
-    
-}
-
-void CNeohubManager::loadZoneDataFromNeohub(std::vector<String> &zoneNames) {
-
-    String command;
-    int i = 1;
-    const int maxZonesPerRequest = 6;   // to avoid responses too long to handle by the 
-                                        // websocket
-
-    for (String name: zoneNames) {
-        if (command == emptyString) command = "{'INFO':['";
-        command += name;
-        if (name != zoneNames.back() && i < maxZonesPerRequest) {
-            command += "','";
-            i++;
-        }
-        else {
-            command += "']}";
-            _processZoneCommand(this, command);
-            command= "";
-            i = 1;
-        }
-    }
-
-}
-
-void CNeohubManager::addActiveZone(const NeohubZone &z) {
-    for (NeohubZone az: m_activeZones) {
-        if(az.id == z.id && az.name == z.name) return;  // already there
-    }
-    m_activeZones.emplace_back(z);
-}
-bool CNeohubManager::hasActiveZone(int id) {
-    for (NeohubZone az: m_activeZones) {
-        if(az.id == id) return true;
-    }
-    return false;
 }
 
 
-void CNeohubManager::addMonitoredZone(const NeohubZone &z) {
-    for (NeohubZone az: m_monitoredZones) {
-        if(az.id == z.id && az.name == z.name) return;  // already there
-    }
-    m_monitoredZones.emplace_back(z);
-}
-bool CNeohubManager::hasMonitoredZone(int id) {
-    for (NeohubZone az: m_monitoredZones) {
-        if(az.id == id) return true;
-    }
-    return false;
-}
-
-void CNeohubManager::loop() {
-
-    const unsigned long pollInterval      = 5000;     // How often we poll the zones (ms)
-    const unsigned long connectInterval   = 30000;    // How often we make sure the connection exists (ms)
-                                                      // Note that polling also ensures the connection
-                                                      // exists so this is for when no polling happens
+// Polling loop - load new zone data every 5 seonds and 
+// check the connectionexists every 30 seconds (if no zones are polled in the meantime)
+//
+// This loop is run in its own task
+void CNeohubManager::loop()
+{
+    const unsigned long pollInterval = 5000;      // How often we poll the zones (ms)
+    const unsigned long connectInterval = 30000;  // How often we make sure the connection exists (ms)
+                                                  // Note that polling also ensures the connection
+                                                  // exists so this is for when no polling happens
 
     static unsigned long lastPoll = 0;
     static unsigned long lastConnectionCheck = 0;
@@ -369,30 +396,30 @@ void CNeohubManager::loop() {
     }
 
     // use delay so we don't use too much CPU going round and round in circles...
-    delay (100);
+    delay(100);
 
     first = false;
 }
 
-void CNeohubManager::loopTask(void *parameter) {
-    CNeohubManager *_this = (CNeohubManager *) parameter;
+// The task calling the loop function repeatedly
+void CNeohubManager::loopTask(void* parameter)
+{
+    CNeohubManager* _this = (CNeohubManager*)parameter;
     for (;;) _this->loop();
 }
 
-void CNeohubManager::ensureLoopTask() {
+// Mae sure the loop task is running
+void CNeohubManager::ensureLoopTask()
+{
     if (this->m_loopTaskHandle) return;
     xTaskCreate(
-        CNeohubManager::loopTask, // Task function
-        "NeohubLoop",             // Task name
-        8096,                     // Stack size (bytes)
-        this,                     // Parameter to pass
-        1,                        // Task priority
-        &this->m_loopTaskHandle   // Task handle
+        CNeohubManager::loopTask,  // Task function
+        "NeohubLoop",              // Task name
+        8096,                      // Stack size (bytes)
+        this,                      // Parameter to pass
+        1,                         // Task priority
+        &this->m_loopTaskHandle    // Task handle
     );
-    
 }
 
 CNeohubManager NeohubManager;
-
-
-

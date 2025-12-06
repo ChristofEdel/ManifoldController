@@ -4,14 +4,17 @@
 #include "MyConfig.h"
 #include "PidController.h"
 
+// The inputs to the contol loops
 struct ValveManagerInputs {
   double roomTemperature;   // Room temperature used to regulate the flow
   double flowTemperature;   // Flow temperature used to regulate the valve
+                            // taken from the output of the room control
 
   double inputTemperature;      
   double returnTemperature;      
 };
 
+// The output of the control loops
 struct ValveManagerOutputs {
   double targetFlowTemperature;  // degrees C
   double targetValvePosition;    // 0..100 %
@@ -57,7 +60,7 @@ class ValveManager {
     // Calculate the outputs and send them to the control hardware
     void calculateValvePosition();
     double getValvePosition();
-    void sendCurrentOutput();
+    void sendCurrentValvePosition();
 
     // Direct setting of a particular PID controller OUTPUT.
     // "Debumps" the corresponding controller so it will initially hold that output 
@@ -67,7 +70,7 @@ class ValveManager {
     // Manual valve control. The controllers continue as normal, but the actual valve position 
     // can be controlled by hand through the UI
     void setManualValvePosition (double position) { m_manualValveControl = true;  m_manualValvePosition = position; }
-    void resumeAutomaticValveControl() { m_manualValveControl = false; this->sendCurrentOutput(); };
+    void resumeAutomaticValveControl() { m_manualValveControl = false; this->sendCurrentValvePosition(); };
     bool valveUnderManualControl() { return m_manualValveControl; };
 
     // Information: get the individual components of the full PID output calculation 
@@ -81,7 +84,7 @@ class ValveManager {
 
 
   private: 
-    void sendOutput (double valvePosition);
+    void sendValvePosition (double valvePosition);
 
 };
 

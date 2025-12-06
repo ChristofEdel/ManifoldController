@@ -15,6 +15,6 @@ void setupOta();
 #define SW_RESET_OUT_OF_MEMORY 0xabcabcab
 #define SW_RESET_OTA_UPDATE 0xdefdefde
 #define SW_RESET_PANIC_TEST 0x12344321
-
+#define SW_RESET_WEBSOCKET_ABORT 0x34561729
 
 #endif // __ESPTOOLS_H__

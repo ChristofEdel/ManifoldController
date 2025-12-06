@@ -5,6 +5,7 @@ DFRobot_GP8403 dac(&Wire,0x5f); // I2C address 0x58
 
 
 
+// Load the initial state of the valve manager. includes loadConfig()
 void ValveManager::setup()
 {
     int dacInitRetryCount = 3;
@@ -24,6 +25,7 @@ void ValveManager::setup()
 
 }
 
+// Load all parameters from the configuration file.
 void ValveManager::loadConfig() {
 
     this->m_flowController.setOutputRange(
@@ -45,6 +47,7 @@ void ValveManager::loadConfig() {
     this->m_valveInverted = Config.getFlowValveInverted();
 }
 
+// Set the process variables that the controllers are managing
 void ValveManager::setInputs(
     double roomTemperature, double flowTemperature, 
     double inputTemperature, double returnTemperature
@@ -55,6 +58,7 @@ void ValveManager::setInputs(
     this->inputs.returnTemperature = returnTemperature;
 };
 
+// Calculate the control loops outputs
 void ValveManager::calculateValvePosition() {
 
     // Initialisation bump avoidance - if we have no
@@ -91,6 +95,7 @@ void ValveManager::calculateValvePosition() {
     this->outputs.targetValvePosition = this->m_valveController.getOutput();
 }
 
+// Set the position of the valve and force the controller to start at that position
 void ValveManager::setValvePosition(double position) {
     this->m_valveController.setOutput(position);
 }
@@ -104,16 +109,17 @@ double ValveManager::getValvePosition() {
     }
 }
 
-void ValveManager::sendCurrentOutput() {
+void ValveManager::sendCurrentValvePosition() {
     if (this->m_manualValveControl) {
-        sendOutput(this->m_manualValvePosition);
+        sendValvePosition(this->m_manualValvePosition);
     }
     else {
-        sendOutput(this->outputs.targetValvePosition);
+        sendValvePosition(this->outputs.targetValvePosition);
     }
 }
 
-void ValveManager::sendOutput(double position) {
+
+void ValveManager::sendValvePosition(double position) {
     // If the DAC has not been initialised successfully, we try it once again here
     if (!m_dacInitialised) {
         m_dacInitialised = dac.begin() == 0;

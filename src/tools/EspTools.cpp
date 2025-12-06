@@ -69,6 +69,7 @@ String getResetReason() {
         case SW_RESET_OTA_UPDATE: result += " (OTA update)"; break;
         case SW_RESET_OUT_OF_MEMORY: result += " (out of memory)"; break;
         case SW_RESET_PANIC_TEST: result += " (test using /panic URL)"; break;
+        case SW_RESET_WEBSOCKET_ABORT: result += " (unexpected WebSocket data)"; break;
         default: result += " (unknown code 0x" + String(swReason, HEX) + ")"; break;
       }
     }

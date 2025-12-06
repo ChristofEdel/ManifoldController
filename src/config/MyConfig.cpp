@@ -1,45 +1,48 @@
 #include "MyConfig.h"
+
 #include "MyLog.h"
 
 CConfig Config;
 
-void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, const SensorMap &sensorMap, CNeohubManager &neohub) const {
+void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, const SensorMap& sensorMap, CNeohubManager& neohub) const
+{
     JsonDocument configJson;
 
-    configJson["hostname"]              = hostname;
-    configJson["neohubAddress"]         = neohubAddress;
-    configJson["neohubToken"]           = neohubToken;
+    configJson["hostname"]                 = hostname;
+    configJson["neohubAddress"]            = neohubAddress;
+    configJson["neohubToken"]              = neohubToken;
+    configJson["heatingControllerAddress"] = heatingControllerAddress;
 
-    configJson["flowMaxSetpoint"]       = flowMaxSetpoint;
-    configJson["flowMinSetpoint"]       = flowMinSetpoint;
+    configJson["flowMaxSetpoint"]          = flowMaxSetpoint;
+    configJson["flowMinSetpoint"]          = flowMinSetpoint;
 
-    configJson["flowSensorId"]          = flowSensorId;
-    configJson["inputSensorId"]         = inputSensorId;
-    configJson["returnSensorId"]        = returnSensorId;
+    configJson["flowSensorId"]             = flowSensorId;
+    configJson["inputSensorId"]            = inputSensorId;
+    configJson["returnSensorId"]           = returnSensorId;
 
-    configJson["flowProportionalGain"]  = flowProportionalGain;
-    configJson["flowIntegralSeconds"]   = flowIntegralSeconds;  
-    configJson["flowValveInverted"]     = flowValveInverted;
+    configJson["flowProportionalGain"]     = flowProportionalGain;
+    configJson["flowIntegralSeconds"]      = flowIntegralSeconds;  
+    configJson["flowValveInverted"]        = flowValveInverted;
 
-    configJson["roomSetpoint"]          = roomSetpoint;
-    configJson["roomProportionalGain"]  = roomProportionalGain;  
-    configJson["roomIntegralMinutes"]   = roomIntegralMinutes;
+    configJson["roomSetpoint"]             = roomSetpoint;
+    configJson["roomProportionalGain"]     = roomProportionalGain;  
+    configJson["roomIntegralMinutes"]      = roomIntegralMinutes;
 
     for (int i = 0; i < sensorMap.getCount(); i++) {
-        SensorMapEntry * entry = sensorMap[i];
+        SensorMapEntry* entry = sensorMap[i];
         configJson["sensors"][i]["id"] = entry->id;
         configJson["sensors"][i]["name"] = entry->name;
     }
 
     int i = 0;
-    for (auto z: neohub.getActiveZones()) {
+    for (auto z : neohub.getActiveZones()) {
         configJson["activeZones"][i]["id"] = z.id;
         configJson["activeZones"][i]["name"] = z.name;
         i++;
     }
 
     i = 0;
-    for (auto z: neohub.getMonitoredZones()) {
+    for (auto z : neohub.getMonitoredZones()) {
         configJson["monitoredZones"][i]["id"] = z.id;
         configJson["monitoredZones"][i]["name"] = z.name;
         i++;
@@ -54,7 +57,7 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
             MyLog.println(filename);
             fsMutex.unlock();
             return;
-        }   
+        }
         serializeJsonPretty(configJson, file);
         file.close();
         fsMutex.unlock();
@@ -62,21 +65,21 @@ void CConfig::saveToSdCard(SdFs &fs,  MyMutex &fsMutex, const String &filename, 
     MyLog.println("done");
 }
 
-void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename, SensorMap &sensorMap, OneWireManager *oneWireManager, CNeohubManager &neohub) {
-
+void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, SensorMap& sensorMap, OneWireManager* oneWireManager, CNeohubManager& neohub)
+{
     MyLog.print("Loading configuration...");
 
     String contents;
     if (fsMutex.lock(__PRETTY_FUNCTION__)) {
         FsFile file = fs.open(filename, O_RDONLY);
-        if (!file) { 
+        if (!file) {
             fsMutex.unlock();
             MyLog.println("Failed to open config file");
             this->applyDefaults(sensorMap, oneWireManager);
             return;
         }
 
-        contents= file.readString();
+        contents = file.readString();
         file.close();
         fsMutex.unlock();
     }
@@ -93,6 +96,7 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
     hostname = configJson["hostname"].as<String>();
     neohubAddress = configJson["neohubAddress"].as<String>();
     neohubToken = configJson["neohubToken"].as<String>();
+    heatingControllerAddress = configJson["heatingControllerAddress"].as<String>();
 
     flowMaxSetpoint = configJson["flowMaxSetpoint"];
     flowMinSetpoint = configJson["flowMinSetpoint"];
@@ -130,18 +134,18 @@ void CConfig::loadFromSdCard(SdFs &fs, MyMutex &fsMutex, const String &filename,
     }
 
     MyLog.println("done");
-
 }
 
-void CConfig::print(CMyLog &p) const {
+void CConfig::print(CMyLog& p) const
+{
     p.println("Config:");
     p.printf("  hostname: %s\n", hostname.c_str());
     p.printf("  Room: %.1f, Kp = %.1f, Ti = %.0f minutes\n", roomSetpoint, roomProportionalGain, roomIntegralMinutes);
     p.printf("  Flow: %.1f-%.1f, Kp = %.1f, Ti = %.0f seconds\n", flowMinSetpoint, flowMaxSetpoint, flowProportionalGain, flowIntegralSeconds);
 }
 
-void CConfig::applyDefaults(SensorMap &sensorMap, OneWireManager *oneWireManager) {
-
+void CConfig::applyDefaults(SensorMap& sensorMap, OneWireManager* oneWireManager)
+{
     this->roomSetpoint = 20.0;
     this->roomProportionalGain = 5.0;
     this->roomIntegralMinutes = 180;
