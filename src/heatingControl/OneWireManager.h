@@ -36,12 +36,12 @@ struct OneWireSensor {
     void deviceAddressToString(const OneWireBus_ROMCode& deviceAddress, char* result);
     void stringToDeviceAddress(const char* result, OneWireBus_ROMCode& deviceAddress);
 
-    friend class OneWireManager;
+    friend class COneWireManager;
 };
 
 // OneWireManager is a class giving access to one OneWireTemperatureSensor struct
 // for every sensor. The constructor takes the I/O pin for the OneWire bus as parameter
-class OneWireManager {
+class COneWireManager {
   private:
     static const int maxCount = 20;       // Maximum number of sensors we can handle
     owb_rmt_driver_info m_owbDriverInfo;  // OWB RMT driver info (required for OWB initialization)
@@ -66,5 +66,7 @@ class OneWireManager {
     static const int SENSOR_NOT_FOUND = -300;
     static const int INVALID_READING = -200;
 };
+
+extern COneWireManager OneWireManager;
 
 #endif

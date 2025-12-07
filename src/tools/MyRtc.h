@@ -1,6 +1,8 @@
 #ifndef __MYRTC_H
 #define __MYRTC_H
 
+#include <Arduino.h>
+
 class MyRtcTime {
   private:
     time_t m_unixTime;

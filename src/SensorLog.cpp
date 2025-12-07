@@ -5,12 +5,11 @@
 #include "SensorMap.h"
 #include "ValveManager.h"
 #include "SensorLog.h"
+#include "NeohubManager.h"
+#include "ValveManager.h"
 
 extern MyMutex sdCardMutex;
-extern SensorMap sensorMap;
 extern SdFs sd;
-extern ValveManager valveManager;
-extern OneWireManager oneWireSensors;
 
 char sensorDataFileName[] = "Sensor Values yyyy-mm-dd.csv";
 char* getSensorDataFileName()
@@ -25,10 +24,10 @@ void logSensors()
         char* dataFileName = getSensorDataFileName();
 
         bool printHeaderLine = !sd.exists(dataFileName);
-        if (sensorMap.hasChanged()) {
+        if (SensorMap.hasChanged()) {
             printHeaderLine = true;
-            // sensorMap.dump(Serial);
-            sensorMap.clearChanged();
+            // SensorMap.dump(Serial);
+            SensorMap.clearChanged();
         }
 
         FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
@@ -70,9 +69,9 @@ String getSensorLogLine()
     //  - Setpoint
     //  - Actual
     result += ",";
-    result += String(valveManager.getRoomSetpoint(), 1);
+    result += String(ValveManager.getRoomSetpoint(), 1);
     result += ",";
-    if (valveManager.inputs.roomTemperature > -50) result += String(valveManager.inputs.flowTemperature, 1);
+    if (ValveManager.inputs.roomTemperature > -50) result += String(ValveManager.inputs.flowTemperature, 1);
 
     // Manifold control
     //   - Setpoint
@@ -81,15 +80,15 @@ String getSensorLogLine()
     //   - valve position
     //   - flow temperature
     result += ",";
-    result += String(valveManager.getFlowSetpoint(), 1);
+    result += String(ValveManager.getFlowSetpoint(), 1);
     result += ",";
-    if (valveManager.inputs.inputTemperature > -50) result += String(valveManager.inputs.inputTemperature, 1);
+    if (ValveManager.inputs.inputTemperature > -50) result += String(ValveManager.inputs.inputTemperature, 1);
     result += ",";
-    if (valveManager.inputs.returnTemperature > -50) result += String(valveManager.inputs.returnTemperature, 1);
+    if (ValveManager.inputs.returnTemperature > -50) result += String(ValveManager.inputs.returnTemperature, 1);
     result += ",";
-    result += String(valveManager.outputs.targetValvePosition, 1);
+    result += String(ValveManager.outputs.targetValvePosition, 1);
     result += "%,";
-    if (valveManager.inputs.flowTemperature > -50) result += String(valveManager.inputs.flowTemperature, 1);
+    if (ValveManager.inputs.flowTemperature > -50) result += String(ValveManager.inputs.flowTemperature, 1);
 
     // All room sensors
 
@@ -124,14 +123,14 @@ String getSensorLogLine()
     String flowSensorId = Config.getFlowSensorId();
     String returnSensorId = Config.getReturnSensorId();
 
-    int n = sensorMap.getCount();
+    int n = SensorMap.getCount();
     for (int i = 0; i < n; i++) {
-        SensorMapEntry* entry = sensorMap[i];
+        SensorMapEntry* entry = SensorMap[i];
         if (entry->id == inputSensorId) continue;
         if (entry->id == flowSensorId) continue;
         if (entry->id == returnSensorId) continue;
-        OneWireSensor* sensor = oneWireSensors.getSensor(entry->id.c_str());
-        float temperature = OneWireManager::SENSOR_NOT_FOUND;
+        OneWireSensor* sensor = OneWireManager.getSensor(entry->id.c_str());
+        float temperature = COneWireManager::SENSOR_NOT_FOUND;
         if (sensor) {
             temperature = sensor->calibratedTemperature();
         }
@@ -166,9 +165,9 @@ String getSensorHeaderLine()
         result += z.name + "Floor";
     }
 
-    int n = sensorMap.getCount();
+    int n = SensorMap.getCount();
     for (int i = 0; i < n; i++) {
-        SensorMapEntry* entry = sensorMap[i];
+        SensorMapEntry* entry = SensorMap[i];
         if (entry->id == inputSensorId) continue;
         if (entry->id == flowSensorId) continue;
         if (entry->id == returnSensorId) continue;
@@ -186,8 +185,8 @@ void logSensorIssues()
     int totalNoResponseErrors = 0;
     int totalOtherErrors = 0;
     int totalFailures = 0;
-    for (int index = 0; index < oneWireSensors.getCount(); index++) {
-        OneWireSensor& sensor = oneWireSensors[index];
+    for (int index = 0; index < OneWireManager.getCount(); index++) {
+        OneWireSensor& sensor = OneWireManager[index];
         totalReadings += sensor.readings;
         totalCrcErrors += sensor.crcErrors;
         totalNoResponseErrors += sensor.noResponseErrors;

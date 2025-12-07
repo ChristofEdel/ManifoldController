@@ -1,11 +1,12 @@
 #include "../MyWebServer.h"
+#include "NeohubManager.h"
 #include "ESPmDNS.h"
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
   HtmlGenerator html(response);
 
-  m_valveManager->resumeAutomaticValveControl();
+  ValveManager.resumeAutomaticValveControl();
   // Instead of showing the current value on the page, we show "automatic"
   // on the page and make sure the system behaves accordingly.
 
@@ -81,7 +82,7 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
   }
 
   if (changesMade) {
-    Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap, NeohubManager);
+    Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json");
     Config.print(MyLog);
   }
 

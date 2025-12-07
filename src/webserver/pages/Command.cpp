@@ -1,6 +1,8 @@
 #include "../HtmlGenerator.h"
 #include "../MyWebServer.h"
 #include "MyLog.h"
+#include "NeohubManager.h"
+#include "ValveManager.h"
 
 // Ececute commands in the following form:
 //
@@ -20,7 +22,6 @@
 //
 // for single-parameter commands
 //
-extern OneWireManager oneWireSensors;
 
 static AsyncWebServerResponse* makeCommandResponse(
     AsyncWebServerRequest* request, int responseCode,
@@ -38,8 +39,6 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
 {
     JsonDocument commandJson;
     JsonDocument responseJson;
-    int responseCode = 200;
-    String responseString;
 
     const String* body = (String*)request->_tempObject;
     if (!body || *body == emptyString) {
@@ -55,7 +54,7 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
 
     String command = commandJson["command"].as<String>();
     if (command == "null" || command == emptyString) {
-        request->send(makeCommandResponse(request, 400, "{ \"error\": \"No commandin Json\" }"));
+        request->send(makeCommandResponse(request, 400, "{ \"error\": \"No command in Json\" }"));
         return;
     }
 
@@ -64,42 +63,75 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
         bool automatic = commandJson["parameters"]["automatic"].as<bool>();
         double position = commandJson["parameters"]["position"].as<double>();
         if (automatic) {
-            m_valveManager->resumeAutomaticValveControl();
+            ValveManager.resumeAutomaticValveControl();
             MyLog.println("Valve returned to automatic control");
         } else {
-            m_valveManager->setManualValvePosition(position);
+            ValveManager.setManualValvePosition(position);
             MyLog.printf("Valve under manual control, position = %.0f\n", position);
         }
+        // default response
     }
 
     else if (command == "DebumpFlowPid") {
-        m_valveManager->setFlowSetpoint(m_valveManager->getFlowSetpoint());
+        ValveManager.setFlowSetpoint(ValveManager.getFlowSetpoint());
+        // default response
     }
 
     else if (command == "DebumpValvePid") {
-        m_valveManager->setValvePosition(m_valveManager->getValvePosition());
+        ValveManager.setValvePosition(ValveManager.getValvePosition());
+        // default response
+    }
+
+    // else if (command == "ZoneOn") {
+    //     int zoneId = commandJson["zone"].as<int>();
+    //     NeohubManager.forceZoneOn(zoneId);
+    //    // default response
+    // }
+
+    // else if (command == "ZoneOff") {
+    //     int zoneId = commandJson["zone"].as<int>();
+    //     NeohubManager.forceZoneOff(zoneId);
+    //    // default response
+    // }
+
+    // else if (command == "ZoneAuto") {
+    //     int zoneId = commandJson["zone"].as<int>();
+    //     float setpoint = commandJson["setpoint"].as<int>();
+    //     NeohubManager.setZoneToAutomatic(setpoint);
+    //    // default response
+    // }
+
+    else if (command == "ZoneAuto") {
+        ValveManager.setValvePosition(ValveManager.getValvePosition());
+        // default response
     }
 
     else if (command == "SensorScan") {
         UBaseType_t prio = uxTaskPriorityGet(NULL);
         vTaskPrioritySet(NULL, 13);
 
-        oneWireSensors.scanForSensors();
-        if (oneWireSensors.getCount() == 0) oneWireSensors.scanForSensors();
+        OneWireManager.scanForSensors();
+        if (OneWireManager.getCount() == 0) OneWireManager.scanForSensors();
         
-        for (int i = 0; i < oneWireSensors.getCount(); i++) {
-            const char* id = oneWireSensors[i].id;
-            if (this->m_sensorMap->getNameForId(id).isEmpty()) {
-                this->m_sensorMap->setNameForId(id, id);
+        for (int i = 0; i < OneWireManager.getCount(); i++) {
+            const char* id = OneWireManager[i].id;
+            if (
+                SensorMap.getNameForId(id).isEmpty()) {
+                SensorMap.setNameForId(id, id);
             }
         }
-        oneWireSensors.readAllSensors();
+        OneWireManager.readAllSensors();
 
         vTaskPrioritySet(NULL, prio);
         request->send(makeCommandResponse(request, 200, "{ \"reload\": true }"));
         return;
     }
+    else {
+        request->send(makeCommandResponse(request, 400, "{ \"error\": \"Unknown Command\" }"));
+    }
 
+    // default response so we don't have to repeat this for every
+    // command with an empty response
     request->send(makeCommandResponse(request, 200, "{ }"));
 
 }

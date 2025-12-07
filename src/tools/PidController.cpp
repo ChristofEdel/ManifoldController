@@ -3,6 +3,7 @@
 #include <DFRobot_GP8403.h>  // DAC for valve control
 
 #include "Config.h"
+#include "NeohubManager.h"
 
 void PidController::configureGains(double proportionalGain, double integralGain, double derivativeGain)
 {

@@ -22,13 +22,10 @@ class CMyWebServer {
     AsyncWebServer m_server;
     SdFs* m_sd;
     MyMutex* m_sdMutex;
-    SensorMap* m_sensorMap;
-    ValveManager* m_valveManager;
-    OneWireManager* m_sensorManager;
 
   public:
     CMyWebServer(void);
-    void setup(SdFs* sd, MyMutex* sdMutex, SensorMap* sensorMap, ValveManager* valveManager, OneWireManager* sensorManager);
+    void setup(SdFs* sd, MyMutex* sdMutex);
 
   private:
     // Simple responses

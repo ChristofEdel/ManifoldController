@@ -1,10 +1,12 @@
 #include "MyConfig.h"
 
+#include "../heatingControl/NeohubManager.h"
 #include "MyLog.h"
+#include "SensorMap.h"
 
 CConfig Config;
 
-void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, const SensorMap& sensorMap, CNeohubManager& neohub) const
+void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) const
 {
     JsonDocument configJson;
 
@@ -28,21 +30,21 @@ void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, c
     configJson["roomProportionalGain"]     = roomProportionalGain;  
     configJson["roomIntegralMinutes"]      = roomIntegralMinutes;
 
-    for (int i = 0; i < sensorMap.getCount(); i++) {
-        SensorMapEntry* entry = sensorMap[i];
+    for (int i = 0; i < SensorMap.getCount(); i++) {
+        SensorMapEntry* entry = SensorMap[i];
         configJson["sensors"][i]["id"] = entry->id;
         configJson["sensors"][i]["name"] = entry->name;
     }
 
     int i = 0;
-    for (auto z : neohub.getActiveZones()) {
+    for (auto z : NeohubManager.getActiveZones()) {
         configJson["activeZones"][i]["id"] = z.id;
         configJson["activeZones"][i]["name"] = z.name;
         i++;
     }
 
     i = 0;
-    for (auto z : neohub.getMonitoredZones()) {
+    for (auto z : NeohubManager.getMonitoredZones()) {
         configJson["monitoredZones"][i]["id"] = z.id;
         configJson["monitoredZones"][i]["name"] = z.name;
         i++;
@@ -65,7 +67,7 @@ void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, c
     MyLog.println("done");
 }
 
-void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, SensorMap& sensorMap, OneWireManager* oneWireManager, CNeohubManager& neohub)
+void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename)
 {
     MyLog.print("Loading configuration...");
 
@@ -75,7 +77,7 @@ void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename,
         if (!file) {
             fsMutex.unlock();
             MyLog.println("Failed to open config file");
-            this->applyDefaults(sensorMap, oneWireManager);
+            this->applyDefaults();
             return;
         }
 
@@ -89,7 +91,7 @@ void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename,
     if (error) {
         MyLog.print("Failed to parse config file: ");
         MyLog.println(error.c_str());
-        this->applyDefaults(sensorMap, oneWireManager);
+        this->applyDefaults();
         return;
     }
 
@@ -115,22 +117,22 @@ void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename,
 
     // Iterate over sensors
     JsonArray sensorsArray = configJson["sensors"].as<JsonArray>();
-    sensorMap.clear();
+    SensorMap.clear();
     for (JsonObject sensorObj : sensorsArray) {
-        sensorMap.setNameForId(sensorObj["id"].as<String>(), sensorObj["name"].as<String>());
+        SensorMap.setNameForId(sensorObj["id"].as<String>(), sensorObj["name"].as<String>());
     }
 
     // Iterate over zones
     JsonArray activeZones = configJson["activeZones"].as<JsonArray>();
-    neohub.clearActiveZones();
+    NeohubManager.clearActiveZones();
     for (JsonObject zone : activeZones) {
-        neohub.addActiveZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
+        NeohubManager.addActiveZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
     }
 
     JsonArray monitoredZones = configJson["monitoredZones"].as<JsonArray>();
-    neohub.clearMonitoredZones();
+    NeohubManager.clearMonitoredZones();
     for (JsonObject zone : monitoredZones) {
-        neohub.addMonitoredZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
+        NeohubManager.addMonitoredZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
     }
 
     MyLog.println("done");
@@ -144,7 +146,7 @@ void CConfig::print(CMyLog& p) const
     p.printf("  Flow: %.1f-%.1f, Kp = %.1f, Ti = %.0f seconds\n", flowMinSetpoint, flowMaxSetpoint, flowProportionalGain, flowIntegralSeconds);
 }
 
-void CConfig::applyDefaults(SensorMap& sensorMap, OneWireManager* oneWireManager)
+void CConfig::applyDefaults()
 {
     this->roomSetpoint = 20.0;
     this->roomProportionalGain = 5.0;

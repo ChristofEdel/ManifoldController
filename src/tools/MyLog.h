@@ -62,7 +62,7 @@ private:
 };
 
 // Global instance, like Serial
-extern CMyDebugLog MyDebugLog();
+extern CMyDebugLog MyDebugLog;
 #define DEBUG_LOG_FORMAT "%-20.20s | %-60.60s | "
 #define DEBUG_LOG(fmt, ...) MyDebugLog.printfWithLocation(DEBUG_LOG_FORMAT, pcTaskGetName(nullptr), __PRETTY_FUNCTION__, (fmt), ##__VA_ARGS__)
 

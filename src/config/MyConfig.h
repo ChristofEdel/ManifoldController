@@ -5,9 +5,7 @@
 #include <ArduinoJson.h>
 #include <SdFat.h>
 
-#include "../heatingControl/NeohubManager.h"
 #include "MyLog.h"
-#include "SensorMap.h"
 
 class CConfig {
   private:
@@ -72,10 +70,10 @@ class CConfig {
     inline void setRoomProportionalGain(double value) { roomProportionalGain = value; };
     inline void setRoomIntegralMinutes(double value) { roomIntegralMinutes = value; };
 
-    void saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, const SensorMap& sensorMap, CNeohubManager& neohub) const;
-    void loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename, SensorMap& sensorMap, OneWireManager* oneWireManager, CNeohubManager& neohub);
+    void saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) const;
+    void loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename);
 
-    void applyDefaults(SensorMap& sensorMap, OneWireManager* oneWireManager);
+    void applyDefaults();
     void print(CMyLog& p) const;
 };
 

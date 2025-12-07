@@ -4,6 +4,9 @@
 
 #include "MyLog.h"
 
+// Define the global singleton
+COneWireManager OneWireManager;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // OneWireSensor
@@ -53,7 +56,7 @@ void OneWireSensor::clear()
 {
     memset(&this->oneWireAddress, 0, sizeof(this->oneWireAddress));
     memset(&this->ds18b20_info, 0, sizeof(this->ds18b20_info));
-    this->temperature = OneWireManager::INVALID_READING;
+    this->temperature = COneWireManager::INVALID_READING;
     this->calibrationOffset = 0.0;
     this->calibrationFactor = 1.0;
     this->id[0] = '\0';
@@ -92,7 +95,7 @@ void OneWireSensor::stringToDeviceAddress(const char* id, OneWireBus_ROMCode& re
 //
 
 // Initialise this OneWireManager to use the bus on the given pin
-void OneWireManager::setup(int pin)
+void COneWireManager::setup(int pin)
 {
     // Initialise the interface
     this->m_oneWireBus = owb_rmt_initialize(
@@ -113,7 +116,7 @@ void OneWireManager::setup(int pin)
 }
 
 // Clear the list of sensors we know about
-void OneWireManager::clearSensors()
+void COneWireManager::clearSensors()
 {
     for (int i = 0; i < maxCount; i++) {
         this->m_sensors[i]->clear();
@@ -122,7 +125,7 @@ void OneWireManager::clearSensors()
 }
 
 // Scan for sensors to the bus and add them to our sensor list
-void OneWireManager::scanForSensors()
+void COneWireManager::scanForSensors()
 {
     // Stop if there is no space for more sensors
     if (this->m_count == maxCount) return;
@@ -180,7 +183,7 @@ void OneWireManager::scanForSensors()
 }
 
 // Add a known sensor without reading its information from the bus
-void OneWireManager::addKnownSensor(const char* id)
+void COneWireManager::addKnownSensor(const char* id)
 {
     if (getSensor(id)) return;  // already present
     OneWireSensor* sensorData = m_sensors[this->m_count++];
@@ -188,7 +191,7 @@ void OneWireManager::addKnownSensor(const char* id)
 }
 
 // Check if we already have an entry for the sensor with the given address
-bool OneWireManager::sensorPresent(OneWireBus_ROMCode& address)
+bool COneWireManager::sensorPresent(OneWireBus_ROMCode& address)
 {
     for (int i = 0; i < this->m_count; i++) {
         OneWireBus_ROMCode& addr = this->m_sensors[i]->getOneWireAddress();
@@ -205,7 +208,7 @@ bool OneWireManager::sensorPresent(OneWireBus_ROMCode& address)
 }
 
 // Read ands store the temperature from all known sensors
-void OneWireManager::readAllSensors()
+void COneWireManager::readAllSensors()
 {
     if (this->m_count == 0) return;
     ds18b20_convert_all(this->m_oneWireBus);
@@ -237,7 +240,7 @@ void OneWireManager::readAllSensors()
 
         // If none of the attempts were successful, report an invalid reading
         if (result != DS18B20_OK) {
-            si->temperature = OneWireManager::INVALID_READING;
+            si->temperature = COneWireManager::INVALID_READING;
             si->failures++;
         }
     }
@@ -245,7 +248,7 @@ void OneWireManager::readAllSensors()
 }
 
 // Get the data for the sensor with the given ID
-OneWireSensor* OneWireManager::getSensor(const char* id)
+OneWireSensor* COneWireManager::getSensor(const char* id)
 {
     for (int i = 0; i < this->m_count; i++) {
         if (strcmp(id, this->m_sensors[i]->id) == 0) return this->m_sensors[i];
@@ -254,7 +257,7 @@ OneWireSensor* OneWireManager::getSensor(const char* id)
 }
 
 // Get the last read temperature for the sensor with the given id
-float OneWireManager::getTemperature(const char* id)
+float COneWireManager::getTemperature(const char* id)
 {
     OneWireSensor* s = getSensor(id);
     if (!s) return SENSOR_NOT_FOUND;
@@ -262,7 +265,7 @@ float OneWireManager::getTemperature(const char* id)
 };
 
 // Get the last calibrated temperature for the sensor with the given id
-float OneWireManager::getCalibratedTemperature(const char* id)
+float COneWireManager::getCalibratedTemperature(const char* id)
 {
     OneWireSensor* s = getSensor(id);
     if (!s) return SENSOR_NOT_FOUND;

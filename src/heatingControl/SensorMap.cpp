@@ -1,10 +1,14 @@
 #include "SensorMap.h"
 
+
+// Define the global singleton
+CSensorMap SensorMap;
+
 // Initialise the SensorMap for a certain maximum number of sensors which can be managed
 // A fixed array of pointers to SensorMapEntries is allocated
 // The actual SensorMapEntries are dynamically allocated when needed so the
 // penalty for using too high a sensor count is small.
-SensorMap::SensorMap(int maxSensorCount)
+CSensorMap::CSensorMap()
 {
     this->m_maxSensorCount = maxSensorCount;
     this->m_sensorCount = 0;
@@ -15,14 +19,14 @@ SensorMap::SensorMap(int maxSensorCount)
 }
 
 // Destructor - free the dynamically allocated entries
-SensorMap::~SensorMap()
+CSensorMap::~CSensorMap()
 {
     this->clear();
     free(this->m_sensorMapStorage);
 }
 
 // Clear the map - remove all entries and set the sensor count to zero
-void SensorMap::clear()
+void CSensorMap::clear()
 {
     for (int i = 0; i < m_sensorCount; i++) {
         SensorMapEntry* ep = this->m_sensorMapStorage[i];
@@ -35,7 +39,7 @@ void SensorMap::clear()
 
 // Find a SensorMapEntry for the given name. Returns nullptr
 // if no such entry exists
-SensorMapEntry* SensorMap::findEntryByName(const String& name) const
+SensorMapEntry* CSensorMap::findEntryByName(const String& name) const
 {
     for (int i = 0; i < m_sensorCount; i++) {
         SensorMapEntry* ep = m_sensorMapStorage[i];
@@ -46,7 +50,7 @@ SensorMapEntry* SensorMap::findEntryByName(const String& name) const
 
 // Find a SensorMapEntry for the given id. Returns nullptr
 // if no such entry exists
-SensorMapEntry* SensorMap::findEntryById(const String& id) const
+SensorMapEntry* CSensorMap::findEntryById(const String& id) const
 {
     for (int i = 0; i < m_sensorCount; i++) {
         SensorMapEntry* ep = m_sensorMapStorage[i];
@@ -57,7 +61,7 @@ SensorMapEntry* SensorMap::findEntryById(const String& id) const
 
 // Find the name for a sensor with the given id. Returns an empty
 // string if
-const String& SensorMap::getNameForId(const String& id) const
+const String& CSensorMap::getNameForId(const String& id) const
 {
     SensorMapEntry* ep = this->findEntryById(id);
     if (!ep) return emptyString;
@@ -66,7 +70,7 @@ const String& SensorMap::getNameForId(const String& id) const
 
 // Find the if for a sensor with the given name. Returns an empty
 // string if
-const String& SensorMap::getIdForName(const String& name) const
+const String& CSensorMap::getIdForName(const String& name) const
 {
     SensorMapEntry* ep = this->findEntryByName(name);
     if (!ep) return emptyString;
@@ -77,7 +81,7 @@ const String& SensorMap::getIdForName(const String& name) const
 // in the map for this sensor, an entry is created.
 // if the name is changed or a new entry is created, the sensor map is flagged
 // as "changed"
-void SensorMap::setNameForId(const String& id, const String& name)
+void CSensorMap::setNameForId(const String& id, const String& name)
 {
     SensorMapEntry* ep = this->findEntryById(id);
     if (!ep) {
@@ -99,7 +103,7 @@ void SensorMap::setNameForId(const String& id, const String& name)
 // created one)
 // if the name or id of the entry is actually changed or a new entry is created, the sensor
 // map is flagged as "changed"
-void SensorMap::updateAtIndex(int index, const String& id, const String& name)
+void CSensorMap::updateAtIndex(int index, const String& id, const String& name)
 {
     if (index < 0 || index >= this->m_maxSensorCount) return;
     // Fill any gaps up to index
@@ -133,7 +137,7 @@ void SensorMap::updateAtIndex(int index, const String& id, const String& name)
 
 // Remove the entry for the sensor with the given id from the map
 // moves all following sensors "up" by one in the map to fill any ap
-void SensorMap::removeId(const String& id)
+void CSensorMap::removeId(const String& id)
 {
     SensorMapEntry* ep = this->findEntryById(id);
     this->removeEntry(ep);
@@ -141,7 +145,7 @@ void SensorMap::removeId(const String& id)
 
 // Remove the give entry for the sensor with the given id from the map
 // moves all following sensors "up" by one in the map to fill any ap
-void SensorMap::removeEntry(SensorMapEntry* ep)
+void CSensorMap::removeEntry(SensorMapEntry* ep)
 { /* private */
     // Copy the entries after the one to be deleted "down" in the array
     for (int i = ep->index + 1; i < this->m_sensorCount; i++) {
@@ -155,7 +159,7 @@ void SensorMap::removeEntry(SensorMapEntry* ep)
 }
 
 // Remove all entries from the map starting from the index given to the end
-void SensorMap::removeFromIndex(int index)
+void CSensorMap::removeFromIndex(int index)
 {
     if (index < 0) return;                     // invalid
     if (index >= this->m_sensorCount) return;  // no change
@@ -169,7 +173,7 @@ void SensorMap::removeFromIndex(int index)
 }
 
 // Debug helper - write the contents of the map to the given Print
-void SensorMap::dump(Print& p) const
+void CSensorMap::dump(Print& p) const
 {
     p.println("--------------------------------------------------------------");
     p.print(this->m_sensorCount);

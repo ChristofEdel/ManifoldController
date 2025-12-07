@@ -40,12 +40,6 @@ const uint8_t sdCardCsPin = D10;  // SD card chip select
 // Pin 13: PIN_SPI_SCK
 // Pin 14/15/16: Built-in RGB LED (R/B/G)
 
-// Singletons for thermistors, onewire sensors and their map -------
-const int maxSensorCount = 20;
-OneWireManager oneWireSensors;
-SensorMap sensorMap(maxSensorCount);
-ValveManager valveManager;
-
 // SD Card access
 SdFs sd;
 MyMutex sdCardMutex("::sdCardMutex");
@@ -110,8 +104,8 @@ void setup()
     MyCrashLog.enableSdCardLog("crashlog.txt", &sd, &sdCardMutex);
 
     MyLog.println("-------------------------------------------------------------------------------------------");
-    Config.loadFromSdCard(sd, sdCardMutex, "config.json", sensorMap, &oneWireSensors, NeohubManager);
-    sensorMap.clearChanged();
+    Config.loadFromSdCard(sd, sdCardMutex, "config.json");
+    SensorMap.clearChanged();
 
     MyLog.printlnSdOnly("-------------------------------------------------------------------------------------------");
 
@@ -131,26 +125,26 @@ void setup()
 
     // Initialisations for several modules
     setupOta();
-    oneWireSensors.setup(oneWirePin);
-    for (int i = 0; i < sensorMap.getCount(); i++) {
-        oneWireSensors.addKnownSensor(sensorMap[i]->id.c_str());
+    OneWireManager.setup(oneWirePin);
+    for (int i = 0; i < SensorMap.getCount(); i++) {
+        OneWireManager.addKnownSensor(SensorMap[i]->id.c_str());
     }
 
-    valveManager.setup();
-    valveManager.setRooomSetpoint(Config.getRoomSetpoint());
+    ValveManager.setup();
+    ValveManager.setRooomSetpoint(Config.getRoomSetpoint());
     if (mustClearRtcMemory()) {
         lastKnownFlowSetpoint = 0;
         lastKownValvePosition = 0;
     }
     if (lastKnownFlowSetpoint > 1) {  // sometimes after reset this value is -0.0
         MyLog.printf("Initialising flow setpoint to %.1f degrees\n", lastKnownFlowSetpoint);
-        valveManager.setFlowSetpoint(lastKownValvePosition);
+        ValveManager.setFlowSetpoint(lastKownValvePosition);
     }
     if (lastKownValvePosition > 1) {  // sometimes after reset this value is -0.0
         MyLog.printf("Initialising valve position to %.0f%%\n", lastKownValvePosition);
-        valveManager.setValvePosition(lastKownValvePosition);
+        ValveManager.setValvePosition(lastKownValvePosition);
     }
-    MyWebServer.setup(&sd, &sdCardMutex, &sensorMap, &valveManager, &oneWireSensors);
+    MyWebServer.setup(&sd, &sdCardMutex);
     ledBlinkSetup();
 
     startValveControlTask();
@@ -246,7 +240,7 @@ void readSensors()
 {
     UBaseType_t prio = uxTaskPriorityGet(NULL);
     vTaskPrioritySet(NULL, 3);
-    oneWireSensors.readAllSensors();
+    OneWireManager.readAllSensors();
     vTaskPrioritySet(NULL, prio);
 }
 
@@ -267,22 +261,22 @@ void manageValveControls()
     float roomTemperature = NeohubZoneData::NO_TEMPERATURE;
     if (tempCount > 0) roomTemperature = temperatureTotal / tempCount;
 
-    float inputTemperature = oneWireSensors.getCalibratedTemperature(Config.getInputSensorId().c_str());
-    float flowTemperature = oneWireSensors.getCalibratedTemperature(Config.getFlowSensorId().c_str());
-    float returnTemperature = oneWireSensors.getCalibratedTemperature(Config.getReturnSensorId().c_str());
+    float inputTemperature = OneWireManager.getCalibratedTemperature(Config.getInputSensorId().c_str());
+    float flowTemperature = OneWireManager.getCalibratedTemperature(Config.getFlowSensorId().c_str());
+    float returnTemperature = OneWireManager.getCalibratedTemperature(Config.getReturnSensorId().c_str());
 
-    valveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);
-    valveManager.calculateValvePosition();
-    valveManager.sendCurrentValvePosition();
+    ValveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);
+    ValveManager.calculateValvePosition();
+    ValveManager.sendCurrentValvePosition();
 
-    lastKnownFlowSetpoint = valveManager.outputs.targetFlowTemperature;
-    lastKownValvePosition = valveManager.outputs.targetValvePosition;
+    lastKnownFlowSetpoint = ValveManager.outputs.targetFlowTemperature;
+    lastKownValvePosition = ValveManager.outputs.targetValvePosition;
 
     // Serial.printf(
     //   "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf\n",
     //   inputTemperature,
-    //   valveManager.getSetpoint(),
-    //   valveManager.outputs.targetValvePosition,
+    //   ValveManager.getSetpoint(),
+    //   ValveManager.outputs.targetValvePosition,
     //   flowTemperature,
     //   returnTemperature,
     //   flowTemperature
@@ -362,7 +356,7 @@ void startValveControlTask()
 //     for (int i = 0; i < measurementDelaySeconds; i++) {
 //       measurementDelay.push(&loopInitialTemperature);
 //     }
-//     valveManager.outputs.targetValvePosition = 50;  // half open
+//     ValveManager.outputs.targetValvePosition = 50;  // half open
 //     first = false;
 //   }
 
@@ -372,22 +366,22 @@ void startValveControlTask()
 //   double measuredFlowTemperature;
 //   measurementDelay.pull(&measuredFlowTemperature);
 
-//   double flowTemperature = returnTemperature + (inputTemperature - returnTemperature) * valveManager.outputs.targetValvePosition / 100.0;
+//   double flowTemperature = returnTemperature + (inputTemperature - returnTemperature) * ValveManager.outputs.targetValvePosition / 100.0;
 //   heatingLoop.push(&flowTemperature);
 //   measurementDelay.push(&flowTemperature);
 
-//   // valveManager.setInputs(...);
-//   // float inputTemp = oneWireSensors.getCalibratedTemperature(Config.getInputSensorId().c_str());
-//   // float flowTemp = oneWireSensors.getCalibratedTemperature(Config.getFlowSensorId().c_str());
-//   // float returnTemp = oneWireSensors.getCalibratedTemperature(Config.getReturnSensorId().c_str());
-//   valveManager.setInputs(inputTemperature, measuredFlowTemperature, returnTemperature);
-//   valveManager.calculateValvePosition();
-//   valveManager.sendCurrentOutputs();
+//   // ValveManager.setInputs(...);
+//   // float inputTemp = OneWireManager.getCalibratedTemperature(Config.getInputSensorId().c_str());
+//   // float flowTemp = OneWireManager.getCalibratedTemperature(Config.getFlowSensorId().c_str());
+//   // float returnTemp = OneWireManager.getCalibratedTemperature(Config.getReturnSensorId().c_str());
+//   ValveManager.setInputs(inputTemperature, measuredFlowTemperature, returnTemperature);
+//   ValveManager.calculateValvePosition();
+//   ValveManager.sendCurrentOutputs();
 //   Serial.printf(
 //     "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf (calculated flow: %0.1lf)\n",
 //     inputTemperature,
-//     valveManager.getSetpoint(),
-//     valveManager.outputs.targetValvePosition,
+//     ValveManager.getSetpoint(),
+//     ValveManager.outputs.targetValvePosition,
 //     measuredFlowTemperature,
 //     returnTemperature,
 //     flowTemperature

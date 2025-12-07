@@ -20,7 +20,7 @@ struct ValveManagerOutputs {
   double targetValvePosition;    // 0..100 %
 };
 
-class ValveManager {
+class CValveManager {
   private:
     PidController m_flowController;
     PidController m_valveController;
@@ -87,6 +87,8 @@ class ValveManager {
     void sendValvePosition (double valvePosition);
 
 };
+
+extern CValveManager ValveManager;
 
 #endif
 

@@ -31,13 +31,10 @@ String methodToString(WebRequestMethodComposite m)
     }
   }
 
-void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex, SensorMap *sensorMap, ValveManager * valveManager, OneWireManager *sensorManager)
+void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
 {
     this->m_sd = sd;
     this->m_sdMutex = sdMutex;
-    this->m_sensorMap = sensorMap;
-    this->m_valveManager = valveManager;
-    this->m_sensorManager = sensorManager;
     this->m_server.on(AsyncURIMatcher::exact("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
     this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });

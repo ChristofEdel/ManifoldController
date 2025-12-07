@@ -1,12 +1,15 @@
 #include "ValveManager.h"
+#include "NeohubManager.h"
 #include "Config.h"
+#include "MyLog.h"
 #include <DFRobot_GP8403.h>     // DAC for valve control
 DFRobot_GP8403 dac(&Wire,0x5f); // I2C address 0x58
 
-
+// Define the global singleton
+CValveManager ValveManager;
 
 // Load the initial state of the valve manager. includes loadConfig()
-void ValveManager::setup()
+void CValveManager::setup()
 {
     int dacInitRetryCount = 3;
     do {
@@ -26,7 +29,7 @@ void ValveManager::setup()
 }
 
 // Load all parameters from the configuration file.
-void ValveManager::loadConfig() {
+void CValveManager::loadConfig() {
 
     this->m_flowController.setOutputRange(
         Config.getFlowMinSetpoint(),
@@ -48,7 +51,7 @@ void ValveManager::loadConfig() {
 }
 
 // Set the process variables that the controllers are managing
-void ValveManager::setInputs(
+void CValveManager::setInputs(
     double roomTemperature, double flowTemperature, 
     double inputTemperature, double returnTemperature
 ) {
@@ -59,7 +62,7 @@ void ValveManager::setInputs(
 };
 
 // Calculate the control loops outputs
-void ValveManager::calculateValvePosition() {
+void CValveManager::calculateValvePosition() {
 
     // Initialisation bump avoidance - if we have no
     // data yet, we initialise the flow setpoint with its current value
@@ -96,11 +99,11 @@ void ValveManager::calculateValvePosition() {
 }
 
 // Set the position of the valve and force the controller to start at that position
-void ValveManager::setValvePosition(double position) {
+void CValveManager::setValvePosition(double position) {
     this->m_valveController.setOutput(position);
 }
 
-double ValveManager::getValvePosition() {
+double CValveManager::getValvePosition() {
     if (this->m_manualValveControl) {
         return this->m_manualValvePosition;
     }
@@ -109,7 +112,7 @@ double ValveManager::getValvePosition() {
     }
 }
 
-void ValveManager::sendCurrentValvePosition() {
+void CValveManager::sendCurrentValvePosition() {
     if (this->m_manualValveControl) {
         sendValvePosition(this->m_manualValvePosition);
     }
@@ -119,7 +122,7 @@ void ValveManager::sendCurrentValvePosition() {
 }
 
 
-void ValveManager::sendValvePosition(double position) {
+void CValveManager::sendValvePosition(double position) {
     // If the DAC has not been initialised successfully, we try it once again here
     if (!m_dacInitialised) {
         m_dacInitialised = dac.begin() == 0;
