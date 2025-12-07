@@ -60,6 +60,7 @@ class CMyWebServer {
     // json
     void respondWithStatusData(AsyncWebServerRequest* response);
     void executeCommand(AsyncWebServerRequest* response);
+    void respondToOptionsRequest(AsyncWebServerRequest* request);
 
     // Other pages for debugging
     void respondWithTaskList(AsyncWebServerRequest* request);

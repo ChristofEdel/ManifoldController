@@ -3,6 +3,7 @@
 #include "MyConfig.h"
 #include "MyLog.h"
 
+
 // Store the data obtained from the Neohub in form of a JSON object
 // in this NeohubZoneData object
 void NeohubZoneData::storeZoneData(JsonVariant obj)
@@ -12,6 +13,7 @@ void NeohubZoneData::storeZoneData(JsonVariant obj)
         this->clear();
     }
     else {
+        this->roomSetpoint = obj["CURRENT_SET_TEMPERATURE"].as<float>();
         this->roomTemperature = obj["CURRENT_TEMPERATURE"].as<float>();
         String s = obj["CURRENT_TEMPERATURE"].as<String>();
         this->roomTemperatureSetpoint = obj["CURRENT_SET_TEMPERATURE"].as<float>();
@@ -31,6 +33,7 @@ void NeohubZoneData::storeZoneData(JsonVariant obj)
 // Clear the data and set it to "no data" values
 void NeohubZoneData::clear()
 {
+    roomSetpoint = NO_TEMPERATURE;
     roomTemperature = NO_TEMPERATURE;
     roomTemperatureSetpoint = NO_TEMPERATURE;
     demand = true;
@@ -41,6 +44,17 @@ void NeohubZoneData::clear()
     online = false;
 }
 
+String CNeohubManager::getZoneName(int id) {
+    NeohubZoneData* zd = getZoneData(id);
+    if (!zd) return emptyString;
+    return zd->zone.name;
+}
+
+int CNeohubManager::getZoneId(const String& name) {
+    NeohubZoneData* zd = getZoneData(name);
+    if (!zd) return -1;
+    return zd->zone.id;
+}
 
 // Get the data for the zone with the given name (if it exits)
 NeohubZoneData* CNeohubManager::getZoneData(const String& name)
@@ -66,6 +80,45 @@ NeohubZoneData* CNeohubManager::getZoneData(int id)
         if (data.zone.id == id) return &data;
     }
     return result;
+}
+
+
+// Force the zone to the fgiven setpoint for 5 minutes
+NeohubZoneData* CNeohubManager::forceZoneSetpoint(String zoneName, double setpoint) {
+    String command = 
+        "{'HOLD': [ {'temp':"
+        + String(setpoint,1)
+        + "'hours':0, 'minutes':5, 'id':'Force " 
+        + zoneName 
+        + "'}, ['" 
+        + zoneName 
+        + "']]}"
+    ;
+    String result = neohubCommand(command);
+    this->loadZoneDataFromNeohub(zoneName);
+    return this->getZoneData(zoneName);
+}
+
+// Force the zone on for 5 minutes by setting a high stpoint.
+// Returns the setpoint for the zone, or NeohubZoneData::NO_TEMPERATURE
+NeohubZoneData*  CNeohubManager::forceZoneOn(String zoneName)
+{
+    return forceZoneSetpoint(zoneName, 35.0);
+}
+
+// Force the zone off for 5 minutes by setting a low setpoint.
+// Returns the setpoint for the zone
+NeohubZoneData*  CNeohubManager::forceZoneOff(String zoneName)
+{
+    return forceZoneSetpoint(zoneName, 15.0);
+}
+
+// Cancel the forced setpoint for the zone
+NeohubZoneData*  CNeohubManager::setZoneToAutomatic(String zoneName) 
+{
+    String command = "{'CANCEL_HGROUP': 'Force " + zoneName + "'}";
+    String result = neohubCommand(command);
+    return this->getZoneData(zoneName);
 }
 
 // Ensure that the connection to the NeoHub exists.

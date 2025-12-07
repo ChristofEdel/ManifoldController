@@ -16,6 +16,13 @@ OneWireSensor::OneWireSensor(OneWireBus* bus)
 {
     this->oneWireBus = bus;
     this->ds18b20_info.init = false;
+
+    this->readings = 0;        
+    this->crcErrors = 0;       
+    this->noResponseErrors = 0;
+    this->otherErrors = 0;     
+    this->failures = 0;        
+
 };
 
 // Set the address of this sensor on the OneWireBus
@@ -34,6 +41,12 @@ void OneWireSensor::setOneWireAddress(const OneWireBus_ROMCode& addr)
     this->ds18b20_info.use_crc = true;
     this->ds18b20_info.bus = this->oneWireBus;
     this->ds18b20_info.resolution = DS18B20_RESOLUTION_12_BIT;
+
+    this->readings = 0;        
+    this->crcErrors = 0;       
+    this->noResponseErrors = 0;
+    this->otherErrors = 0;     
+    this->failures = 0;     
 }
 
 // Set the id of this sensor
@@ -49,6 +62,13 @@ void OneWireSensor::setId(const char* id)
     this->ds18b20_info.use_crc = true;
     this->ds18b20_info.bus = this->oneWireBus;
     this->ds18b20_info.resolution = DS18B20_RESOLUTION_12_BIT;
+
+    
+    this->readings = 0;        
+    this->crcErrors = 0;       
+    this->noResponseErrors = 0;
+    this->otherErrors = 0;     
+    this->failures = 0;     
 }
 
 // Clear all sensor information
@@ -60,6 +80,12 @@ void OneWireSensor::clear()
     this->calibrationOffset = 0.0;
     this->calibrationFactor = 1.0;
     this->id[0] = '\0';
+
+    this->readings = 0;        
+    this->crcErrors = 0;       
+    this->noResponseErrors = 0;
+    this->otherErrors = 0;     
+    this->failures = 0;     
 }
 
 // Convert a device address ("ROM CODE") to its hexadecimal string equivalent

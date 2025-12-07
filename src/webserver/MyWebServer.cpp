@@ -52,6 +52,8 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
     this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
     this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
     this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });
+    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
     this->m_server.onNotFound([this](AsyncWebServerRequest *r) { this->respondWithError(r, 400, "Unsupported Method: " + methodToString(r->method()) + " on URL " + r->url()); });
     this->m_server.begin();
 }

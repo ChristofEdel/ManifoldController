@@ -33,16 +33,49 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
       html.block("Valve Test", [this, &html]{
         html.fieldTable( [this, &html] {
           html.fieldTableRow("Manual Control", [&html]{
-            html.element("td", "style='text-align: left'", "<input type='checkbox' id='valveControlManual'>");
+            html.element("td", "style='text-align: left'", "<input type='checkbox' id='valveControlManualCheckbox'>");
           });
           html.fieldTableRow("Position", [&html]{
             html.element("td", "style='text-align: left'", [&html] {
               html.print("<input type='range' id='valveControlPositionSlider' min='0' max='100' value='0'>");
-              html.print("<span id='valveControlPositionValue'>0</span>");
+              html.print("<span id='valveControlPositionText'>0</span>");
             });
           });
         });
       });
+
+      html.block("Salus Valve Reset", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("Zone", [this, &html]{
+            html.element("td", "style='text-align: left'", [this, &html]() {
+              html.select("id='zoneToResetSelect'", [this, &html]{
+                generateZoneOptions(html, 0);
+              });
+            });
+          });
+          html.fieldTableRow("Setpoint", [&html]{
+            html.print("<td><div id='resetZoneSetpoint' type='button' class='zone-on'></div></td>");
+          });
+          html.fieldTableRow("", [&html]{
+            html.print("<td><div class='reset-progress-bar'>");
+            html.print("<div id='resetProgressIndicator' style='display: none'></div>");
+            html.print("<div style='width: 90px' class='on'>30s on</div>");
+            html.print("<div style='width: 45px' class='off'>15s off</div>");
+            html.print("<div style='width: 45px' class='on'>15s on</div>");
+            html.print("<div style='width: 45px' class='off'>15s off</div>");
+            html.print("<div style='width: 90px' class='on'>30s on</div>");
+            html.print("<div style='width: 30px border-left: 1px solid green' class='on'>Auto</div>");
+            html.print("</div></td>");
+          });
+          html.element("tr", [&html]() {
+            html.element("th", "colspan=2", [&html]() {
+              html.print("<button id='resetZoneStartButton' type='button' disabled>Start Reset Sequence</button>");
+              html.print("<button id='resetZoneStopButton' type='button' style='display:none'>Stop</button>");
+            });
+          });
+        });
+      });
+
 
     }); // block layout
     html.print("<input type='submit' class='save-button' value='Save Changes'/>");

@@ -27,6 +27,7 @@ struct NeohubZoneData {
 
     time_t lastUpdated = 0;
 
+    double roomSetpoint = NO_TEMPERATURE;
     double roomTemperature = NO_TEMPERATURE;
     double roomTemperatureSetpoint = NO_TEMPERATURE;
     bool demand = true;
@@ -53,6 +54,10 @@ class CNeohubManager {
     // Get a vector with all available zones
     const std::vector<NeohubZoneData>& getZoneData() { ensureZoneNames(); return m_zoneData; };
 
+    // Translation between names and IDs
+    String getZoneName(int id);
+    int getZoneId(const String& name);
+
     // Get the data for a particular zone. If it has not been polled,
     // it will be empty except for its name and id
     NeohubZoneData* getZoneData(const String& name);
@@ -76,6 +81,12 @@ class CNeohubManager {
     // if necessary
     void loadZoneDataFromNeohub(bool all = false);
     void loadZoneDataFromNeohub(std::vector<String>& zoneNames);
+
+    // Zone control
+    NeohubZoneData* forceZoneSetpoint(String zoneName, double setpoint);
+    NeohubZoneData* forceZoneOn(String zoneName);
+    NeohubZoneData* forceZoneOff(String zoneName);
+    NeohubZoneData* setZoneToAutomatic(String zoneName);
 
     // Direct connection to the neohub
     bool ensureNeohubConnection();

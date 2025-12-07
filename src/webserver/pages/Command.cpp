@@ -3,6 +3,7 @@
 #include "MyLog.h"
 #include "NeohubManager.h"
 #include "ValveManager.h"
+#include "StringPrintf.h"
 
 // Ececute commands in the following form:
 //
@@ -34,6 +35,15 @@ static AsyncWebServerResponse* makeCommandResponse(
     response->addHeader("Access-Control-Allow-Headers", "Content-Type");
     return response;
 };
+
+void CMyWebServer::respondToOptionsRequest(AsyncWebServerRequest* request) {
+    AsyncWebServerResponse* response = request->beginResponse(200, "application/json");
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
+}
+
 
 void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
 {
@@ -82,28 +92,38 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
         // default response
     }
 
-    // else if (command == "ZoneOn") {
-    //     int zoneId = commandJson["zone"].as<int>();
-    //     NeohubManager.forceZoneOn(zoneId);
-    //    // default response
-    // }
+    else if (command == "GetZoneStatus" || command == "ZoneOn" || command == "ZoneOff" || command == "ZoneAuto") {
+        int zoneId = commandJson["zoneId"].as<int>();
+        String zoneName = NeohubManager.getZoneName(zoneId);
+        if (zoneName == emptyString) {
+            request->send(makeCommandResponse(request, 400, "{ \"error\": \"unknown zone\" }"));
+            return;
+        }
+        NeohubZoneData* zd;
+        zd = NeohubManager.getZoneData(zoneName);
+        float setpoint = 0;
+        bool on = false;
+        if (command == "GetZoneStatus") { setpoint = 22, on = true; }
+        else if (command == "ZoneOn") { setpoint = 35, on = true; }
+        else if (command == "ZoneOff") { setpoint = 15, on = false; }
+        else if (command == "ZoneAuto") { setpoint = 22, on = true; }
 
-    // else if (command == "ZoneOff") {
-    //     int zoneId = commandJson["zone"].as<int>();
-    //     NeohubManager.forceZoneOff(zoneId);
-    //    // default response
-    // }
-
-    // else if (command == "ZoneAuto") {
-    //     int zoneId = commandJson["zone"].as<int>();
-    //     float setpoint = commandJson["setpoint"].as<int>();
-    //     NeohubManager.setZoneToAutomatic(setpoint);
-    //    // default response
-    // }
-
-    else if (command == "ZoneAuto") {
-        ValveManager.setValvePosition(ValveManager.getValvePosition());
-        // default response
+        // if (command == "GetZoneStatus") zd = NeohubManager.getZoneData(zoneName);
+        // else if (command == "ZoneOn") zd = NeohubManager.forceZoneOn(zoneName);
+        // else if (command == "ZoneOff") zd = NeohubManager.forceZoneOff(zoneName);
+        // else if (command == "ZoneAuto") zd = NeohubManager.setZoneToAutomatic(zoneName);
+        if (!zd) {
+            request->send(makeCommandResponse(request, 400, "{ \"error\": \"unable to configure zone\" }"));
+            return;
+        }
+        request->send(makeCommandResponse(request, 200, 
+            StringPrintf(
+                R"({ "setpoint": %.1f, "on": %s})",
+                setpoint, BOOL_TO_STRING(on)
+                //zd->roomSetpoint, BOOL_TO_STRING(zd->demand)
+            )
+        ));
+        return;
     }
 
     else if (command == "SensorScan") {
