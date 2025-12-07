@@ -5,6 +5,7 @@
 #include "MyRtc.h"
 #include "MyMutex.h"
 
+// Logger class which can write to SD card, a serial, or both, with timestamps if required
 class CMyLog : public Print {
   private:
     bool m_logToSerial = false;
@@ -38,11 +39,12 @@ class CMyLog : public Print {
 
 };
 
+// Three global instances of the logger class
 extern CMyLog MyLog;
 extern CMyLog MyWebLog;
 extern CMyLog MyCrashLog;
 
-// Thread-safe wrapper for HardwareSerial (or any Print)
+// Thread-safe wrapper for stdout
 class CMyDebugLog : public Print {
 public:
   CMyDebugLog() : _mutex(xSemaphoreCreateMutex()) {}
@@ -60,7 +62,7 @@ private:
 };
 
 // Global instance, like Serial
-extern CMyDebugLog MyDebugLog;
+extern CMyDebugLog MyDebugLog();
 #define DEBUG_LOG_FORMAT "%-20.20s | %-60.60s | "
 #define DEBUG_LOG(fmt, ...) MyDebugLog.printfWithLocation(DEBUG_LOG_FORMAT, pcTaskGetName(nullptr), __PRETTY_FUNCTION__, (fmt), ##__VA_ARGS__)
 

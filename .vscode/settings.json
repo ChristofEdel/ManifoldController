@@ -60,6 +60,7 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp"
     },
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
     "editor.tabSize": 4
