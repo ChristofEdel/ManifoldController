@@ -60,8 +60,8 @@ class CNeohubManager {
 
     // Get the data for a particular zone. If it has not been polled,
     // it will be empty except for its name and id
-    NeohubZoneData* getZoneData(const String& name);
-    NeohubZoneData* getZoneData(int id);
+    NeohubZoneData* getZoneData(const String& name, bool forceLoad = false);
+    NeohubZoneData* getZoneData(int id, bool forceLoad = false);
 
     // Get a vector with the  active zones (used for controlling temperature)
     // these may or may not have zone data available in the hub

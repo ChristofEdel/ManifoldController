@@ -91,33 +91,38 @@ function startResetSequence() {
 
     zoneResetElapsed = 0
 
-    $('#resetProgressIndicator').css('left', zoneResetElapsed*4 + 'px')
+    $('#resetProgressIndicator').css('left', zoneResetElapsed*2 + 'px')
     $('#resetProgressIndicator').show()
+
+    var lastCommandSent = "";
+    var lastCommandSentAt = 0; 
 
     zoneResetIntervalTimer = setInterval(function () {
         zoneResetElapsed++
 
-        if (zoneResetElapsed <= 115) {
-            $('#resetProgressIndicator').css('left', zoneResetElapsed*3 + 'px')
+        if (zoneResetElapsed <= 205) {
+            $('#resetProgressIndicator').css('left', zoneResetElapsed*2 + 'px')
         }
 
-        var cmd
         if (zoneResetElapsed <= 30) {
             // (a) 30 seconds ZoneOn
             cmd = 'ZoneOn'
-        } else if (zoneResetElapsed <= 45) {
+        } else if (zoneResetElapsed <= 45) { // +15
             // (b) 15 seconds ZoneOff
             cmd = 'ZoneOff'
-        } else if (zoneResetElapsed <= 60) {
+        } else if (zoneResetElapsed <= 60) { // +15
             // (c) 15 seconds ZoneOn
             cmd = 'ZoneOn'
-        } else if (zoneResetElapsed <= 75) {
+        } else if (zoneResetElapsed <= 75) { // +15
             // (d) 15 seconds ZoneOff
             cmd = 'ZoneOff'
-        } else if (zoneResetElapsed <= 105) {
-            // (d) 30 seconds ZoneOff
+        } else if (zoneResetElapsed <= 165) { // +90
+            // (d) 90 seconds ZoneOn
             cmd = 'ZoneOn'
-        } else if (zoneResetElapsed == 106) {
+        } else if (zoneResetElapsed <= 185) { // +20
+            // (d) 20 seconds ZoneOff
+            cmd = 'ZoneOff'
+        } else if (zoneResetElapsed == 205) { // +20
             // (e) then set the zone back to automatic
             cmd = 'ZoneAuto'
         } else {
@@ -125,9 +130,13 @@ function startResetSequence() {
             cmd = 'GetZoneStatus'
         }
 
-        sendZoneCommand(zoneIdToReset, cmd)
+        if (cmd != lastCommandSent || zoneResetElapsed - lastCommandSentAt >= 5 ) {
+            sendZoneCommand(zoneIdToReset, cmd)
+            lastCommandSentAt = zoneResetElapsed
+            lastCommandSent = cmd
+        }
 
-        if (zoneResetElapsed === 116) {
+        if (zoneResetElapsed === 205) {
             clearInterval(zoneResetIntervalTimer)
             zoneResetIntervalTimer = null
             // End of sequence: show Reset button again
@@ -144,7 +153,7 @@ function startResetSequence() {
 function stopResetSequence() {
 
     // Jump forward in the sequence so the next command is to set the zone to auto
-    if (zoneResetElapsed < 105) zoneResetElapsed = 105
+    if (zoneResetElapsed < 105) zoneResetElapsed = 195
 
     // Just to make sure we send one ourselves
     sendZoneCommand(zoneIdToReset, 'ZoneAuto')

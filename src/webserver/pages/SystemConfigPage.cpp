@@ -59,12 +59,13 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
           html.fieldTableRow("", [&html]{
             html.print("<td><div class='reset-progress-bar'>");
             html.print("<div id='resetProgressIndicator' style='display: none'></div>");
-            html.print("<div style='width: 90px' class='on'>30s on</div>");
-            html.print("<div style='width: 45px' class='off'>15s off</div>");
-            html.print("<div style='width: 45px' class='on'>15s on</div>");
-            html.print("<div style='width: 45px' class='off'>15s off</div>");
-            html.print("<div style='width: 90px' class='on'>30s on</div>");
-            html.print("<div style='width: 30px border-left: 1px solid green' class='on'>Auto</div>");
+            html.print("<div style='width: 60px' class='on'>30s</div>");
+            html.print("<div style='width: 30px' class='off'>15s</div>");
+            html.print("<div style='width: 30px' class='on'>15s</div>");
+            html.print("<div style='width: 30px' class='off'>15s</div>");
+            html.print("<div style='width: 180px' class='on'>90s</div>");
+            html.print("<div style='width: 40px' class='off'>20s</div>");
+            html.print("<div style='width: 40px; border-left: 1px solid green' class='on'>Auto</div>");
             html.print("</div></td>");
           });
           html.element("tr", [&html]() {

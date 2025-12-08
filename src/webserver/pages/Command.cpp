@@ -100,18 +100,10 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
             return;
         }
         NeohubZoneData* zd;
-        zd = NeohubManager.getZoneData(zoneName);
-        float setpoint = 0;
-        bool on = false;
-        if (command == "GetZoneStatus") { setpoint = 22, on = true; }
-        else if (command == "ZoneOn") { setpoint = 35, on = true; }
-        else if (command == "ZoneOff") { setpoint = 15, on = false; }
-        else if (command == "ZoneAuto") { setpoint = 22, on = true; }
-
-        // if (command == "GetZoneStatus") zd = NeohubManager.getZoneData(zoneName);
-        // else if (command == "ZoneOn") zd = NeohubManager.forceZoneOn(zoneName);
-        // else if (command == "ZoneOff") zd = NeohubManager.forceZoneOff(zoneName);
-        // else if (command == "ZoneAuto") zd = NeohubManager.setZoneToAutomatic(zoneName);
+        if (command == "GetZoneStatus") zd = NeohubManager.getZoneData(zoneName, /* forceLoad: */ true);
+        else if (command == "ZoneOn") zd = NeohubManager.forceZoneOn(zoneName);
+        else if (command == "ZoneOff") zd = NeohubManager.forceZoneOff(zoneName);
+        else if (command == "ZoneAuto") zd = NeohubManager.setZoneToAutomatic(zoneName);
         if (!zd) {
             request->send(makeCommandResponse(request, 400, "{ \"error\": \"unable to configure zone\" }"));
             return;
@@ -119,8 +111,7 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
         request->send(makeCommandResponse(request, 200, 
             StringPrintf(
                 R"({ "setpoint": %.1f, "on": %s})",
-                setpoint, BOOL_TO_STRING(on)
-                //zd->roomSetpoint, BOOL_TO_STRING(zd->demand)
+                zd->roomSetpoint, BOOL_TO_STRING(zd->demand)
             )
         ));
         return;
