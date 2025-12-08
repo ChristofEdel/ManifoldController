@@ -29,7 +29,7 @@ String methodToString(WebRequestMethodComposite m)
         case HTTP_HEAD:    return "HEAD";
         default:           return "??? (" + String(m) + ")";
     }
-  }
+}
 
 void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
 {
@@ -56,47 +56,6 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
     this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
     this->m_server.onNotFound([this](AsyncWebServerRequest *r) { this->respondWithError(r, 400, "Unsupported Method: " + methodToString(r->method()) + " on URL " + r->url()); });
     this->m_server.begin();
-}
-
-void CMyWebServer::processFileRequest(AsyncWebServerRequest* request)
-{
-    String fileName = request->url();
-    if (!fileName.startsWith("/files")) {
-        request->send(404, "text/plain", "File not found");
-        return;
-    }
-    fileName = fileName.substring(6);
-
-    // Open the file briefly and check for existence and what it is
-    if (!this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
-        request->send(400, "text/plain", "Unable to access SD card");
-        return;
-    }
-
-    FsFile f = this->m_sd->open(fileName, O_RDONLY);
-    bool exists = f.isOpen();
-    bool isDir = f.isDir();
-    bool isFile = f.isFile();
-    f.close();
-    this->m_sdMutex->unlock();
-
-    // Errors unless it is a file or directoy
-    if (!exists) {
-        request->send(404, "text/plain", "File not found");
-        return;
-    }
-    if (!isDir && !isFile) {
-        request->send(404, "text/plain", "Not a file or directory");
-        return;
-    }
-
-    // Respond as appropriate
-    if (isDir) {
-        respondWithDirectory(request, fileName);
-    }
-    else {
-        respondWithFileContents(request, fileName);
-    }
 }
 
 void CMyWebServer::respondWithError(AsyncWebServerRequest* request, int code, const String& messageText)

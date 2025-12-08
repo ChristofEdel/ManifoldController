@@ -5,7 +5,7 @@
 #include <ESPAsyncWebServer.h>
 #include <SdFat.h>
 
-#include "HtmlGenerator.h"
+#include "../tools/HtmlGenerator.h"
 #include "MyMutex.h"
 #include "MyWifi.h"
 #include "NeohubConnection.h"
@@ -70,7 +70,7 @@ class CMyWebServer {
         AsyncWebServerRequest* request,
         uint8_t* data, size_t len,
         size_t index, size_t total
-      );
+    );
 
 };
 

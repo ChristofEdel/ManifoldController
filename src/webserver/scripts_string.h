@@ -204,7 +204,7 @@ function sendZoneCommand(zoneId, commandName) {
 // Config page: Manual valve control
 //
 
-function sendValveControlCommand(payload) {
+function sendCommand(payload) {
   $.ajax({
     url: '/command',
     method: 'POST',
@@ -225,7 +225,7 @@ function valveControlManualCheckboxChanged() {
     var value = parseInt($('valveControlPositionSlider').val(), 10) || 0
     $('valveControlPositionText').text(value)
 
-    sendValveControlCommand({
+    sendCommand({
         command: 'SetValvePosition',
         parameters: {
             automatic: automatic,
@@ -244,7 +244,7 @@ function valveControlSliderChanged() {
         $('#valveControlManualCheckbox').prop('checked', true).triggerHandler('change')
     }
 
-    sendValveControlCommand({
+    sendCommand({
         command: 'SetValvePosition',
         parameters: {
             automatic: false,

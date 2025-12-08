@@ -82,13 +82,23 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
         // default response
     }
 
-    else if (command == "DebumpFlowPid") {
-        ValveManager.setFlowSetpoint(ValveManager.getFlowSetpoint());
+    else if (command == "SetFlowPidOutput") {
+        if (commandJson["value"].isNull()) {
+            ValveManager.setFlowSetpoint(ValveManager.getFlowSetpoint());
+        }
+        else {
+            ValveManager.setFlowSetpoint(commandJson["value"].as<double>());
+        }
         // default response
     }
 
-    else if (command == "DebumpValvePid") {
-        ValveManager.setValvePosition(ValveManager.getValvePosition());
+    else if (command == "SetValvePidOutput") {
+        if (commandJson["value"].isNull()) {
+            ValveManager.setValvePosition(ValveManager.getFlowSetpoint());
+        }
+        else {
+            ValveManager.setValvePosition(commandJson["value"].as<double>());
+        }
         // default response
     }
 
