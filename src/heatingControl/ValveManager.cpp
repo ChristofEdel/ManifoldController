@@ -122,7 +122,7 @@ void CValveManager::sendCurrentValvePosition() {
 }
 
 
-void CValveManager::sendValvePosition(double position) {
+void CValveManager::sendValvePosition(double valvePosition) {
     // If the DAC has not been initialised successfully, we try it once again here
     if (!m_dacInitialised) {
         m_dacInitialised = dac.begin() == 0;
@@ -131,7 +131,6 @@ void CValveManager::sendValvePosition(double position) {
 
     // No DAC - no action
     if (!m_dacInitialised) return;
-    double valvePosition = this->outputs.targetValvePosition;
     if (m_valveInverted) valvePosition = 100 - valvePosition;
     dac.setDACOutVoltage(valvePosition * 100, 0); // Scale 0..100% to 0..10,000 mV (0-10V)
 }
