@@ -18,6 +18,10 @@ const char STYLES_CSS_STRING[] PROGMEM = R"RAW_STRING(
   --bg-titles:           #e0e0e0;
   --bg-even:             #f4f4f4;
   --bg-odd:              var(--bg-global);
+  --bg-warning:          yellow;
+  --bg-error:            red;
+  --text-warning:        black;
+  --text-error:          white;
   --color-red:           red;
   --color-green-text:    darkgreen;
   --color-green-bg:      lightgreen;
@@ -154,7 +158,7 @@ table.field-table input {               /* input field style within table */
 
 
 /**********************************************************************************
-** Table for lists of sensors when monitoring
+** Table for lists of sensors or manifolds when monitoring
 */
 
 table.monitor-table {
@@ -180,6 +184,7 @@ table.monitor-table > tbody > tr > th {
 }
 table.monitor-table > tbody > tr > td {
     text-align: center;
+    width: 50px;
 }
 
 table.monitor-table > thead > tr > th {
@@ -216,11 +221,21 @@ table.monitor-table > tbody > tr > th.active {
     font-weight: bold;
 }
 
+table.monitor-table > tbody > tr > td.manifold-aged {
+    background-color: var(--bg-warning);
+    color: var(--text-warning);
+    font-weight: bold;
+}
+table.monitor-table > tbody > tr > td.manifold-dead {
+    background-color: var(--bg-error) ;
+    color: var(--text-error) ;
+    font-weight: bold;
+}
 /**********************************************************************************
 ** re-usable styles for all tables
 */
 
-th.gap-right {
+th.gap-right, td.gap-right {
     border-right: 5px solid var(--bg-global);
 }
 
@@ -251,6 +266,24 @@ table.center-all-td > thead > tr > td,
 table.center-all-td > tbody > tr > td {
     text-align: center;
 }
+
+/**********************************************************************************
+** Representation of switches
+*/
+
+div.switch-state {
+    box-sizing: border-box;
+    text-wrap: nowrap;
+    text-align: center;
+    width: 90px;
+}
+div.switch-state.on {
+    background: var(--color-green-bg);
+}
+div.switch-state.off {
+    background: var(--bg-active);
+}
+
 
 /**********************************************************************************
 ** Insert / Delete / Drag-Drop styling

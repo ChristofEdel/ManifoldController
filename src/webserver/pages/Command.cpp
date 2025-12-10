@@ -1,4 +1,4 @@
-#include "../HtmlGenerator.h"
+#include "HtmlGenerator.h"
 #include "../MyWebServer.h"
 #include "MyLog.h"
 #include "NeohubManager.h"

@@ -1,6 +1,6 @@
 #include <vector>
 
-#include "../HtmlGenerator.h"
+#include "HtmlGenerator.h"
 #include "../MyWebServer.h"
 #include "ESPmDNS.h"
 #include "NeohubManager.h"

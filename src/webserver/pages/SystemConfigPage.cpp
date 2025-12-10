@@ -15,8 +15,15 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   html.element("form", "method='post'", [this, &html]{
     html.blockLayout([this, &html]{
 
-      html.block("Hostname", [this, &html]{
-        html.input("name='hostname'", Config.getHostname().c_str());
+      html.block("Names", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("Display Name", [&html]{
+            html.fieldTableInput("name='displayname'",Config.getName().c_str());
+          });
+          html.fieldTableRow("Hostname", [&html]{
+            html.fieldTableInput("name='hostname'", Config.getHostname().c_str());
+          });
+        });
       });
 
       html.block("Neohub", [this, &html]{
@@ -26,6 +33,14 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
           });
           html.fieldTableRow("Token", [&html]{
             html.fieldTableInput("name='nh_token' style='width: 20em'",Config.getNeohubToken().c_str());
+          });
+        });
+      });
+
+      html.block("Heating Controller", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("URL", [&html]{
+            html.fieldTableInput("name='hc_url' style='width: 20em'", Config.getHeatingControllerAddress().c_str());
           });
         });
       });
@@ -98,6 +113,10 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     if (!p->isPost()) continue;   // Ignore parameters that are not postback parameters
     const String & key = p->name();
 
+    if (key == "displayname" && p->value() != Config.getName()) {
+      Config.setName(p->value());
+      changesMade = true;
+    }
     if (key == "hostname" && p->value() != Config.getHostname()) {
       Config.setHostname(p->value());
       MyWiFi.setHostname(p->value());
@@ -111,6 +130,11 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     }
     if (key == "nh_token" && p->value() != Config.getNeohubToken()) {
       Config.setNeohubToken(p->value());
+      changesMade = true;
+    }
+    if (key == "hc_url" && p->value() != Config.getHeatingControllerAddress()) {
+      Config.setHeatingControllerAddress(p->value());
+      reconnectNeohub = true;
       changesMade = true;
     }
   }

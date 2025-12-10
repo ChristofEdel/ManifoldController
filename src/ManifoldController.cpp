@@ -18,6 +18,7 @@
 #include "Watchdog.h"
 #include "webserver/MyWebServer.h"  // Request handing and web page generator
 #include "sensorLog.h"
+#include "ManifoldManager.h"
 
 // Pin Assignments - digital pins --------------------------------
 const uint8_t openThermInPin = A0;  // Repurposed analog pins for OpenTherm module I/O
@@ -301,7 +302,28 @@ void valveControlTask(void* parameter)
             manageValveControls();
 
             // Then log if requested
-            if (writeLogLine) logSensors();
+            if (writeLogLine) {
+                logSensors();
+                // Then send our stats to the central heating controller (if configured)
+                const String &host = Config.getHeatingControllerAddress();
+                if (host != "" && host != "null") {
+                    ManifoldData data;
+                    String hostname = Config.getHostname();
+                    if (hostname != "" && hostname.indexOf('.') == -1) hostname = hostname + ".local";
+                    data.name = Config.getName() == "" ? hostname : Config.getName();
+                    data.hostname = Config.getHostname() + ".local";
+                    data.ipAddress = MyWiFi.getIpAddress();
+                    data.roomSetpoint = ValveManager.getRoomSetpoint();
+                    data.roomTemperature = ValveManager.inputs.roomTemperature;
+                    data.roomDeltaT = data.roomTemperature - data.roomSetpoint;
+                    data.flowSetpoint = ValveManager.getFlowSetpoint();
+                    data.flowTemperature = ValveManager.inputs.flowTemperature;
+                    data.flowDeltaT = data.flowTemperature - data.flowSetpoint;
+                    data.valvePosition = ValveManager.getValvePosition();
+                    data.flowDemand = data.flowSetpoint;
+                    ManifoldDataPostJob::post(data, host);
+                }
+            }
 
             // Finally, read the sensors for the next iteration
             // This is done last because reading takes around 600-800 ms so this prepares

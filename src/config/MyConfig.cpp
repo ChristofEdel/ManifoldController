@@ -10,6 +10,7 @@ void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) c
 {
     JsonDocument configJson;
 
+    configJson["name"]                     = name;
     configJson["hostname"]                 = hostname;
     configJson["neohubAddress"]            = neohubAddress;
     configJson["neohubToken"]              = neohubToken;
@@ -95,25 +96,26 @@ void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename)
         return;
     }
 
-    hostname = configJson["hostname"].as<String>();
-    neohubAddress = configJson["neohubAddress"].as<String>();
-    neohubToken = configJson["neohubToken"].as<String>();
-    heatingControllerAddress = configJson["heatingControllerAddress"].as<String>();
+    name                        = configJson["name"] | emptyString;
+    hostname                    = configJson["hostname"] | emptyString;
+    neohubAddress               = configJson["neohubAddress"] | emptyString;
+    neohubToken                 = configJson["neohubToken"] | emptyString;
+    heatingControllerAddress    = configJson["heatingControllerAddress"] | emptyString;
 
-    flowMaxSetpoint = configJson["flowMaxSetpoint"];
-    flowMinSetpoint = configJson["flowMinSetpoint"];
+    flowMaxSetpoint             = configJson["flowMaxSetpoint"];
+    flowMinSetpoint             = configJson["flowMinSetpoint"];
 
-    flowSensorId   = configJson["flowSensorId"].as<String>();
-    inputSensorId  = configJson["inputSensorId"].as<String>();
-    returnSensorId = configJson["returnSensorId"].as<String>();
+    flowSensorId                = configJson["flowSensorId"] | emptyString;
+    inputSensorId               = configJson["inputSensorId"] | emptyString;
+    returnSensorId              = configJson["returnSensorId"] | emptyString;
 
-    flowProportionalGain   = configJson["flowProportionalGain"].as<double>();
-    flowIntegralSeconds    = configJson["flowIntegralSeconds"].as<double>(); 
-    flowValveInverted      = configJson["flowValveInverted"].as<bool>();
+    flowProportionalGain        = configJson["flowProportionalGain"].as<double>();
+    flowIntegralSeconds         = configJson["flowIntegralSeconds"].as<double>(); 
+    flowValveInverted           = configJson["flowValveInverted"].as<bool>();
 
-    roomSetpoint         = configJson["roomSetpoint"].as<double>();
-    roomProportionalGain = configJson["roomProportionalGain"].as<double>();
-    roomIntegralMinutes  = configJson["roomIntegralMinutes"].as<double>();
+    roomSetpoint                = configJson["roomSetpoint"].as<double>();
+    roomProportionalGain        = configJson["roomProportionalGain"].as<double>();
+    roomIntegralMinutes         = configJson["roomIntegralMinutes"].as<double>();
 
     // Iterate over sensors
     JsonArray sensorsArray = configJson["sensors"].as<JsonArray>();

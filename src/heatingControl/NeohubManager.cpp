@@ -203,8 +203,7 @@ void CNeohubManager::reconnect()
         if (!this->m_connection) return;
         if (this->m_connection->isConnected())
         this->m_connection->disconnect();
-        this->m_connection->finish();
-        this->m_connection = nullptr;
+        // Disconnected event takes care of clean up, do NOT delete here
     }
     ensureNeohubConnection();
 }

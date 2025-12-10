@@ -15,6 +15,8 @@ class CMyWiFi {
   public:
     void connect();
     void setHostname(const String& hostname);
+    String getIpAddress() const;
+
     const String& getHostname() const { return m_hostname; }
     void printStatus();
     bool updateRtcFromTimeServer(CMyRtc* rtc);

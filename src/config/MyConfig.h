@@ -9,6 +9,7 @@
 
 class CConfig {
   private:
+    String name;
     String hostname;
     String neohubAddress;
     String neohubToken;
@@ -30,6 +31,7 @@ class CConfig {
     double roomIntegralMinutes;
 
   public:
+    inline const String& getName() const { return name; };
     inline const String& getHostname() const { return hostname; };
     inline const String& getNeohubAddress() const { return neohubAddress; };
     inline const String& getNeohubToken() const { return neohubToken; };
@@ -51,6 +53,7 @@ class CConfig {
     inline double getRoomIntegralMinutes() const { return roomIntegralMinutes; };
 
     inline void setHostname(const String& value) { hostname = value; };
+    inline void setName(const String& value) { name = value; };
     inline void setNeohubAddress(const String& value) { neohubAddress = value; };
     inline void setNeohubToken(const String& value) { neohubToken = value; };
     inline void setHeatingControllerAddress(const String& value) { heatingControllerAddress = value; };

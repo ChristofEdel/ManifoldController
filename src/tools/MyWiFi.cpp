@@ -88,6 +88,10 @@ void CMyWiFi::printStatus()
     MyLog.println(" dBm");
 }
 
+String CMyWiFi::getIpAddress() const {
+    return WiFi.localIP().toString();
+}
+
 static void getSdFatdateTime(uint16_t* fatDate, uint16_t* fatTime)
 {
     time_t now = time(nullptr);
