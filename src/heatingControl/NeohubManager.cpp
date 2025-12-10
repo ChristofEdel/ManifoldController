@@ -199,11 +199,14 @@ bool CNeohubManager::ensureNeohubConnection()
 // Disconnect (if necessary) from the Neohub end reestablish the connection
 void CNeohubManager::reconnect()
 {
-    if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
-        if (!this->m_connection) return;
-        if (this->m_connection->isConnected())
-        this->m_connection->disconnect();
-        // Disconnected event takes care of clean up, do NOT delete here
+    if (this->m_connection) {
+        if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
+            if (this->m_connection->isConnected()) {
+                this->m_connection->disconnect();
+                // Disconnected event takes care of clean up, do NOT delete here
+            }
+            m_neohubMutex.unlock();
+        }
     }
     ensureNeohubConnection();
 }

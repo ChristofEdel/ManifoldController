@@ -2,6 +2,7 @@
 #define __MY_MUTEX_H
 
 #include <Arduino.h>
+#include "EspTools.h"
 
 // #define MUTEX_DEBUG
 // #define MUTEX_DEFAULT_TIMEOUT  pdMS_TO_TICKS(10000)
@@ -15,6 +16,8 @@ class MyMutex {
     String m_lockHolder;
     String m_name;
 
+    static const int safetyTimeoutMillis = 10000;
+
   public:
     MyMutex(const String& name) : m_name(name)
     {
@@ -24,20 +27,32 @@ class MyMutex {
 
     bool lock(const char* who, int timeoutMillis = 0)
     {
-#ifdef MUTEX_DEBUG
-        bool result = lock(timeoutMillis);
+        bool result;
+
+        // If no timeout is specified, we will time out at the
+        // "safety timeout" and abort
+        if (!timeoutMillis) {
+            result = lock(safetyTimeoutMillis);
+            if (result) {
+                m_lockHolder = who;
+                return result;
+            }
+            softwareAbort(
+                SW_RESET_MUTEX_TIMEOUT, 
+                "MyMutex(%s): locked by %s; %s failed to acquire lock",
+                m_name.c_str(),
+                m_lockHolder.c_str(),
+                who
+            );
+        }
+
+        // Otherwise, we will assume this is what the calling
+        // code wanted and that it will handle the timeout
+        result = lock(timeoutMillis);
         if (result) {
             m_lockHolder = who;
         }
-        else {
-            Serial.printf("Mutex %s timed out:", this->m_name.c_str());
-            Serial.printf("   held by:      %s\n", this->m_lockHolder.c_str());
-            Serial.printf("   requested by: %s\n", who);
-        }
         return result;
-#else
-        return lock(timeoutMillis);
-#endif
     }
 
     void unlock()

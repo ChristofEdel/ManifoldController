@@ -121,7 +121,7 @@ size_t CMyDebugLog::printfWithLocation(const char *debugLogFormat, const char *t
     int result = fprintf(stdout, debugLogFormat, taskName, location);
 
     // The following is 1:1 copy of the printf implementation but with a larger buffer
-    // and using _serial.write
+    // and writing to stdout
     char loc_buf[200];
     char * temp = loc_buf;
     va_list arg;

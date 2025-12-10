@@ -118,11 +118,16 @@ void setup()
 
     MyWiFi.updateRtcFromTimeServer(&MyRtc);
     String resetReason = getResetReason();
+    String resetMessage = getSoftwareResetMessage();
     clearSoftwareResetReason();
     MyLog.print("Last reset reason: ");
     MyLog.println(resetReason);
     MyCrashLog.print("RESTART - Last reset reason: ");
     MyCrashLog.println(resetReason);
+    if (resetMessage != emptyString) {
+        MyLog.println(resetMessage);
+        MyCrashLog.println(resetMessage);
+    }
 
     // Initialisations for several modules
     setupOta();
