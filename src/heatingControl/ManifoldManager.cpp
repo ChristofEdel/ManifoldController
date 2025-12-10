@@ -77,8 +77,9 @@ String ManifoldData::toJson() const
 QueueHandle_t ManifoldDataPostJob::m_senderQueue = nullptr;      // Queue of FireAndForgetPostJob*
 TaskHandle_t ManifoldDataPostJob::m_senderTask = nullptr;  // A task executing these jobs
 
-void ManifoldDataPostJob::post(const ManifoldData& data, String url)
+void ManifoldDataPostJob::post(const ManifoldData& data, String host)
 {
+    if (host == emptyString) return;
     ensurePostTask();                                               // Ensure the task that posts the jobexists
 
     // Drain the queue so all pending requests with older data will
@@ -87,7 +88,7 @@ void ManifoldDataPostJob::post(const ManifoldData& data, String url)
     while (xQueueReceive(m_senderQueue, &oldJob, 0) == pdPASS) delete oldJob;
 
     // Create a new job and send it to the queue
-    ManifoldDataPostJob* job = new ManifoldDataPostJob(url, data);  // Create a job
+    ManifoldDataPostJob* job = new ManifoldDataPostJob(host, data);  // Create a job
     BaseType_t ok = xQueueSendToBack(m_senderQueue, &job, 0 /* no wait */);
 
     if (ok != pdTRUE) {
@@ -130,6 +131,7 @@ void ManifoldDataPostJob::postTask(void *arg)
         if (!job) {
             continue;
         }
+        if (job->host == emptyString) return;
 
         if (WiFi.status() == WL_CONNECTED) {
             WiFiClient client;
