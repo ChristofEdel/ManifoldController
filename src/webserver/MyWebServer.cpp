@@ -46,6 +46,7 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
     this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->processHeatingConfigPagePost(r); });
     this->m_server.on(AsyncURIMatcher::exact("/tasks"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
     this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
+    this->m_server.on(AsyncURIMatcher::exact("/reset"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareReset(SW_RESET_USER_RESET); });
     this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
     this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
     this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_POST,[this](AsyncWebServerRequest *r) { this->executeCommand(r); }, nullptr, CMyWebServer::assemblePostBody);

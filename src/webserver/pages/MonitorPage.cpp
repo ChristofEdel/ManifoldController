@@ -205,6 +205,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
       });
     });
   }); // block layout
+  html.footer();
+
 
   html.print("<script>setInterval(monitorPage_refreshData, 5000)</script>");
   finishHttpHtmlResponse(response);

@@ -1,8 +1,11 @@
-#include <Arduino.h>
-#include <esp_system.h> // For reset reason
-#include <ArduinoOTA.h>
 #include "EspTools.h"
+
+#include <Arduino.h>
+#include <ArduinoOTA.h>
+#include <esp_system.h>  // For reset reason
+
 #include "MyLog.h"
+#include "esp_timer.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -17,7 +20,7 @@
 // Before accessing these variables, the code MUST check if they can be used or if they 
 // have to be cleared instead
 //
-bool mustClearRtcMemory()
+bool rtcMemoryIsValid()
 {
     esp_reset_reason_t reason = esp_reset_reason();
     switch (reason) {
@@ -29,23 +32,66 @@ bool mustClearRtcMemory()
         case ESP_RST_WDT:
         case ESP_RST_DEEPSLEEP:
             // case ESP_RST_SDIO:
-            return false;
-        default:
             return true;
+        default:
+            return false;
     }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Reset reason
+// RTC memory contents
 //
 
-RTC_NOINIT_ATTR uint32_t lastSoftwareResetReason;
-RTC_NOINIT_ATTR char lastSoftwareResetMessage[1000];
+RTC_NOINIT_ATTR uint32_t rtc_lastSoftwareResetReason;
+RTC_NOINIT_ATTR char rtc_lastSoftwareResetMessage[1000];
+
+uint32_t lastSoftwareResetReason = 0;
+String lastSoftwareResetMessage;
+int64_t lastReboot = 0;
+bool rebootHandled = false;
+
+time_t uptime() {
+    return (esp_timer_get_time() - lastReboot) / 1000000ULL;
+}
+
+String uptimeText() 
+{
+    time_t secs = uptime();
+    int d = secs / 86400;  secs %= 86400;
+    int h = secs / 3600;   secs %= 3600;
+    int m = secs / 60;
+    int s = secs % 60;
+
+    String out;
+
+    if (d > 0) { out += d; out += "d "; }
+    if (!out.isEmpty() || h > 0) { out += h; out += "h "; }
+    if (!out.isEmpty() || m > 0) { out += m; out += "m "; }
+    out += s; out += "s";
+    return out;
+}
+
+//
+// on reboot, copy the RTC memory information for later use and 
+// clear the RTC memory
+//
+void handleReboot() {
+    if (rebootHandled) return;
+    if (rtcMemoryIsValid()) {
+        lastSoftwareResetReason = rtc_lastSoftwareResetReason;
+        lastSoftwareResetMessage = rtc_lastSoftwareResetMessage;
+    }
+    rtc_lastSoftwareResetReason = 0;
+    rtc_lastSoftwareResetMessage[0] = '\0';
+    lastReboot = esp_timer_get_time();
+    rebootHandled = true;
+}
+
 
 // Get a string describing the reason for the last reset, including the more detailed reason stored in
 // lastSoftwareResetReason
-String getResetReason()
+String getResetReasonText()
 {
     esp_reset_reason_t reason = esp_reset_reason();
     String result;
@@ -65,16 +111,15 @@ String getResetReason()
     }
     uint32_t swReason = getSoftwareResetReason();
     if (swReason != 0) {
-        if (reason == ESP_RST_PANIC || (reason == ESP_RST_SW && swReason == SW_RESET_OTA_UPDATE)) {
-            switch (swReason)
-            {
-                case SW_RESET_OTA_UPDATE:       result += " (OTA update)"; break;
-                case SW_RESET_OUT_OF_MEMORY:    result += " (out of memory)"; break;
-                case SW_RESET_PANIC_TEST:       result += " (test using /panic URL)"; break;
-                case SW_RESET_WEBSOCKET_ABORT:  result += " (unexpected WebSocket data)"; break;
-                case SW_RESET_MUTEX_TIMEOUT:    result += " (mutex timeout)"; break;
-                default:                        result += " (unknown code 0x" + String(swReason, HEX) + ")"; break;
-            }
+        switch (swReason)
+        {
+            case SW_RESET_OTA_UPDATE:       result += " (OTA update)"; break;
+            case SW_RESET_OUT_OF_MEMORY:    result += " (out of memory)"; break;
+            case SW_RESET_PANIC_TEST:       result += " (test using /panic URL)"; break;
+            case SW_RESET_USER_RESET:       result += " (reset by user)"; break;
+            case SW_RESET_WEBSOCKET_ABORT:  result += " (unexpected WebSocket data)"; break;
+            case SW_RESET_MUTEX_TIMEOUT:    result += " (mutex timeout)"; break;
+            default:                        result += " (unknown code 0x" + String(swReason, HEX) + ")"; break;
         }
     }
     return result;
@@ -82,36 +127,31 @@ String getResetReason()
 
 uint32_t getSoftwareResetReason()
 {
-    if (mustClearRtcMemory()) clearSoftwareResetReason();
+    handleReboot();
     return lastSoftwareResetReason;
 }
 
-const char* getSoftwareResetMessage()
+const String& getSoftwareResetMessage()
 {
+    handleReboot();
     return lastSoftwareResetMessage;
-}
-
-void clearSoftwareResetReason()
-{
-    lastSoftwareResetReason = 0;
-    lastSoftwareResetMessage[0] = '\0';
 }
 
 static void setSoftwareResetReason(uint32_t reason, const char *format, va_list arg)
 {
-    lastSoftwareResetReason = reason;
+    rtc_lastSoftwareResetReason = reason;
     if (format) {
-        vsnprintf(lastSoftwareResetMessage, sizeof(lastSoftwareResetMessage), format, arg);
+        vsnprintf(rtc_lastSoftwareResetMessage, sizeof(rtc_lastSoftwareResetMessage), format, arg);
     }
     else {
-        lastSoftwareResetMessage[0] = '\0';
+        rtc_lastSoftwareResetMessage[0] = '\0';
     }
 }
 
 void softwareReset(uint32_t reason)
 {
-    lastSoftwareResetReason = reason;
-    lastSoftwareResetMessage[0] = '\0';
+    rtc_lastSoftwareResetReason = reason;
+    rtc_lastSoftwareResetMessage[0] = '\0';
     esp_restart();
 }
 
@@ -127,8 +167,8 @@ void softwareReset(uint32_t reason, const char* format, ...)
 
 void softwareAbort(uint32_t reason)
 {
-    lastSoftwareResetReason = reason;
-    lastSoftwareResetMessage[0] = '\0';
+    rtc_lastSoftwareResetReason = reason;
+    rtc_lastSoftwareResetMessage[0] = '\0';
     abort();
 }
 
@@ -158,8 +198,7 @@ void setupOta()
 
     ArduinoOTA.onEnd([]() {
         MyLog.println("OTA Update Completed");
-        clearSoftwareResetReason();
-        lastSoftwareResetReason = SW_RESET_OTA_UPDATE;
+        rtc_lastSoftwareResetReason = SW_RESET_OTA_UPDATE;
     });
 
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {

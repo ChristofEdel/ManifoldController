@@ -8,6 +8,7 @@
 #include <unordered_set>
 
 #include "MyMutex.h"
+#include "MyLog.h"
 
 class NeohubConnection {
   private:
@@ -52,14 +53,22 @@ class NeohubConnection {
     std::function<void()> m_onDisonnect = nullptr;
     std::function<void(String message)> m_onError = nullptr;
 
+    static int nextInstanceNo;
+    int instanceNo;
+
   public:
     // Constructor: for access to a particular hub with a particular access token
-    NeohubConnection(const String& host, const String& accessToken) : m_host(host), m_accessToken(accessToken) {};
+    NeohubConnection(const String& host, const String& accessToken) : m_host(host), m_accessToken(accessToken) {
+        instanceNo = nextInstanceNo++;
+        DEBUG_LOG("Created %d", instanceNo);
+    };
 
   private:
     // Private destructor so nobody can delete an object from a callback
     // use NeohubConnection::finish() instead which will delete the object in the next loop
-    ~NeohubConnection() {};
+    ~NeohubConnection() {
+        DEBUG_LOG("Deleting %d", instanceNo);
+    };
 
   public:
     // Connecetion lifecyle -------------------------------------------------------

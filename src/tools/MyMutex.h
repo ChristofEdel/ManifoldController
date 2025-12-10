@@ -32,6 +32,7 @@ class MyMutex {
         // If no timeout is specified, we will time out at the
         // "safety timeout" and abort
         if (!timeoutMillis) {
+            unsigned long startMillis = millis();
             result = lock(safetyTimeoutMillis);
             if (result) {
                 m_lockHolder = who;
@@ -39,10 +40,11 @@ class MyMutex {
             }
             softwareAbort(
                 SW_RESET_MUTEX_TIMEOUT, 
-                "MyMutex(%s): locked by %s; %s failed to acquire lock",
+                "MyMutex(%s):\n    locked by: %s\n    failed in:  %s\n    after %d ms",
                 m_name.c_str(),
                 m_lockHolder.c_str(),
-                who
+                who,
+                millis() - startMillis
             );
         }
 

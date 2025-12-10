@@ -47,6 +47,7 @@ class HtmlGenerator {
     void fieldTableSelect(const char *tdParameters, const char *parameters, std::function<void()> func);
 
     void navbar(NavbarPage activePage);
+    void footer();
 
     bool needsEscapingSingleQuotes(const char *s);
     String escapeSingleQuotes(const char *s);

@@ -170,6 +170,8 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
       });
 
     }); // block layout
+    html.footer();
+
     html.print("<input type='submit' class='save-button' value='Save Changes'/>");
   }); // </form>
 

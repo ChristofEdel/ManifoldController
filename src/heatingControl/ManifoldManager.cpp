@@ -149,18 +149,24 @@ void ManifoldDataPostJob::postTask(void *arg)
                 client.print(bodyLen);
                 client.print("\r\nConnection: close\r\n\r\n");
                 client.print(body);
+                client.flush();
+
+                // Wait until the response has started
+                unsigned long deadline = millis() + 1000;   // 1 second timeout
+                while (millis() < deadline && client.connected() && !client.available()) delay(10);
 
                 // String response = "";
-                // unsigned long deadline = millis() + 1000;   // same timeout you set
                 // while (millis() < deadline && client.connected()) {
                 //     while (client.available()) {
                 //         int c = client.read();
                 //         if (c < 0) break;
                 //         response += (char) c;
                 //     }
+                //     delay(10)
                 // }
                 // DEBUG_LOG("Response: \n%s\n", response.c_str());
-                client.stop();   // no response read: fire-and-forget
+
+                client.stop();
             }
             // else {
             //     DEBUG_LOG("Sending failed, error: %d (%s)\n", errno, strerror(errno));

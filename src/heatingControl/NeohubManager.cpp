@@ -4,6 +4,9 @@
 #include "MyLog.h"
 #include "StringPrintf.h"
 
+int NeohubConnection::nextInstanceNo = 100;
+
+
 // Store the data obtained from the Neohub in form of a JSON object
 // in this NeohubZoneData object
 void NeohubZoneData::storeZoneData(JsonVariant obj)
@@ -166,8 +169,9 @@ bool CNeohubManager::ensureNeohubConnection()
         });
         this->m_connection->onDisconnect([this, url]() {
             MyLog.printf("Connection to NeoHub %s disconnected\n", url.c_str());
-            this->m_connection->finish();
+            NeohubConnection* c = this->m_connection;
             this->m_connection = nullptr;
+            c->finish();
         });
         this->m_connection->onError([this, url](String message) {
             MyLog.printf("Error in NeoHub %s connection: %s\n", url.c_str(), message.c_str());
@@ -199,14 +203,12 @@ bool CNeohubManager::ensureNeohubConnection()
 // Disconnect (if necessary) from the Neohub end reestablish the connection
 void CNeohubManager::reconnect()
 {
-    if (this->m_connection) {
-        if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
-            if (this->m_connection->isConnected()) {
-                this->m_connection->disconnect();
-                // Disconnected event takes care of clean up, do NOT delete here
-            }
-            m_neohubMutex.unlock();
+    if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
+        if (this->m_connection && this->m_connection->isConnected()) {
+            this->m_connection->disconnect();
+            // Disconnected event takes care of clean up, do NOT delete here
         }
+        m_neohubMutex.unlock();
     }
     ensureNeohubConnection();
 }

@@ -2,6 +2,7 @@
 
 #include "commit.h"
 #include "version.h"
+#include "EspTools.h"
 
 void HtmlGenerator::text(const char* s)
 {
@@ -131,11 +132,31 @@ void HtmlGenerator::fieldTableSelect(const char* tdParameters, const char* param
 void HtmlGenerator::navbar(NavbarPage activePage)
 {
     r->print("<div class='navbar'>");
-    r->print("<div class='navbox"); if (activePage == NavbarPage::Monitor) r->print(" selected"); r->print("'><a href='/monitor'>Monitor</a></div>");
-    r->print("<div class='navbox"); if (activePage == NavbarPage::Files) r->print(" selected"); r->print("'><a href='/files'>Files</a></div>");
-    r->print("<div class='navbox"); if (activePage == NavbarPage::Config) r->print(" selected"); r->print("'><a href='/config'>Config</a></div>");
-    r->print("<div class='navbox"); if (activePage == NavbarPage::System) r->print(" selected"); r->print("'><a href='/config-system'>System</a></div>");    
-    r->print("<div class='version' title='"); r->print(COMMIT); r->print("'>"); r->print(VERSION); r->print("</div>");    
+        r->print("<div class='navbox"); if (activePage == NavbarPage::Monitor) r->print(" selected"); r->print("'><a href='/monitor'>Monitor</a></div>");
+        r->print("<div class='navbox"); if (activePage == NavbarPage::Files) r->print(" selected"); r->print("'><a href='/files'>Files</a></div>");
+        r->print("<div class='navbox"); if (activePage == NavbarPage::Config) r->print(" selected"); r->print("'><a href='/config'>Config</a></div>");
+        r->print("<div class='navbox"); if (activePage == NavbarPage::System) r->print(" selected"); r->print("'><a href='/config-system'>System</a></div>");    
+        r->print("<div class='version' title='"); r->print(COMMIT); r->print("'>"); r->print(VERSION); r->print("</div>");    
+    r->print("</div>");
+}
+
+void HtmlGenerator::footer()
+{
+    r->print("<div class='bottom-bar tooltip'>");
+
+        r->print("<a href='/files/crashlog.txt' class='uptime'>");
+            r->print(uptimeText());
+            r->print(" since last start");
+        r->print("</a>");
+
+        r->print("<div class='tip'>");
+            r->print(getResetReasonText());
+            if (getSoftwareResetMessage()) {
+                r->print("\n");
+                r->print(getSoftwareResetMessage());
+            }
+        r->print("</div>");
+
     r->print("</div>");
 }
 

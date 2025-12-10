@@ -58,6 +58,7 @@ void triggerValveControls(bool);
 void setup()
 {
     esp_log_level_set("*", ESP_LOG_ERROR);
+    handleReboot();
 
     // Get rid of all watchdogs - they cause problems since OTA was added.
     disableCore0WDT();
@@ -117,9 +118,8 @@ void setup()
     }
 
     MyWiFi.updateRtcFromTimeServer(&MyRtc);
-    String resetReason = getResetReason();
+    String resetReason = getResetReasonText();
     String resetMessage = getSoftwareResetMessage();
-    clearSoftwareResetReason();
     MyLog.print("Last reset reason: ");
     MyLog.println(resetReason);
     MyCrashLog.print("RESTART - Last reset reason: ");
@@ -138,7 +138,7 @@ void setup()
 
     ValveManager.setup();
     ValveManager.setRooomSetpoint(Config.getRoomSetpoint());
-    if (mustClearRtcMemory()) {
+    if (!rtcMemoryIsValid()) {
         lastKnownFlowSetpoint = 0;
         lastKownValvePosition = 0;
     }

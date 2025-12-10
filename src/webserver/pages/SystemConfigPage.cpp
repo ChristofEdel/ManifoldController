@@ -92,8 +92,8 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
         });
       });
 
-
     }); // block layout
+    html.footer();
     html.print("<input type='submit' class='save-button' value='Save Changes'/>");
   }); // </form>
 
@@ -134,7 +134,6 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     }
     if (key == "hc_url" && p->value() != Config.getHeatingControllerAddress()) {
       Config.setHeatingControllerAddress(p->value());
-      reconnectNeohub = true;
       changesMade = true;
     }
   }
