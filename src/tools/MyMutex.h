@@ -14,63 +14,18 @@ class MyMutex {
   private:
     SemaphoreHandle_t m_semaphore;
     String m_lockHolder;
+    Esp32Backtrace *m_lockBacktrace = 0;
     String m_name;
 
     static const int safetyTimeoutMillis = 10000;
 
   public:
-    MyMutex(const String& name) : m_name(name)
-    {
-        m_semaphore = xSemaphoreCreateBinary();
-        xSemaphoreGive(m_semaphore);
-    }
-
-    bool lock(const char* who, int timeoutMillis = 0)
-    {
-        bool result;
-
-        // If no timeout is specified, we will time out at the
-        // "safety timeout" and abort
-        if (!timeoutMillis) {
-            unsigned long startMillis = millis();
-            result = lock(safetyTimeoutMillis);
-            if (result) {
-                m_lockHolder = who;
-                return result;
-            }
-            softwareAbort(
-                SW_RESET_MUTEX_TIMEOUT, 
-                "MyMutex(%s):\n    locked by: %s\n    failed in:  %s\n    after %d ms",
-                m_name.c_str(),
-                m_lockHolder.c_str(),
-                who,
-                millis() - startMillis
-            );
-        }
-
-        // Otherwise, we will assume this is what the calling
-        // code wanted and that it will handle the timeout
-        result = lock(timeoutMillis);
-        if (result) {
-            m_lockHolder = who;
-        }
-        return result;
-    }
-
-    void unlock()
-    {
-        xSemaphoreGive(m_semaphore);
-        m_lockHolder = "";
-    }
+    MyMutex(const String& name);
+    bool lock(const char* who, int timeoutMillis = 0);
+    void unlock();
 
   private:
-    bool lock(int timeoutMillis = 0)
-    {
-        return xSemaphoreTake(
-            m_semaphore,
-            timeoutMillis ? pdMS_TO_TICKS(timeoutMillis) : MUTEX_DEFAULT_TIMEOUT
-        ) == pdTRUE;
-    };
+    bool lock(int timeoutMillis = 0);
 };
 
 #endif

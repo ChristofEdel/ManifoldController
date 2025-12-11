@@ -111,22 +111,29 @@ void setup()
 
     MyLog.printlnSdOnly("-------------------------------------------------------------------------------------------");
 
-    // Connect to WiFi
+    // Connect to WiFi and initialise clock
     MyWiFi.connect();
     if (Config.getHostname() != "") {
         MyWiFi.setHostname(Config.getHostname());
     }
-
     MyWiFi.updateRtcFromTimeServer(&MyRtc);
+
+    // Deal with resets and crashes
     String resetReason = getResetReasonText();
     String resetMessage = getSoftwareResetMessage();
+
     MyLog.print("Last reset reason: ");
     MyLog.println(resetReason);
+    if (resetMessage != emptyString) MyLog.println(resetMessage);
+
     MyCrashLog.print("RESTART - Last reset reason: ");
     MyCrashLog.println(resetReason);
-    if (resetMessage != emptyString) {
-        MyLog.println(resetMessage);
-        MyCrashLog.println(resetMessage);
+    if (resetMessage != emptyString) MyCrashLog.println(resetMessage);
+    if (getResetReason() == ESP_RST_PANIC) {
+        Esp32CoreDump dump;
+        if (dump.exists()) {
+            dump.writeBacktrace(MyCrashLog);
+        }
     }
 
     // Initialisations for several modules

@@ -1,7 +1,7 @@
 #include "HtmlGenerator.h"
 #include "../MyWebServer.h"
 #include "MyLog.h"
-
+#include "EspTools.h"
 
 void CMyWebServer::processFileRequest(AsyncWebServerRequest* request)
 {
@@ -42,6 +42,49 @@ void CMyWebServer::processFileRequest(AsyncWebServerRequest* request)
     else {
         respondWithFileContents(request, fileName);
     }
+}
+
+void CMyWebServer::processCoreDumpRequest(AsyncWebServerRequest* request)
+{
+    auto coreDump = std::make_shared<Esp32CoreDump>();
+
+    if (!coreDump->exists()) {
+        request->send(404, "text/plain", "No core dump");
+    }
+
+    AsyncWebServerResponse* response = request->beginResponse(
+        "application/octet-stream", 
+        coreDump->size(),
+        [coreDump](uint8_t* buffer, size_t maxLen, size_t index) -> size_t {
+            if (index >= coreDump->size()) return 0;  // done
+
+            size_t remaining = coreDump->size() - index;
+            size_t toRead = (remaining < maxLen) ? remaining : maxLen;
+            return coreDump->read(index, buffer, toRead);
+        }
+    );
+
+    String fileName = request->url().substring(1);
+
+    response->addHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+    request->send(response);
+}
+
+void CMyWebServer::processCrashLogRequest(AsyncWebServerRequest* request)
+{
+    Esp32CoreDump coreDump;
+    if (!coreDump.exists()) {
+        request->send(404, "text/plain", "No crash log");
+    }
+
+    AsyncResponseStream* response = request->beginResponseStream("text/plain");
+    if (coreDump.writeBacktrace(*response)) {
+        response->setCode(200);
+    }
+    else {
+        response->setCode(500);
+    }
+    request->send(response);
 }
 
 size_t CMyWebServer::sendFileChunk(WebResponseContext* context, uint8_t* buffer, size_t maxLen, size_t fromPosition)
@@ -175,10 +218,22 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
     html.navbar(NavbarPage::Files);
     response->println("<div class='navbar-border'></div>");
     response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th><th>Modified</th><th class='delete-header'></th></tr></thead><tbody>");
+    Esp32CoreDump coreDump;
+    if (coreDump.exists()) {
+        response->print("<tr>");
+        if (coreDump.getFormat() == "elf") {
+            response->printf("<td><a href='/coredump.elf'>coredump.elf</a></td>");
+        }
+        else {
+            response->printf("<td><a href='/coredump.bin'>coredump.bin</a></td>");
+        }
+        response->printf("<td class='right'>%.1f</td>", coreDump.size() / 1024.0);
+        response->printf("<td></td><td class='delete-file'></td></tr>");
+    }
     for (DirectoryEntry& e : entries) {
         response->print("<tr>");
         response->printf("<td><a href='/files/%s'>%s</a></td>", e.name.c_str(), e.name.c_str());
-        response->printf("<td class='right'>%.0f</td>", e.sizeKb);
+        response->printf("<td class='right'>%.1f</td>", e.sizeKb);
 
         char buf[25];
         response->printf("<td>%s</td>", e.formatDate(buf, sizeof(buf)));
@@ -198,23 +253,39 @@ void CMyWebServer::processDeleteFileRequest(AsyncWebServerRequest* request)
     }
 
     String filename = p->value();
-    if (filename.startsWith("/files")) filename = filename.substring(6);  // strip leading /files
-    if (!filename.startsWith("/"))                                        // SdFat needs leading slash
-        filename = "/" + filename;
 
-    if (filename.indexOf("..") != -1) {  // prevent navigating up
-        request->send(400, "text/plain", "relative navigation not permitted");
-        return;
+    // Process special file "coredump.*"
+    if (filename == "coredump.bin" || filename == "coredump.elf") {
+        Esp32CoreDump dump;
+        if (!dump.exists()) request->send(200, "text/plain", "coredump does not exist");
+        if (dump.remove()) {
+            request->send(200, "text/plain", "coredump deleted");
+        }
+        else {
+            request->send(500, "text/plain", "cannot delete coredump");
+        }
     }
 
-    bool result = false;
+    else {
+        if (filename.startsWith("/files")) filename = filename.substring(6);  // strip leading /files
+        if (!filename.startsWith("/"))                                        // SdFat needs leading slash
+            filename = "/" + filename;
 
-    if (this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
-        result = this->m_sd->remove(filename.c_str());
-        this->m_sdMutex->unlock();
+        if (filename.indexOf("..") != -1) {  // prevent navigating up
+            request->send(400, "text/plain", "relative navigation not permitted");
+            return;
+        }
+
+        bool result = false;
+
+        if (this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
+            result = this->m_sd->remove(filename.c_str());
+            this->m_sdMutex->unlock();
+        }
+        if (result)
+            request->send(200, "text/plain", "file deleted");
+        else
+            request->send(500, "text/plain", "delete failed");
     }
-    if (result)
-        request->send(200, "text/plain", "file deleted");
-    else
-        request->send(500, "text/plain", "delete failed");
+
 }

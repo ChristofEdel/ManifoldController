@@ -39,6 +39,10 @@ class CMyWebServer {
     size_t sendFileChunk(WebResponseContext* context, uint8_t* buffer, size_t maxLen, size_t index);
     void processDeleteFileRequest(AsyncWebServerRequest* request);
 
+    void processCoreDumpRequest(AsyncWebServerRequest* request);
+    void processCrashLogRequest(AsyncWebServerRequest* request);
+
+
     // Heatmiser Neohub pass-through
     void respondFromNeohub(AsyncWebServerRequest* request);
 

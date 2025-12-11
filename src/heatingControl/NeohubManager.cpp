@@ -2,7 +2,7 @@
 
 #include "MyConfig.h"
 #include "MyLog.h"
-#include "StringPrintf.h"
+#include "StringTools.h"
 
 int NeohubConnection::nextInstanceNo = 100;
 

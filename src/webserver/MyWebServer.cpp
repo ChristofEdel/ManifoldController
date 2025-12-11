@@ -39,6 +39,9 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
     this->m_server.on(AsyncURIMatcher::exact("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
     this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });
     this->m_server.on(AsyncURIMatcher::dir  ("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/coredump.elf"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCoreDumpRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/coredump.bin"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCoreDumpRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/crashlog.txt"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCrashLogRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/monitor"),       HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_POST,[this](AsyncWebServerRequest *r) { this->processSystemConfigPagePost(r); });

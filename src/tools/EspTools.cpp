@@ -1,11 +1,16 @@
 #include "EspTools.h"
+#include "StringTools.h"
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <esp_core_dump.h>
+#include <esp_err.h>
+#include <esp_partition.h>
 #include <esp_system.h>  // For reset reason
+#include <esp_timer.h>
+#include <esp_debug_helpers.h>
 
 #include "MyLog.h"
-#include "esp_timer.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -51,6 +56,28 @@ String lastSoftwareResetMessage;
 int64_t lastReboot = 0;
 bool rebootHandled = false;
 
+
+//
+// on reboot, copy the RTC memory information for later use and 
+// clear the RTC memory
+//
+void handleReboot() {
+    if (rebootHandled) return;
+    if (rtcMemoryIsValid()) {
+        lastSoftwareResetReason = rtc_lastSoftwareResetReason;
+        lastSoftwareResetMessage = rtc_lastSoftwareResetMessage;
+    }
+    rtc_lastSoftwareResetReason = 0;
+    rtc_lastSoftwareResetMessage[0] = '\0';
+    lastReboot = esp_timer_get_time();
+    rebootHandled = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Reset diagnostic and initiation
+//
+
 time_t uptime() {
     return (esp_timer_get_time() - lastReboot) / 1000000ULL;
 }
@@ -71,23 +98,6 @@ String uptimeText()
     out += s; out += "s";
     return out;
 }
-
-//
-// on reboot, copy the RTC memory information for later use and 
-// clear the RTC memory
-//
-void handleReboot() {
-    if (rebootHandled) return;
-    if (rtcMemoryIsValid()) {
-        lastSoftwareResetReason = rtc_lastSoftwareResetReason;
-        lastSoftwareResetMessage = rtc_lastSoftwareResetMessage;
-    }
-    rtc_lastSoftwareResetReason = 0;
-    rtc_lastSoftwareResetMessage[0] = '\0';
-    lastReboot = esp_timer_get_time();
-    rebootHandled = true;
-}
-
 
 // Get a string describing the reason for the last reset, including the more detailed reason stored in
 // lastSoftwareResetReason
@@ -123,6 +133,11 @@ String getResetReasonText()
         }
     }
     return result;
+}
+
+esp_reset_reason_t getResetReason()
+{
+    return esp_reset_reason();
 }
 
 uint32_t getSoftwareResetReason()
@@ -223,3 +238,160 @@ void setupOta()
     ArduinoOTA.setMdnsEnabled(false);
     ArduinoOTA.begin();
 }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Core dumps
+//
+
+void Esp32CoreDump::ensureInitialised() 
+{
+    if (this->m_initialised) return;
+    
+    esp_err_t err = esp_core_dump_image_get(&this->m_address, &this->m_size);
+    if (err != ESP_OK) {
+        this->m_address = 0;
+        this->m_size = 0;
+        this->m_partition = 0;
+    } 
+    else {
+        this->m_partition = esp_partition_find_first(
+            ESP_PARTITION_TYPE_DATA,
+            ESP_PARTITION_SUBTYPE_DATA_COREDUMP,
+            nullptr
+        );
+    }
+    this->m_initialised = true;
+    return;
+}
+
+bool Esp32CoreDump::exists()
+{
+    ensureInitialised();
+    return m_size > 0;
+}
+
+size_t Esp32CoreDump::size()
+{
+    ensureInitialised();
+    return m_size;
+}
+
+String Esp32CoreDump::getFormat()
+{
+    ensureInitialised();
+    if (!this->m_partition) return emptyString;
+
+    size_t addr = 0;
+    size_t size = 0;
+    if (esp_core_dump_image_get(&addr, &size) != ESP_OK || size < 24) return emptyString;
+
+    uint8_t hdr[4];
+    if (esp_partition_read(this->m_partition, addr - this->m_partition->address + 20, hdr, sizeof(hdr)) != ESP_OK)
+        return emptyString;
+
+    if (hdr[0] == 0x7F && hdr[1] == 'E' && hdr[2] == 'L' && hdr[3] == 'F')
+        return "elf";
+
+    return "binary";
+}
+
+size_t Esp32CoreDump::read(size_t start, void *buffer, size_t length)
+{
+    ensureInitialised();
+    if (!this->m_partition) return 0;
+    esp_err_t err = esp_partition_read(
+        this->m_partition,
+        this->m_address - this->m_partition->address + start,
+        buffer,
+        length
+    );
+    if (err != ESP_OK) return 0;
+    return length;
+}
+
+bool Esp32CoreDump::writeBacktrace(Print &out) {
+    ensureInitialised();
+    if (m_size <= 0) {
+        out.println("no core dump available");
+        return false;
+    }
+
+    esp_core_dump_summary_t summary;
+    esp_err_t err = esp_core_dump_get_summary(&summary);
+    if (err != ESP_OK) {
+        out.println("Core dump summary not available");
+        return false;;
+    }
+
+    const esp_core_dump_bt_info_t &bt = summary.exc_bt_info;
+    if (bt.depth == 0) {
+        out.println("No backtrace in core dump");
+        return false;
+    }
+    
+    out.print(
+        F("py scripts/printSymbols.py")
+    );
+
+    size_t depth = bt.depth;
+    if (depth > 16) depth = 16;      // summary usually has up to 16 entries
+
+    for (size_t i = 0; i < depth; ++i) {
+        out.printf(" 0x%08x", (uint32_t)bt.bt[i]);
+    }
+
+    out.print('\n');
+    return true;
+}
+
+bool Esp32CoreDump::remove() {
+    ensureInitialised();
+    if (!this->m_partition) return false;
+    if (this->m_size == 0) return true;
+    
+    esp_err_t err = esp_partition_erase_range(this->m_partition, 0, this->m_partition->size);
+    return (err == ESP_OK);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Live Backtrace
+//
+
+Esp32Backtrace::Esp32Backtrace(int skip /* = 0 */)
+{
+    esp_backtrace_frame_t frame = { 0 };
+    esp_backtrace_get_start(&frame.pc, &frame.sp, &frame.next_pc);
+
+    m_depth = 0;
+    for (;;) {
+        if (!frame.pc) break;
+        if (skip-- <= 0) {
+            m_backtraceAddress[m_depth++] = esp_cpu_process_stack_pc(frame.pc);
+        }
+        if (m_depth >= (sizeof(m_backtraceAddress) / sizeof(m_backtraceAddress[0]))) break;
+        if (!frame.next_pc) break;
+        if (!esp_backtrace_get_next_frame(&frame)) break;
+    } 
+
+}
+
+void Esp32Backtrace::print(Print& out) const
+{
+    out.print("py scripts/printSymbols.py");
+    for (int i = 0; i < m_depth; ++i) {
+        out.printf(" 0x%08x", (uint32_t)m_backtraceAddress[i]);
+    }
+}
+
+String Esp32Backtrace::toString() const
+{
+    String result;
+    StringPrinter p(result);
+    this->print(p);
+    return result;
+}
+

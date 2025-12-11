@@ -1,4 +1,4 @@
-#include "Stringprintf.h"
+#include "StringTools.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -42,4 +42,45 @@ String StringPrintf(const char* format, ...)
     }
 
     return result;
+}
+
+StringPrinter::StringPrinter(String& out)
+    : m_out(out),
+      m_reserved(out.length())
+{
+    if (m_reserved % 100) {
+        m_reserved = ((m_reserved / 100) + 1) * 100;
+        m_out.reserve(m_reserved);
+    }
+}
+
+size_t StringPrinter::write(uint8_t c)
+{
+    expandCapacity(1);
+    m_out += char(c);
+    return 1;
+}
+
+size_t StringPrinter::write(const uint8_t* buffer, size_t size)
+{
+    expandCapacity(size);
+    m_out.concat((const char*)buffer, size);
+    return size;
+}
+
+void StringPrinter::expandCapacity(size_t needed)
+{
+    size_t len = m_out.length();
+    size_t freeSpace = (m_reserved > len) ? (m_reserved - len) : 0;
+
+    if (freeSpace >= needed) return;
+
+    // grow m_reserved in 100-byte increments until enough
+    size_t required = len + needed;
+    while (m_reserved < required) {
+        m_reserved += 100;
+        // safer than faffing about woh modulos..
+    }
+
+    m_out.reserve(m_reserved);
 }
