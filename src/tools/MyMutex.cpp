@@ -20,14 +20,18 @@ bool MyMutex::lock(const char* who, int timeoutMillis /* = 0 */)
             m_lockBacktrace = new Esp32Backtrace(1);
             return result;
         }
-        Esp32Backtrace backtrace(0);
+        Esp32Backtrace backtrace(1);
+        TaskHandle_t task = xTaskGetCurrentTaskHandle();
         softwareAbort(
             SW_RESET_MUTEX_TIMEOUT,
-            "MyMutex(%s):\n    locked by: %s\n               %s\n    failed in: %s\n               %s\n    after %d ms",
+            "MyMutex(%s):\n    locked by: %s in task %s\n               %s\n    failed in: %s in task %s(%d)\n               %s\n    after %d ms",
             m_name.c_str(),
             m_lockHolder.c_str(),
+            backtrace.getTaskName().c_str(),
             m_lockBacktrace ? m_lockBacktrace->toString().c_str() : "NO BACKTRACE???",
             who,
+            pcTaskGetName(task),
+            uxTaskPriorityGet(task),
             backtrace.toString().c_str(),
             millis() - startMillis);
     }

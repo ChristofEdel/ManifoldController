@@ -365,6 +365,12 @@ Esp32Backtrace::Esp32Backtrace(int skip /* = 0 */)
 {
     esp_backtrace_frame_t frame = { 0 };
     esp_backtrace_get_start(&frame.pc, &frame.sp, &frame.next_pc);
+    String m_taskName;
+
+    TaskHandle_t self = xTaskGetCurrentTaskHandle();
+    const char* name = pcTaskGetName(self);
+    UBaseType_t prio = uxTaskPriorityGet(self);
+    this->m_taskName = StringPrintf("%s (%d)", name, prio);
 
     m_depth = 0;
     for (;;) {

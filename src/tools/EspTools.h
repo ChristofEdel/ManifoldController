@@ -59,24 +59,23 @@ void setupOta();
 //
 
 class Esp32CoreDump {
-    private: 
-        size_t m_address = 0;
-        size_t m_size = 0;
-        const esp_partition_t* m_partition = 0;
+  private:
+    size_t m_address = 0;
+    size_t m_size = 0;
+    const esp_partition_t* m_partition = 0;
 
-    public:
-        bool exists();
-        size_t size();
-        String getFormat();
-        size_t read(size_t start, void *buffer, size_t length);
-        bool writeBacktrace(Print &out);
-        bool remove();
-        
-    private:
-        void ensureInitialised();
-        bool m_initialised = false;
+  public:
+    bool exists();
+    size_t size();
+    String getFormat();
+    size_t read(size_t start, void* buffer, size_t length);
+    bool writeBacktrace(Print& out);
+    bool remove();
+
+  private:
+    void ensureInitialised();
+    bool m_initialised = false;
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -86,6 +85,7 @@ class Esp32CoreDump {
 class Esp32Backtrace {
 
   private:
+    String   m_taskName;
     intptr_t m_backtraceAddress[16];
     int      m_depth = 0;
 
@@ -93,6 +93,7 @@ class Esp32Backtrace {
     Esp32Backtrace(int skip = 0);
     void print(Print& out) const;
     String toString() const;
+    const String &getTaskName() const { return m_taskName; }
 };
 
 
