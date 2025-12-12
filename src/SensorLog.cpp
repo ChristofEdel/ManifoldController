@@ -94,7 +94,7 @@ String getSensorLogLine()
 
     for (NeohubZone z : NeohubManager.getActiveZones()) {
         NeohubZoneData* d = NeohubManager.getZoneData(z.id);
-      if (!d) { result += ",,"; continue; }
+        if (!d) { result += ",,"; continue; }
         result += ",";
         if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
             result += String(d->roomTemperature, 1);
@@ -107,7 +107,7 @@ String getSensorLogLine()
 
     for (NeohubZone z : NeohubManager.getMonitoredZones()) {
         NeohubZoneData* d = NeohubManager.getZoneData(z.id);
-      if (!d) { result += ",,"; continue; }
+        if (!d) { result += ",,"; continue; }
         result += ",";
         if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
             result += String(d->roomTemperature, 1);

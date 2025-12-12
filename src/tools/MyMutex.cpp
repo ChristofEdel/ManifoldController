@@ -33,7 +33,8 @@ bool MyMutex::lock(const char* who, int timeoutMillis /* = 0 */)
             pcTaskGetName(task),
             uxTaskPriorityGet(task),
             backtrace.toString().c_str(),
-            millis() - startMillis);
+            millis() - startMillis
+        );
     }
 
     // Otherwise, we will assume this is what the calling
@@ -57,6 +58,7 @@ void MyMutex::unlock()
 bool MyMutex::lock(int timeoutMillis /* = 0 */)
 {
     return xSemaphoreTake(
-               m_semaphore,
-               timeoutMillis ? pdMS_TO_TICKS(timeoutMillis) : MUTEX_DEFAULT_TIMEOUT) == pdTRUE;
+        m_semaphore,
+        timeoutMillis ? pdMS_TO_TICKS(timeoutMillis) : MUTEX_DEFAULT_TIMEOUT
+    ) == pdTRUE;
 };

@@ -19,6 +19,7 @@
 #include "webserver/MyWebServer.h"  // Request handing and web page generator
 #include "sensorLog.h"
 #include "ManifoldManager.h"
+#include "BackgroundFileWriter.h"
 
 // Pin Assignments - digital pins --------------------------------
 const uint8_t openThermInPin = A0;  // Repurposed analog pins for OpenTherm module I/O
@@ -101,9 +102,10 @@ void setup()
         sd.initErrorHalt(&Serial);
     }
     MyLog.println("done.");
-    MyLog.enableSdCardLog("log.txt", &sd, &sdCardMutex);
-    MyWebLog.enableSdCardLog("weblog.txt", &sd, &sdCardMutex);
-    MyCrashLog.enableSdCardLog("crashlog.txt", &sd, &sdCardMutex);
+    BackgroundFileWriter.setup(&sd, &sdCardMutex);
+    MyLog.enableSdCardLog("log.txt");
+    MyWebLog.enableSdCardLog("weblog.txt");
+    MyCrashLog.enableSdCardLog("crashlog.txt");
 
     MyLog.println("-------------------------------------------------------------------------------------------");
     Config.loadFromSdCard(sd, sdCardMutex, "config.json");
