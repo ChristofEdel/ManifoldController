@@ -131,7 +131,7 @@ void setup()
     MyCrashLog.print("RESTART - Last reset reason: ");
     MyCrashLog.println(resetReason);
     if (resetMessage != emptyString) MyCrashLog.println(resetMessage);
-    if (getResetReason() == ESP_RST_PANIC) {
+    if (getResetReason() == ESP_RST_PANIC || getResetReason() == ESP_RST_INT_WDT) {
         Esp32CoreDump dump;
         if (dump.exists()) {
             dump.writeBacktrace(MyCrashLog);
