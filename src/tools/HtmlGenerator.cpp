@@ -1,8 +1,11 @@
 #include "HtmlGenerator.h"
 
+#include <stdarg.h>
+
+#include "EspTools.h"
+#include "StringTools.h"
 #include "commit.h"
 #include "version.h"
-#include "EspTools.h"
 
 void HtmlGenerator::text(const char* s)
 {
@@ -11,6 +14,14 @@ void HtmlGenerator::text(const char* s)
 void HtmlGenerator::print(const char* s)
 {
     r->print(s);
+}
+
+void HtmlGenerator::printf(const char* format, ...)
+{
+    va_list arg;
+    va_start(arg, format);
+
+    r->print(StringPrintf(format, arg).c_str());
 }
 
 void HtmlGenerator::element(const char* elementName, const char* parameters, std::function<void()> func)

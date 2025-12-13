@@ -1,4 +1,4 @@
-#include "ManifoldManager.h"
+#include "ManifoldConnections.h"
 
 #include <WiFi.h>
 
@@ -7,7 +7,7 @@
 #include <errno.h>
 
 // Global singleton
-CManifoldManager ManifoldManager;
+CManifoldConnections ManifoldConnections;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// 
@@ -177,7 +177,7 @@ void ManifoldDataPostJob::postTask(void *arg)
     }
 }
 
-ManifoldData* CManifoldManager::addOrUpdateManifoldFromJson(const String& s)
+ManifoldData* CManifoldConnections::addOrUpdateManifoldFromJson(const String& s)
 {
     JsonDocument json;
     DeserializationError error = deserializeJson(json, s);
@@ -214,7 +214,7 @@ ManifoldData* CManifoldManager::addOrUpdateManifoldFromJson(const String& s)
     return result;
 }
 
-bool CManifoldManager::removeManifold(const String& name)
+bool CManifoldConnections::removeManifold(const String& name)
 {
     bool result = false;
     if (m_manifoldsMutex.lock(__PRETTY_FUNCTION__)) {
@@ -230,7 +230,7 @@ bool CManifoldManager::removeManifold(const String& name)
     return result;
 }
 
-double CManifoldManager::getHighestDemand()
+double CManifoldConnections::getHighestDemand()
 {
     double result = 0;
     if (m_manifoldsMutex.lock(__PRETTY_FUNCTION__)) {
@@ -242,7 +242,7 @@ double CManifoldManager::getHighestDemand()
     return result;
 }
 
-ManifoldData** CManifoldManager::newSortedCopy()
+ManifoldData** CManifoldConnections::newSortedCopy()
 {
     ManifoldData **result = nullptr;
     int len = 0;
@@ -270,7 +270,7 @@ ManifoldData** CManifoldManager::newSortedCopy()
     return result;
 }
 
-void CManifoldManager::deleteSortedCopy(ManifoldData** arr)
+void CManifoldConnections::deleteSortedCopy(ManifoldData** arr)
 {
     for (size_t i = 0; arr[i] != nullptr; i++) {
         delete arr[i];       // free each element

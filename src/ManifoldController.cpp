@@ -18,7 +18,7 @@
 #include "Watchdog.h"
 #include "webserver/MyWebServer.h"  // Request handing and web page generator
 #include "sensorLog.h"
-#include "ManifoldManager.h"
+#include "ManifoldConnections.h"
 #include "BackgroundFileWriter.h"
 
 // Pin Assignments - digital pins --------------------------------

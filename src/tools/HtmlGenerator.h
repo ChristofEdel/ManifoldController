@@ -18,7 +18,8 @@ class HtmlGenerator {
 
     void text(const char *s);
     void print(const char *s);
-
+    void printf(const char *s, ...);
+    
     void element(const char *elementName, const char *parameters, std::function<void()> func);
     void element(const char *elementName, const char *parameters, const char *contents);
     void element(const char *elementName, std::function<void()> func) { element(elementName, nullptr, func); };

@@ -53,13 +53,13 @@ struct ManifoldDataPostJob {
 
 // OneWireManager is a class giving access to one OneWireTemperatureSensor struct
 // for every sensor. The constructor takes the I/O pin for the OneWire bus as parameter
-class CManifoldManager {
+class CManifoldConnections {
   private:
     std::vector<ManifoldData> m_manifolds;
     MyMutex m_manifoldsMutex;
 
   public:
-    CManifoldManager() : m_manifoldsMutex("ManifoldManager") { m_manifolds.reserve(6); }
+    CManifoldConnections() : m_manifoldsMutex("ManifoldConnections") { m_manifolds.reserve(6); }
 
     int getCount() { return m_manifolds.size(); }
 
@@ -72,6 +72,6 @@ class CManifoldManager {
 
 };
 
-extern CManifoldManager ManifoldManager;
+extern CManifoldConnections ManifoldConnections;
 
 #endif
