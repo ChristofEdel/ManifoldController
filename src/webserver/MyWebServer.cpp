@@ -1,5 +1,4 @@
 #include <arduino.h>
-#include <esp_websocket_client.h>
 #include <NeohubConnection.h>
 #include "MyWebServer.h"
 #include "MyLog.h"      // Lopgging to serial and, if available, SD card

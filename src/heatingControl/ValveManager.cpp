@@ -1,5 +1,5 @@
 #include "ValveManager.h"
-#include "Config.h"
+#include "MyConfig.h"
 #include <DFRobot_GP8403.h>     // DAC for valve control
 DFRobot_GP8403 dac(&Wire,0x5f); // I2C address 0x58
 

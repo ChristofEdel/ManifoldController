@@ -219,11 +219,6 @@ void loop() {
     ledBlinkLoop();
   }
 
-  Watchdog::printRegistrations();
-
-  // Kick the watchdog so the hardware watchdog knows the main loop is alive.
-  // kickWatchdog();
-
   first = false;
   delay(10);
 }

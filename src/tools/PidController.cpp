@@ -1,5 +1,5 @@
 #include "PidController.h"
-#include "Config.h"
+#include "MyConfig.h"
 #include <DFRobot_GP8403.h>     // DAC for valve control
 
 
