@@ -24,14 +24,16 @@
 bool NeohubConnection::start()
 {
     esp_websocket_client_config_t cfg = {};
-    cfg.host = this->m_host.c_str();
-    cfg.port = 4243;
-    cfg.path = "/";
-    cfg.transport = WEBSOCKET_TRANSPORT_OVER_SSL;
-    // Insecure: TLS verification disabled via ESP-TLS menuconfig
-    cfg.skip_cert_common_name_check = true;
-    cfg.use_global_ca_store = false;
-    cfg.cert_pem = nullptr;
+    cfg.host = this->m_host.c_str();               // the URL, split in its components
+    cfg.port = 4243;                               //
+    cfg.path = "/";                                //
+    cfg.transport = WEBSOCKET_TRANSPORT_OVER_SSL;  // Neohub requires SSL, but with self-signed certs
+    cfg.skip_cert_common_name_check = true;        // So we can't check anything
+    cfg.use_global_ca_store = false;               // 
+    cfg.cert_pem = nullptr;                        // 
+    cfg.enable_close_reconnect = true;             // Reconnect even if server closed the connection
+    cfg.reconnect_timeout_ms = 5000;               // Try to reconnect 5 seconds after disconnection
+    cfg.ping_interval_sec = SIZE_MAX / 2;          // Disable pings, they cause connection drops on the Neohub
 
     this->m_websocketClient = esp_websocket_client_init(&cfg);
 
@@ -195,7 +197,6 @@ void NeohubConnection::textReceived(const char *buffer, size_t length, size_t of
 
     // Simple case: full message received in one go
     if (offset == 0 && length == totalLength) {
-        MyDebugLog.printf("NeohubConnection: Full message received in one go, length=%d\n", length);
         m_receiveBuffer = String(buffer, length);
         processMessage(m_receiveBuffer);
         m_receiveBuffer = "";
@@ -206,7 +207,6 @@ void NeohubConnection::textReceived(const char *buffer, size_t length, size_t of
 
     // First part received - start a new buffer
     if (offset == 0) {
-        MyDebugLog.printf("NeohubConnection: First part of message received, length=%d of %d\n", length, totalLength);
         m_receiveBuffer = String(buffer, length);
         return;
     }
@@ -216,12 +216,8 @@ void NeohubConnection::textReceived(const char *buffer, size_t length, size_t of
 
     // If this was the last part, process the message
     if ((offset + length) >= totalLength) {
-        MyDebugLog.printf("NeohubConnection: Final message received, length=%d of %d\n", length, totalLength);
         processMessage(m_receiveBuffer);
         m_receiveBuffer = "";
-    }
-    else {
-        MyDebugLog.printf("NeohubConnection: Part of message received, length=%d of %d\n", length, totalLength);
     }
 
     // Otherwise, (offset + length) < totalLength, wait for more parts
@@ -230,7 +226,6 @@ void NeohubConnection::textReceived(const char *buffer, size_t length, size_t of
 void NeohubConnection::processMessage(const String& message)
 {
     DEBUG_LOG("Processing message: %s\n", message.c_str());
-    MyDebugLog.printf("Processing message: %.200s", message.c_str());
 
     // Deserialise and report any erros
     JsonDocument json;

@@ -11,6 +11,7 @@
 #include "ThreadSafePtrMap.h"
 #include "esp_websocket_client.h"
 #include "esp_idf_version.h"
+
 class NeohubConversation;
 
 class NeohubConnection {
@@ -85,7 +86,7 @@ class NeohubConversation {
   friend class NeohubConnection;
 
   public:
-    int id;                     // An ID for this conversation
+    int id;                     // An ID for this conversation. Neohub supports 32 bit so this supports decades of conversations
     String command;             // The command sent
     unsigned long startMillis;  // The time at which the request was made (not sent)
     int timeoutMillis;          // A timeout measured from m_startMillis
