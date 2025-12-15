@@ -66,11 +66,11 @@ void setup() {
   esp_log_level_set("*", ESP_LOG_ERROR);
 
   // Get rid of all watchdogs - they cause problems since OTA was added.
-  disableCore0WDT();
-  disableCore1WDT();
-  disableLoopWDT();
-  esp_task_wdt_delete(NULL);
-  esp_task_wdt_deinit();
+//   disableCore0WDT();
+//   disableCore1WDT();
+//   disableLoopWDT();
+//   esp_task_wdt_delete(NULL);
+//   esp_task_wdt_deinit();
 
   // Set pins immediately so we don't trigger any relays by accident
   // pinMode(hotWaterValveCallOutPin, OUTPUT);
