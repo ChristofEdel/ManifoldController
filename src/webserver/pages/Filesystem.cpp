@@ -1,7 +1,49 @@
-#include "../MyWebServer.h"
 #include "../HtmlGenerator.h"
+#include "../MyWebServer.h"
 #include "MyLog.h"
 
+#include <SdFat.h>
+
+void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
+
+  String fileName = request->url();
+  if (!fileName.startsWith("/files")) {
+    request->send(404, "text/plain", "File not found");
+    return; 
+  }
+  fileName = fileName.substring(6);
+
+  // Open the file briefly and check for existence and what it is
+  if (!this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
+      request->send(400, "text/plain", "Unable to access SD card");
+      return;
+  }
+
+  FsFile f = this->m_sd->open(fileName, O_RDONLY);
+  bool exists = f.isOpen();
+  bool isDir = f.isDir();
+  bool isFile = f.isFile();
+  f.close();
+  this->m_sdMutex->unlock();
+
+  // Errors unless it is a file or directoy
+  if (!exists) {
+    request->send(404, "text/plain", "File not found");
+    return; 
+  }
+  if (!isDir && !isFile) {
+    request->send(404, "text/plain", "Not a file or directory");
+    return; 
+  }
+
+  // Respond as appropriate
+  if (isDir) {
+    respondWithDirectory(request, fileName);
+  }
+  else {
+    respondWithFileContents(request, fileName);
+  }
+}
 
 size_t CMyWebServer::sendFileChunk(WebResponseContext *context, uint8_t *buffer, size_t maxLen, size_t fromPosition) {
 

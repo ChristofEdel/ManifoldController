@@ -1,3 +1,4 @@
+#include <SdFat.h>
 #include "MyConfig.h"
 #include "MyLog.h"
 

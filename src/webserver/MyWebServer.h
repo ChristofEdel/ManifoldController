@@ -1,7 +1,6 @@
 #ifndef __MYWEBSERVER_H
 #define __MYWEBSERVER_H
 
-#include <SdFat.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include "NeohubConnection.h"
@@ -16,6 +15,8 @@
 struct WebResponseContext {
   String fileName;
 };
+
+class SdFs;
 
 class CMyWebServer {
   private:

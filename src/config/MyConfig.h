@@ -3,10 +3,11 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
-#include <SdFat.h>
 #include "SensorMap.h"
 #include "MyLog.h"
 #include "../heatingControl/NeohubManager.h"
+
+class SdFs;
 
 class CConfig {
     private:

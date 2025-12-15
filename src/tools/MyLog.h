@@ -1,9 +1,11 @@
 #ifndef __MY_LOG_H
 #define __MY_LOG_H
 
-#include <SdFat.h>    // SdFat by Bill Greiman, version 2.3.0
 #include "MyRtc.h"
 #include "MyMutex.h"
+
+class SdFs;
+class FsFile;
 
 class CMyLog : public Print {
   private:

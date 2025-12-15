@@ -1,10 +1,9 @@
-#include <SdFat.h>                // SD Card with FAT filesystem
 #include "MyWiFi.h"               // WiFi access
-#include "MyLog.h"                // Logging to serial and, if available, SD card
-#include "MyRtc.h"                // Real time clock
-#include "OneWireManager.h" // OneWire temperature sensor reading and management
+#include "MyLog.h"  // Logging to serial and, if available, SD card
+#include "MyRtc.h"   // Real time clock
+#include "OneWireManager.h"  // OneWire temperature sensor reading and management
 #include "webserver/MyWebServer.h"// Request handing and web page generator
-#include "SensorMap.h"            // Sensor name mapping
+#include "SensorMap.h"       // Sensor name mapping
 #include "MemDebug.h"
 #include "MyMutex.h"
 #include "LedBlink.h"
@@ -16,6 +15,7 @@
 #include "ValveManager.h"
 #include "NeohubManager.h"
 #include <cppQueue.h>
+#include <SdFat.h>                // SD Card with FAT filesystem
 
 // Pin Assignments - digital pins --------------------------------
 const uint8_t openThermInPin          = A0;         // Repurposed analog pins for OpenTherm module I/O
@@ -47,7 +47,7 @@ ValveManager valveManager;
 // SD Card access
 SdFs sd;
 MyMutex sdCardMutex("::sdCardMutex");
-#define SD_CONFIG SdSpiConfig(sdCardCsPin, SD_SCK_MHZ(50))
+#define SD_CONFIG SdSpiConfig(sdCardCsPin, SHARED_SPI, SD_SCK_MHZ(50))
 
 // The valve position (preserved across resets)
 RTC_NOINIT_ATTR double lastKownValvePosition;

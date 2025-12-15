@@ -1,7 +1,8 @@
 #ifndef __SENROR_MAP_H
 #define __SENROR_MAP_H
-#include <SdFat.h>
 #include "OneWireManager.h"
+
+class SdFs;
 
 struct SensorMapEntry {
     String id;    // Ths ID used by the OneWireManager for this sensor
