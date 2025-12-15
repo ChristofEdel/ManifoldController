@@ -9,6 +9,7 @@
 #include <esp_system.h>  // For reset reason
 #include <esp_timer.h>
 #include <esp_debug_helpers.h>
+#include <esp_core_dump.h>
 
 #include "MyLog.h"
 
@@ -117,6 +118,11 @@ String getResetReasonText()
         case ESP_RST_DEEPSLEEP:  result = "Deep sleep"; break;
         case ESP_RST_BROWNOUT:   result = "Brownout"; break;
         case ESP_RST_SDIO:       result = "SDIO"; break;
+        case ESP_RST_USB:        result = "USB (probably software update)"; break;
+        case ESP_RST_JTAG:       result = "JTAG"; break;
+        case ESP_RST_EFUSE:      result = "EFUSE"; break;
+        case ESP_RST_PWR_GLITCH: result = "Power glitch"; break;
+        case ESP_RST_CPU_LOCKUP: result = "CPU lockup (double exception)"; break;
         default:                 result = "Other (" + String(reason) + ")"; break;
     }
     uint32_t swReason = getSoftwareResetReason();
@@ -283,12 +289,14 @@ String Esp32CoreDump::getFormat()
     ensureInitialised();
     if (!this->m_partition) return emptyString;
 
+    const int magicBytesPosition = 24;
+
     size_t addr = 0;
     size_t size = 0;
-    if (esp_core_dump_image_get(&addr, &size) != ESP_OK || size < 24) return emptyString;
+    if (esp_core_dump_image_get(&addr, &size) != ESP_OK || size < magicBytesPosition+4) return emptyString;
 
     uint8_t hdr[4];
-    if (esp_partition_read(this->m_partition, addr - this->m_partition->address + 20, hdr, sizeof(hdr)) != ESP_OK)
+    if (esp_partition_read(this->m_partition, addr - this->m_partition->address + magicBytesPosition, hdr, sizeof(hdr)) != ESP_OK)
         return emptyString;
 
     if (hdr[0] == 0x7F && hdr[1] == 'E' && hdr[2] == 'L' && hdr[3] == 'F')
