@@ -20,7 +20,7 @@
 class CWatchdogManager {
   public:
     void setup();  // Initialise with NO task watchdogs registered
-    void listWatchdogs(Print& out);
+    void listWatchdogTasks(Print& out);
 };
 
 extern CWatchdogManager WatchdogManager;
