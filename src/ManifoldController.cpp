@@ -65,12 +65,6 @@ void triggerValveControls(bool);
 void setup() {
   esp_log_level_set("*", ESP_LOG_ERROR);
 
-  // Get rid of all watchdogs - they cause problems since OTA was added.
-//   disableCore0WDT();
-//   disableCore1WDT();
-//   disableLoopWDT();
-//   esp_task_wdt_delete(NULL);
-//   esp_task_wdt_deinit();
 
   // Set pins immediately so we don't trigger any relays by accident
   // pinMode(hotWaterValveCallOutPin, OUTPUT);
@@ -88,6 +82,7 @@ void setup() {
   // Initialise clock and memory debugging
   MyRtc.start();
   setupMemDebug();
+  WatchdogManager.setup();
 
   // Initialise logging to serial
   MyLog.enableSerialLog();
@@ -157,6 +152,7 @@ void setup() {
   startValveControlTask();
 
   MyLog.println("-------------------------------------------------------------------------------------------");
+  
 
 }
 
