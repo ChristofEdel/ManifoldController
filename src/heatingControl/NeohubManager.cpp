@@ -97,7 +97,7 @@ NeohubZoneData* CNeohubManager::forceZoneSetpoint(String zoneName, double setpoi
         "{'HOLD': [ {'temp':%.1f, 'hours':0, 'minutes':5, 'id':'Force %s'}, ['%s']]}",
         setpoint, zoneName, zoneName
     );
-    String result = neohubCommand(command);
+    (void) neohubCommand(command); // ignore result
     this->loadZoneDataFromNeohub(zoneName);
     return this->getZoneData(zoneName);
 }
@@ -120,7 +120,7 @@ NeohubZoneData* CNeohubManager::forceZoneOff(String zoneName)
 NeohubZoneData* CNeohubManager::setZoneToAutomatic(String zoneName)
 {
     String command = StringPrintf("{'CANCEL_HGROUP': 'Force %s'}", zoneName);
-    String result = neohubCommand(command);
+    (void) neohubCommand(command); // ignore result
     this->loadZoneDataFromNeohub(zoneName);
     return this->getZoneData(zoneName);
 }
@@ -131,6 +131,7 @@ bool CNeohubManager::ensureNeohubConnection()
     static bool noUrlReported = false;
     static bool noTokenReported = false;
 
+    // Basic checks - do we have URL and token?
     const String& url = Config.getNeohubAddress();
     const String& token = Config.getNeohubToken();
     if (url == "null" || url == "") {
@@ -148,9 +149,11 @@ bool CNeohubManager::ensureNeohubConnection()
         return false;
     }
 
+    // We have URL and token - ensure we have a conneciton
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
-        // we are connected --> done
-        if (this->m_connection && this->m_connection->isConnected()) {
+
+        // we are already connected --> done
+        if (this->m_connection) {
             m_neohubMutex.unlock();
             noUrlReported = false;
             noTokenReported = false;
@@ -158,31 +161,34 @@ bool CNeohubManager::ensureNeohubConnection()
         }
 
         // Create connection object if necessary
-        if (!this->m_connection) {
-            this->m_connection = new NeohubConnection(url, token);
-        }
+        this->m_connection = new NeohubConnection(url, token);
 
-        // Connect
+        // Initialise the connection
         MyLog.printf("Connecting to NeoHub %s\n", url.c_str());
         this->m_connection->onConnect([this, url]() {
             MyLog.printf("Connection to NeoHub %s established\n", url.c_str());
         });
         this->m_connection->onDisconnect([this, url]() {
             MyLog.printf("Connection to NeoHub %s disconnected\n", url.c_str());
-            NeohubConnection* c = this->m_connection;
-            this->m_connection = nullptr;
-            c->finish();
+            // we rely on autoconnect so we don't do anything else
         });
         this->m_connection->onError([this, url](String message) {
             MyLog.printf("Error in NeoHub %s connection: %s\n", url.c_str(), message.c_str());
         });
-        this->m_connection->connect();
 
-        // Wait for connecetion
+        // Start the connection. Actuial connection establishment is asynchronous
+        if (!this->m_connection->start()) {
+            MyLog.printf("Starting connection to Neohub %s failed\n", url.c_str());
+            delete this->m_connection;
+            this->m_connection = nullptr;
+            m_neohubMutex.unlock();
+            return false;
+        }
+
+        // Wait for the connecetion to be actually established
         unsigned long startMillis = millis();
         while (
             millis() - startMillis < connectTimeoutMillis  // until timeout
-            && this->m_connection                          // or until deleted, e.g., by disconnect after error
             && !this->m_connection->isConnected()          // or until connected
         ) delay(100);
 
@@ -205,8 +211,9 @@ void CNeohubManager::reconnect()
 {
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
         if (this->m_connection && this->m_connection->isConnected()) {
-            this->m_connection->disconnect();
-            // Disconnected event takes care of clean up, do NOT delete here
+            this->m_connection->stop();
+            delete this->m_connection;
+            this->m_connection = nullptr;
         }
         m_neohubMutex.unlock();
     }
@@ -272,6 +279,8 @@ void CNeohubManager::loadZoneNames()
     if (!ensureNeohubConnection()) return;
 
     String response = neohubCommand("{ 'GET_ZONES': 0 }");
+    if (response == emptyString) return; // No response or timeout
+
     JsonDocument json;
     DeserializationError error = deserializeJson(json, response);
     if (error) {
@@ -402,6 +411,8 @@ void CNeohubManager::loadZoneDataFromNeohub(std::vector<String>& zoneNames)
 static void _processZoneCommand(CNeohubManager* _this, const String& command)
 {
     String response = _this->neohubCommand(command);
+    if (response == emptyString) return; // No response or timeout
+
     JsonDocument json;
     DeserializationError error = deserializeJson(json, response);
     if (error) {

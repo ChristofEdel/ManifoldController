@@ -5,45 +5,59 @@
 
 #include "EspTools.h"
 #include "MyLog.h"
+#include "esp_transport_ws.h"
+#include "StringTools.h"
 
 #undef DEBUG_LOG
 #define DEBUG_LOG(fmt, ...) ;
 
 // Opens a WebSocket connecetion to the Neohub
 // 
-// Calls "beginSSL" on the embedded WebsocketClient and 
-// makes sure it's "loop" function is called in the loop task. The actual
-// opening is done in the loop so this always returns true.
+// Creates and starts the WebSocket client.
+// 
+// Returns immediately, the actual connection process is asynchroneous.
+// If the connection is established, the onConnect callback is called.
 //
-// If the oppening is successful, the onConnect callback is called
-// If the opeening fails, the onError callback is called, followed by the onDisconnect callback
-void NeohubConnection::connect(int timeoutMillis /* = -1 */)
+// Returns false if the client could not be started, in that case start 
+// needs to be called again later, or this connection should be deleted.
+//
+bool NeohubConnection::start()
 {
-    this->m_websocketClient.beginSSL(this->m_host, 4243, "/");
-    this->m_websocketClient.onEvent(NeohubConnection::webSocketEventHandler, this);
-    this->addToLoopTask();
-    ensureLoopTask();
+    esp_websocket_client_config_t cfg = {};
+    cfg.host = this->m_host.c_str();
+    cfg.port = 4243;
+    cfg.path = "/";
+    cfg.transport = WEBSOCKET_TRANSPORT_OVER_SSL;
+    // Insecure: TLS verification disabled via ESP-TLS menuconfig
+    cfg.skip_cert_common_name_check = true;
+    cfg.use_global_ca_store = false;
+    cfg.cert_pem = nullptr;
+
+    this->m_websocketClient = esp_websocket_client_init(&cfg);
+
+    esp_websocket_register_events(this->m_websocketClient, WEBSOCKET_EVENT_ANY, webSocketEventHandler, (void*)this);
+    esp_err_t err = esp_websocket_client_start(this->m_websocketClient);
+    if (err != ESP_OK) {
+        esp_websocket_client_destroy(this->m_websocketClient);
+        this->m_websocketClient = nullptr;
+        return false;
+    }
+    return true;
 }
 
 // Disconnect the WebSocket
-//
-// after disconnection, the onDisconnect callback is called.
-void NeohubConnection::disconnect(int timeoutMillis /* = -1 */)
+void NeohubConnection::stop()
 {
-    this->m_websocketClient.disconnect();
-}
-
-void NeohubConnection::finish() {
-    this->m_deleted = true;
-    this->m_onConnect = nullptr; 
-    this->m_onError = nullptr; 
-    this->m_onDisonnect = nullptr; 
+    if (this->m_websocketClient == nullptr) return;
+    esp_websocket_client_stop(this->m_websocketClient);
+    esp_websocket_client_destroy(this->m_websocketClient);
+    this->m_websocketClient = nullptr;
 }
 
 // Check if the underlying WebSocket is currently connected
 bool NeohubConnection::isConnected()
 {
-    return !this->m_deleted && this->m_websocketClient.isConnected();
+    return esp_websocket_client_is_connected(this->m_websocketClient);
 }
 
 // Send a command to the Neohub.
@@ -57,270 +71,208 @@ bool NeohubConnection::send(
     int timeoutMillis
 )
 {
-    if (this->m_deleted) return false;
+    if (!this->isConnected()) return false;
     
     // Beause all of this is asynchroneous, we do this in a Conversation
-    Conversation* c = new Conversation(
+    // and store it for the processing of the results
+    NeohubConversation* c = new NeohubConversation(
+        this->m_nextConversationId++,
         command,
         onReceive, onError,
         timeoutMillis
     );
-    bool success = true;
+    m_conversations.put(c->id, c);
 
-    // Do not do anything while processing in the loop is ongoing
-    if (m_loopMutex.lock(__PRETTY_FUNCTION__)) {
+    // Send the command to the WebSocket, invest half of the available timeout for sending
+    String message = this->wrapCommand(c->command, c->id);
+    int result = esp_websocket_client_send_text(this->m_websocketClient, message.c_str(), message.length(), pdMS_TO_TICKS(timeoutMillis/2));
 
-        // If there are no live conversations, send the command immediately
-        if (m_conversations.empty()) {
-            String s = wrapCommand(c->m_command);
-            c->m_commandSent = this->m_websocketClient.sendTXT(s);
-            // If sending was successful, put into processing queue
-            // for processing the return
-            if (c->m_commandSent) {
-                m_conversations.push_back(c);
-            }
-            // If sending failed, give up and return false
-            else {
-                if (c->m_onError) c->m_onError("NeohubConnection: send to WebSocketClient failed");
-                delete c;
-                success = false;
-            }
-        }
-        // If there are live conversations, join the queue
-        else {
-            m_conversations.push_back(c);
-        }
-        m_loopMutex.unlock();
-    }
-    return success;
-}
-
-// Start a conversation; remove from queue if it cannot be started
-// (private function used in loop)
-bool NeohubConnection::startConversation(NeohubConnection::Conversation* c)
-{
-    // If it is too late to start, we time out
-    if (c->timeoutExceeded()) {
-        if (c->m_onError) c->m_onError("NeohubConnection: Conversation timed out before sending");
-        return false;
-    };
-
-    // We send the command and return true if successful
-    String s = wrapCommand(c->m_command);
-    c->m_commandSent = this->m_websocketClient.sendTXT(s);
-    if (c->m_commandSent) return true;
-
-    // If we failed to send it, we report an error
-    if (c->m_onError) c->m_onError("NeohubConnection: Send to WebSocketClient failed");
-    return false;
-}
-
-// Function to be calle in the loop to process messages to and from the Neohub
-void NeohubConnection::loop()
-{
-    if (this->m_deleted) return;
-
-    // NMB - Mutex already acquired in calling function, do not need to lock here
-
-    // CHeck the first conversation in the queue and start it if required
-    Conversation* c = m_conversations.empty() ? nullptr : m_conversations.front();
-    if (c && !c->m_commandSent) {
-        if (!startConversation(c)) {
-            // if we can't start it, we get rid of it
-            m_conversations.pop_front();
-            delete c;
-        };
-    }
-
-    // normal client processing
-    m_websocketClient.loop();
-    // the loop() above may process conversations and remove them from the queue!
-
-    // Now we process the next conversation in the queue
-    while ((c = (m_conversations.empty() ? nullptr : m_conversations.front()))) {
-        // If it needs to be started, we try to start it.
-        // and then finish this iteratioh.
-        if (!c->m_commandSent) {
-            if (!startConversation(c)) {
-                m_conversations.pop_front();
-                delete c;
-            }
-            break;
-        }
-
-        // if it is waiting for a response, we check for timeout.
-        // if it has not timed out, we wait for it to complete and process no more
-        // conversations until then
-        if (!c->timeoutExceeded()) break;
-
-        // If it has timed out, we finish it with an error and process the next
-        // conversation in the queue
-        c->m_onError("NeohubConnection: Timeout waiting for response");
-        m_conversations.pop_front();
+    // If it failed to send, we report an error and return false
+    if (result < 0) {
+        if (c->m_onError) c->m_onError("NeohubConnection: send to WebSocketClient failed");
+        m_conversations.remove(c->id);  // don't keep this there will be no response
         delete c;
+        return false;
     }
+    return true;
 }
+
+void NeohubConnection::handleTimeouts()
+{
+    ThreadSafePtrMap::Iterator it(m_conversations);
+    while (it.next()) {
+        NeohubConversation* c = (NeohubConversation*)it.value();
+        if (c->timeoutExceeded()) {
+            m_conversations.remove(it.key());
+            // call the error handler
+            if (c->m_onError) {
+                c->m_onError("NeohubConnection: Timeout waiting for response");
+            }
+            delete c;
+        }
+    }
+} 
 
 // Internal event handler for events from the Websocket. 
 // Translates these events into callbacks on the connection or conversation, as appropriate
-void NeohubConnection::webSocketEventHandler(WStype_t type, uint8_t* payload, size_t length, void* clientData)
+/* static */ void NeohubConnection::webSocketEventHandler(void *arg, esp_event_base_t base, int32_t eventId, void *eventData)
 {
-    NeohubConnection* _this = (NeohubConnection*)clientData;
-    if (_this->m_deleted) return;
+    NeohubConnection* _this = (NeohubConnection*)arg;
+    esp_websocket_event_data_t *data = (esp_websocket_event_data_t *) eventData;
+    
+    switch (eventId) {
 
-    switch (type) {
-        // Connect event --> this NeoHubConnection's onConnect handler
-        case WStype_CONNECTED:
-            DEBUG_LOG("WStype_CONNECTED");
-            if (_this->m_onConnect) _this->m_onConnect();
+        // Artificial events which we don't need
+        case WEBSOCKET_EVENT_BEFORE_CONNECT:    // Occurs before connecting
+        case WEBSOCKET_EVENT_BEGIN:            // Occurs once after thread creation, before event loop
+        case WEBSOCKET_EVENT_FINISH:            // Occurs once after event loop, before thread destruction */
+            // Ignored
             break;
 
-        // Disconnect event --> this NeoHubConnection's onDisconnect handler
-        case WStype_DISCONNECTED:
-            DEBUG_LOG("WStype_DISCONNECTED");
-            if (length > 0) {
-                DEBUG_LOG("%s", String(payload, length).c_str());
-            }
+        // The Websocket has connected --> this NeoHubConnection's onConnect handler
+        case WEBSOCKET_EVENT_CONNECTED:
+            DEBUG_LOG("WEBSOCKET_EVENT_CONNECTED");
+            if (_this->m_onConnect) _this->m_onConnect();
+            _this->handleTimeouts();
+            break;
+
+        // The websocket has disconnected --> this NeoHubConnection's onDisconnect handler
+        case WEBSOCKET_EVENT_DISCONNECTED:
+            DEBUG_LOG("WEBSOCKET_EVENT_DISCONNECTED");
             if (_this->m_onDisonnect) _this->m_onDisonnect();
+            _this->handleTimeouts();
+            break;
+
+        // a close frame has been received. Ususally followed by DISCONNECTED event
+        case WEBSOCKET_EVENT_CLOSED:
+            DEBUG_LOG("WEBSOCKET_EVENT_CLOSED");
             break;
 
         // TEXT received event --> the current conversation's onError or onReceive handlers
-        case WStype_TEXT: {
-            DEBUG_LOG("WStype_TEXT");
-            // Send the received data to the conversation's hanlder and then remove
-            // the conversation from the processing queue
-            Conversation* c = _this->m_conversations.empty() ? nullptr : _this->m_conversations.front();
-            if (c) {
-                if (!c->m_commandSent) {
-                    // catastrophic failure! need to clear queue and reconnect
-                    softwareAbort(SW_RESET_WEBSOCKET_ABORT);
+        case WEBSOCKET_EVENT_DATA: 
+            DEBUG_LOG("WEBSOCKET_EVENT_DATA: op_code=%d, len=%d, offset=%d, total_len=%d",
+                data->op_code, data->data_len, data->payload_offset, data->payload_len);
+                switch (data->op_code) {
+                    case WS_TRANSPORT_OPCODES_CONT:
+                    case WS_TRANSPORT_OPCODES_TEXT:
+                        _this->textReceived(data->data_ptr, data->data_len, data->payload_offset, data->payload_len);
+                        break;
+                    case WS_TRANSPORT_OPCODES_BINARY:
+                        DEBUG_LOG("Unexpected BINARY frame received");
+                        if (_this->m_onError) _this->m_onError("NeohubConnection: unexpected binary frame");
+                        break;
+                    case WS_TRANSPORT_OPCODES_CLOSE:
+                        DEBUG_LOG("WS_TRANSPORT_OPCODES_CLOSE: %d", data->op_code);
+                        break;
+                    case WS_TRANSPORT_OPCODES_PING:
+                    case WS_TRANSPORT_OPCODES_PONG:
+                        // ignore
+                        break;
+                    default:
+                        DEBUG_LOG("Unexpected OPCODE received: %d", data->op_code);
+                        if (_this->m_onError) _this->m_onError("NeohubConnection: unexpected OPCODE: " + String(data->op_code));
+                        break;
                 }
-
-                // Deserialise and report any erros
-                JsonDocument json;
-                DeserializationError error = deserializeJson(json, payload, length);
-                if (error) {
-                    String message = "NeohubConnection: Failed to parse response: ";
-                    message += error.c_str();
-                    message += "\n";
-                    message += String(payload, length);
-                    MyLog.println(message);
-                    if (_this->m_onError) _this->m_onError(message);
-                    if (c->m_onError) c->m_onError(message);
-                }
-
-                // Message is ok, deliver the result
-                else {
-                    if (c->m_onReceive) {
-                        c->m_onReceive(json["response"].as<String>());
-                    }
-                }
-
-                // In all cases, we are done and can remove this from the processing queue
-                _this->m_conversations.pop_front();
-                delete c;
-            }
-            else {
-                String message = String("NeohubConnection: Message received outside of a conversation: ");
-                message += String(payload, min((int)length, 30));
-                MyLog.println(message);
-                if (_this->m_onError) _this->m_onError(message);
-            }
-        }
             break;
 
-        case WStype_ERROR:
-            DEBUG_LOG("WStype_ERROR");
+        case WEBSOCKET_EVENT_ERROR:
+            DEBUG_LOG("WEBSOCKET_EVENT_ERROR");
             if (_this->m_onError) _this->m_onError("NeohubConnection: WebSocket error event");
             break;
 
-        case WStype_FRAGMENT_TEXT_START:
-        case WStype_FRAGMENT:
-        case WStype_FRAGMENT_FIN:
-            DEBUG_LOG("WStype_FRAGMENT_xxxx");
-            if (_this->m_onError) _this->m_onError("NeohubConnection: Fragment received - unhandled");
-            break;
-
-        // Binary data messages - we don't need them so we don't handle them
-        case WStype_BIN:
-        case WStype_FRAGMENT_BIN_START:
-            DEBUG_LOG("WStype_BIN or WStype_FRAGMENT_BIN_START");
-            if (_this->m_onError) _this->m_onError("NeohubConnection: Binary data received - unhandled");
-            break;
-
-        // Messages we don't care for
-        case WStype_PING:
-        case WStype_PONG:
-            break;
-
         default:
-            DEBUG_LOG("WStype_UNKNOWN");
+            DEBUG_LOG("WEBSOCKET_EVENT_UNKNOWN: %d", eventId);
+            if (_this->m_onError) _this->m_onError(StringPrintf("NeohubConnection: unknown websocket event: %d", eventId));
             break;
             
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// The loop task, which calls the loop function on a regular basis
-
-// Handle for the loop task
-TaskHandle_t NeohubConnection::m_loopTaskHandle = 0;
-
-// Colleciton of all the live connections for which the loop function has to be called
-std::unordered_set<NeohubConnection*> NeohubConnection::m_liveConnections;
-
-// A MUTEX to protect the above collection and to avoid running certain code while
-// the loop function performs its tasks
-MyMutex NeohubConnection::m_loopMutex("NeohubConnection::m_loopMutex");
-
-// The actual loop task
-void NeohubConnection::loopTask(void* parameter)
+void NeohubConnection::textReceived(const char *buffer, size_t length, size_t offset, size_t totalLength)
 {
-    for (;;) {
-        if (m_loopMutex.lock(__PRETTY_FUNCTION__)) {
+    if (length == 0) return;
+    if (buffer == nullptr) return;
 
-            // Iterate over all connections
-            for (auto iterator = m_liveConnections.begin(); iterator != m_liveConnections.end();) {
-                NeohubConnection* connection = *iterator;
+    // Simple case: full message received in one go
+    if (offset == 0 && length == totalLength) {
+        MyDebugLog.printf("NeohubConnection: Full message received in one go, length=%d\n", length);
+        m_receiveBuffer = String(buffer, length);
+        processMessage(m_receiveBuffer);
+        m_receiveBuffer = "";
+        return;
+    }
 
-                // if the connection has been deleted, collect its memory
-                if (connection->m_deleted) {
-                    iterator = m_liveConnections.erase(iterator);
-                    delete connection;
-                }
-                else {
-                    connection->loop();
-                    iterator++;
+    // Multi-part message: accumulate
+
+    // First part received - start a new buffer
+    if (offset == 0) {
+        MyDebugLog.printf("NeohubConnection: First part of message received, length=%d of %d\n", length, totalLength);
+        m_receiveBuffer = String(buffer, length);
+        return;
+    }
+
+    // Intermediate or final part received - append to buffer
+    m_receiveBuffer += String(buffer, length);
+
+    // If this was the last part, process the message
+    if ((offset + length) >= totalLength) {
+        MyDebugLog.printf("NeohubConnection: Final message received, length=%d of %d\n", length, totalLength);
+        processMessage(m_receiveBuffer);
+        m_receiveBuffer = "";
+    }
+    else {
+        MyDebugLog.printf("NeohubConnection: Part of message received, length=%d of %d\n", length, totalLength);
+    }
+
+    // Otherwise, (offset + length) < totalLength, wait for more parts
+}
+
+void NeohubConnection::processMessage(const String& message)
+{
+    DEBUG_LOG("Processing message: %s\n", message.c_str());
+    MyDebugLog.printf("Processing message: %.200s", message.c_str());
+
+    // Deserialise and report any erros
+    JsonDocument json;
+    DeserializationError error = deserializeJson(json, message);
+    if (error) {
+        String errorMessage = StringPrintf(
+            "NeohubConnection: Deserialisation error: %s, JSON: \"%s\"",
+            error.c_str(), message.c_str()
+        );
+        if (this->m_onError) this->m_onError(errorMessage);
+    }
+
+    // Get the conversation ID from the response
+    else {
+        int id = json["command_id"] | -1;
+        if (id == -1) {
+            String errorMessage = StringPrintf(
+                "NeohubConnection: Response without command Id, JSON: \"%s\"",
+                message.c_str()
+            );
+            if (this->m_onError) this->m_onError(errorMessage);
+        }
+
+        else {
+            // Find the conversation for this ID
+            NeohubConversation* c = (NeohubConversation*)this->m_conversations.take(id);
+            if (!c) {
+                String errorMessage = StringPrintf(
+                    "NeohubConnection: Response for unknown command Id %d, JSON: \"%s\"",
+                    id, message.c_str()
+                );
+                if (this->m_onError) this->m_onError(errorMessage);
+            }
+            else {
+                if (c->m_onReceive) {
+                    c->m_onReceive(json["response"].as<String>());
+                    delete c;
                 }
             }
-            m_loopMutex.unlock();
         }
-        delay(10);
     }
-}
-
-// Add this connection to the loop
-void NeohubConnection::addToLoopTask()
-{
-    if (m_loopMutex.lock(__PRETTY_FUNCTION__)) {
-        m_liveConnections.insert(this);
-        m_loopMutex.unlock();
-    }
-}
-
-// Make sure the loop task is running
-void NeohubConnection::ensureLoopTask()
-{
-    if (m_loopTaskHandle) return;
-    xTaskCreate(
-        NeohubConnection::loopTask,  // Task function
-        "WebSocketLoop",             // Task name
-        4096 * 4,                    // Stack size (bytes)
-        NULL,                        // Parameter to pass
-        1,                           // Task priority
-        &m_loopTaskHandle            // Task handle
-    );
+    this->handleTimeouts();
 }
 
 // Internal helper function to translate a simple stringcommand into the convoluted
@@ -329,7 +281,7 @@ void NeohubConnection::ensureLoopTask()
 // The actual command uses a "bastardised" JSON where ' is used instead of ", which avoids
 // awkward quotes like \\\"..., so at the beginning we take the command and replace
 // all " we find with '.
-String NeohubConnection::wrapCommand(String command)
+String NeohubConnection::wrapCommand(String command, int id /* = 1 */)
 {
     // Commands to the Neohub are in a three-level JSON, where a second and third level JSON
     // is embedded in a string.
@@ -386,6 +338,8 @@ String NeohubConnection::wrapCommand(String command)
     result += this->m_accessToken;
     result += R"(\",\"COMMANDS\":[{\"COMMAND\":\")";
     result += command;
-    result += R"(\",\"COMMANDID\":1}]}"})";
+    result += R"(\",\"COMMANDID\":)";
+    result += String(id);
+    result += R"(}]}"})";
     return result;
 }

@@ -2,52 +2,31 @@
 #define __NEOHUB_CONNECTION_H
 
 #include <Arduino.h>
-#include <WebSocketsClient.h>
 
 #include <deque>
 #include <unordered_set>
 
-#include "MyMutex.h"
 #include "MyLog.h"
+#include "MyMutex.h"
+#include "ThreadSafePtrMap.h"
+#include "esp_websocket_client.h"
+#include "esp_idf_version.h"
+class NeohubConversation;
 
 class NeohubConnection {
   private:
-    // Internal class for a single message/response interaction
-    class Conversation {
-      public:
-        String m_command;                                      // The command sent as part od the conversation
-        unsigned long m_startMillis;                           // The time at which the request was made (not sent)
-        int m_timeoutMillis;                                   // A timeout measured from m_startMillis
-        std::function<void(String responseJson)> m_onReceive;  // called when a response has been received
-        std::function<void(String message)> m_onError;         // called when an error occured (which may be a failure to send the command)
-        bool m_commandSent = false;                            // A flag indicating if the command was sent, i.e., the conversation is "live"
-
-        // Constructor for a new conversation
-        Conversation(
-            const String& command,
-            std::function<void(String responseJson)> onReceive,
-            std::function<void(String message)> onError,
-            int timeoutMillis) : m_command(command), m_startMillis(millis()), m_timeoutMillis(timeoutMillis), m_onReceive(onReceive), m_onError(onError) {};
-
-        // Check if the conversation has timed out as of now
-        bool timeoutExceeded()
-        {
-            return (millis() - m_startMillis) > m_timeoutMillis;
-        }
-    };
-
-  private:
     String m_host;                       // the Neohub host (name or ip address)
     String m_accessToken;                // the access token required by the Neohub
-    WebSocketsClient m_websocketClient;  // the Websocket client for the connection
-    bool m_deleted = false;              // Flag indicating if this connection has been deleted
-                                         // set by finish() to mark the connection for
-                                         // deletion once all processing is complete
 
-    std::deque<Conversation*> m_conversations;  // Queue with all lives and pending conversations
+    esp_websocket_client_handle_t m_websocketClient = 0; // the Websocket client for the connection
+    ThreadSafePtrMap m_conversations;                    // Map with all live conversations
+    int m_nextConversationId = 1;                        // Next conversation ID to use
+    String m_receiveBuffer;                              // Buffer for incoming message fragments
 
     // Event handler if an event is received from the Neohub connection
-    static void webSocketEventHandler(WStype_t type, uint8_t* payload, size_t length, void* clientData);
+    static void webSocketEventHandler(void *arg, esp_event_base_t base, int32_t event_id, void *clientData);
+    void textReceived(const char *buffer, size_t length, size_t offset, size_t totalLength);
+    void processMessage(const String& message);
 
     std::function<void()> m_onConnect = nullptr;  // callbacks
     std::function<void()> m_onDisonnect = nullptr;
@@ -62,19 +41,14 @@ class NeohubConnection {
         instanceNo = nextInstanceNo++;
         DEBUG_LOG("Created %d", instanceNo);
     };
-
-  private:
-    // Private destructor so nobody can delete an object from a callback
-    // use NeohubConnection::finish() instead which will delete the object in the next loop
     ~NeohubConnection() {
         DEBUG_LOG("Deleting %d", instanceNo);
+        this->stop();
     };
 
-  public:
     // Connecetion lifecyle -------------------------------------------------------
-    void connect(int timeoutMillis = -1);
-    void disconnect(int timeoutMillis = -1);
-    void finish(); // delayed deletion - will be deleted in next loop
+    bool start();
+    void stop();
     bool isConnected();
 
     // Callbacks ------------------------------------------------------------------
@@ -96,27 +70,44 @@ class NeohubConnection {
         int timeoutMillis = 2000);
 
   private:
-    // loop function for the connection - called regularly by the loop task
-    void loop();
-    bool startConversation(Conversation* c);
-
-    // The loop task which regularly executes the loop function for all connections
-    // (one for all NeohubConnection objects)
-    static TaskHandle_t m_loopTaskHandle;
-    static void ensureLoopTask();
-    static void loopTask(void* parameter);
-
-    // a set of all live connections for which loop() has to be called
-    static std::unordered_set<NeohubConnection*> m_liveConnections;
-
-    // A mutex preventing concurrent access to the set with the live connections
-    static MyMutex m_loopMutex;
-
-    // Add this connecetion to the processing in the loop
-    void addToLoopTask();
+    // Internal processing functions to handle timeouts: checks all conversations in 
+    // m_conversations for timeouts and calls their error handlers as appropriate
+    void handleTimeouts();
 
     // Wrap the actual message in the convoluted message queue objects expeted by the Neohub
-    String wrapCommand(String command);
+    String wrapCommand(String command, int id = 1);
+
 };
+
+
+// Internal class for a single message/response interaction
+class NeohubConversation {
+  friend class NeohubConnection;
+
+  public:
+    int id;                     // An ID for this conversation
+    String command;             // The command sent
+    unsigned long startMillis;  // The time at which the request was made (not sent)
+    int timeoutMillis;          // A timeout measured from m_startMillis
+
+    // Constructor for a new conversation
+    NeohubConversation(
+        int id,
+        const String& command,
+        std::function<void(String responseJson)> onReceive,
+        std::function<void(String message)> onError,
+        int timeoutMillis)
+    : id(id), command(command), startMillis(millis()), timeoutMillis(timeoutMillis), m_onReceive(onReceive), m_onError(onError) 
+    {};
+
+    // Check if the conversation has timed out as of now
+    bool timeoutExceeded() { return (millis() - startMillis) >timeoutMillis; }
+
+  private:
+    std::function<void(String responseJson)> m_onReceive;  // called when a response has been received
+    std::function<void(String message)> m_onError;         // called when an error occured (which may be a failure to send the command)
+
+};
+
 
 #endif
