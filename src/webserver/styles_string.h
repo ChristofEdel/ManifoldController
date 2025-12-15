@@ -18,8 +18,13 @@ const char STYLES_CSS_STRING[] PROGMEM = R"RAW_STRING(
   --bg-titles:           #e0e0e0;
   --bg-even:             #f4f4f4;
   --bg-odd:              var(--bg-global);
+  --bg-warning:          yellow;
+  --bg-error:            red;
+  --text-warning:        black;
+  --text-error:          white;
   --color-red:           red;
-  --color-green:         darkgreen;
+  --color-green-text:    darkgreen;
+  --color-green-bg:      lightgreen;
   --color-call-to-action:orange;
 }
 
@@ -81,6 +86,47 @@ const char STYLES_CSS_STRING[] PROGMEM = R"RAW_STRING(
     border-top: var(--border-wide);
     margin-bottom: 5px;
 }
+
+.bottom-bar > a {
+    color: var(--color-text-inactive);
+    text-decoration: none;
+    font-size: small;
+    display: block;           /* full box is clickable */
+}
+.bottom-bar > a:visited {
+    color: var(--color-text-inactive);
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip:hover .tip {
+    visibility: visible;
+    opacity: 1;
+}
+
+.tip {
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity .2s;
+
+    position: absolute;
+    z-index: 999;
+
+    background: #333;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 4px;
+
+    white-space: pre-line;  /* enables \n */
+    width: max-content;      /* grow to content width */
+    max-width: none;         /* ignore parent max-width */
+    display: block;
+
+}
+
 
 /**********************************************************************************
 ** Straight table layout for table with titles on the top
@@ -153,7 +199,7 @@ table.field-table input {               /* input field style within table */
 
 
 /**********************************************************************************
-** Table for lists of sensors when monitoring
+** Table for lists of sensors or manifolds when monitoring
 */
 
 table.monitor-table {
@@ -179,6 +225,7 @@ table.monitor-table > tbody > tr > th {
 }
 table.monitor-table > tbody > tr > td {
     text-align: center;
+    width: 50px;
 }
 
 table.monitor-table > thead > tr > th {
@@ -215,11 +262,21 @@ table.monitor-table > tbody > tr > th.active {
     font-weight: bold;
 }
 
+table.monitor-table > tbody > tr > td.manifold-aged {
+    background-color: var(--bg-warning);
+    color: var(--text-warning);
+    font-weight: bold;
+}
+table.monitor-table > tbody > tr > td.manifold-dead {
+    background-color: var(--bg-error) ;
+    color: var(--text-error) ;
+    font-weight: bold;
+}
 /**********************************************************************************
 ** re-usable styles for all tables
 */
 
-th.gap-right {
+th.gap-right, td.gap-right {
     border-right: 5px solid var(--bg-global);
 }
 
@@ -250,6 +307,24 @@ table.center-all-td > thead > tr > td,
 table.center-all-td > tbody > tr > td {
     text-align: center;
 }
+
+/**********************************************************************************
+** Representation of switches
+*/
+
+div.switch-state {
+    box-sizing: border-box;
+    text-wrap: nowrap;
+    text-align: center;
+    width: 90px;
+}
+div.switch-state.on {
+    background: var(--color-green-bg);
+}
+div.switch-state.off {
+    background: var(--bg-active);
+}
+
 
 /**********************************************************************************
 ** Insert / Delete / Drag-Drop styling
@@ -412,5 +487,53 @@ input.save-button {
         border-top: var(--border-narrow);
         /* only 1px between title and content */
     }
+}
+
+/**********************************************************************
+**
+*/
+
+#resetZoneSetpoint {
+    width: 2.5em;
+    display: block;
+    text-align: center;
+    height: 20px
+}
+.zone-on {
+    background: var(--color-green-bg);
+    display: inline;
+}
+.zone-off {
+    background: var(--bg-active);
+    display: inline;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.reset-progress-bar {
+    display: flex;
+    flex-wrap: nowrap;
+    padding: 0;
+    margin: 0;
+    position: relative;
+    font-size: small
+}
+.reset-progress-bar > div {
+    flex: 0 0 auto;         /* keep fixed width from inline style */
+    display: inline-block;
+    text-align: center;
+    margin:0px;
+}
+.reset-progress-bar > div.on {
+    background-color: var(--color-green-bg);
+}
+.reset-progress-bar > div.off {
+    background-color: var(--bg-active);
+}
+#resetProgressIndicator {
+    height: 100%;
+    width: 2px;
+    background-color: black;
+    position: absolute;
+    left: 19px;
 }
 )RAW_STRING";

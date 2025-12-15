@@ -7,7 +7,7 @@
 void setupMemDebug();
 void checkMemoryChange(int thresholdBytes = 1024);
 void checkMemoryChange(bool forceOutput, int thresholdBytes = 1024);
-void checkMemoryChange(char *message, bool forceOutput = true, int thresholdBytes = 1024);
+void checkMemoryChange(char* message, bool forceOutput = true, int thresholdBytes = 1024);
 void outOfMemory();
 
 #endif

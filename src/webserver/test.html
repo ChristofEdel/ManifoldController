@@ -1,6 +1,7 @@
 <!DOCTYPE HTML>
 <html>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
+
 <head>
     <link rel='icon' href='data:,'>
     <script src='https://code.jquery.com/jquery-3.7.1.min.js'></script>
@@ -14,277 +15,133 @@
         <div class='navbar'>
             <div class='navbox'><a href='/monitor'>Monitor</a></div>
             <div class='navbox'><a href='/files'>Files</a></div>
-            <div class='navbox selected'><a href='/config'>Config</a></div>
-            <div class='navbox'><a href='/config-system'>System</a></div>
-            <div class='version' title="51a6fa7 + UNCOMMITTED">1.9.1</div>
+            <div class='navbox'><a href='/config'>Config</a></div>
+            <div class='navbox selected'><a href='/config-system'>System</a></div>
+            <div class='version' title='c5cd8da + UNCOMMITTED'>0.9.5</div>
         </div>
         <form method='post'>
             <div class='block-layout'>
                 <div class='block'>
                     <div class='title'>
-                        Room Zones
+                        Hostname
                     </div>
-                    <div class='content flex-wrap' class='content'>
-                        <table class='field-table'>
-                            <thead>
-                                </tr>
-                                <th style='width: 21px'></th>
-                                <th style='min-width: 8em'>Active</th>
-                                <th class='delete-header'></th>
-                                </tr>
-                            </thead>
-                            <tbody class='dragDropListAcross'>
-                                <tr class='template-row'>
-                                    <td class='handle seq' />0</td>
-                                    <td><select name='zone_a'>
-                                            <option value=''>Not Selected</option>
-                                            <option value='9'>1st Floor Landing</option>
-                                            <option value='4'>Bastelzimmer</option>
-                                            <option value='11'>Bathroom</option>
-                                            <option value='12'>Bedroom</option>
-                                            <option value='13'>Cinema</option>
-                                            <option value='8'>Conservatory</option>
-                                            <option value='10'>Dressing Room</option>
-                                            <option value='1'>Gallery</option>
-                                            <option value='6'>Guest Bedroom</option>
-                                            <option value='5'>Hallway</option>
-                                            <option value='15'>Hot Water</option>
-                                            <option value='2'>Kitchen</option>
-                                            <option value='7'>Library</option>
-                                            <option value='3'>Living Room</option>
-                                            <option value='14'>Shower Room</option>
-                                        </select>
-                                    </td>
-                                    <td class='delete-row'></td>
-                                </tr>
-                                <tr>
-                                    <td class='handle seq' />1</td>
-                                    <td><select name='zone_a'>
-                                            <option value=''>Not Selected</option>
-                                            <option value='9'>1st Floor Landing</option>
-                                            <option value='4'>Bastelzimmer</option>
-                                            <option value='11'>Bathroom</option>
-                                            <option value='12'>Bedroom</option>
-                                            <option value='13'>Cinema</option>
-                                            <option value='8'>Conservatory</option>
-                                            <option value='10'>Dressing Room</option>
-                                            <option value='1'>Gallery</option>
-                                            <option value='6'>Guest Bedroom</option>
-                                            <option value='5'>Hallway</option>
-                                            <option value='15'>Hot Water</option>
-                                            <option value='2'>Kitchen</option>
-                                            <option value='7'>Library</option>
-                                            <option value='3' selected>Living Room</option>
-                                            <option value='14'>Shower Room</option>
-                                        </select>
-                                    </td>
-                                    <td class='delete-row'></td>
-                                </tr>
-                                <tr class='add-row'>
-                                    <td colspan=99>
-                                        <div></div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <table class='field-table'>
-                            <thead>
-                                </tr>
-                                <th style='width: 21px'></th>
-                                <th style='min-width: 8em'>Monitored</th>
-                                <th class='delete-header'></th>
-                                </tr>
-                            </thead>
-                            <tbody class='dragDropListAcross'>
-                                <tr class='template-row'>
-                                    <td class='handle seq' />0</td>
-                                    <td><select name='zone_m'>
-                                            <option value=''>Not Selected</option>
-                                            <option value='9'>1st Floor Landing</option>
-                                            <option value='4'>Bastelzimmer</option>
-                                            <option value='11'>Bathroom</option>
-                                            <option value='12'>Bedroom</option>
-                                            <option value='13'>Cinema</option>
-                                            <option value='8'>Conservatory</option>
-                                            <option value='10'>Dressing Room</option>
-                                            <option value='1'>Gallery</option>
-                                            <option value='6'>Guest Bedroom</option>
-                                            <option value='5'>Hallway</option>
-                                            <option value='15'>Hot Water</option>
-                                            <option value='2'>Kitchen</option>
-                                            <option value='7'>Library</option>
-                                            <option value='3'>Living Room</option>
-                                            <option value='14'>Shower Room</option>
-                                        </select>
-                                    </td>
-                                    <td class='delete-row'></td>
-                                </tr>
-                                <tr class='add-row'>
-                                    <td colspan=99>
-                                        <div></div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <div class='content'>
+                        <input name='hostname' value='test'>
                     </div>
                 </div>
                 <div class='block'>
                     <div class='title'>
-                        Heating Parameters
+                        Neohub
                     </div>
                     <div class='content'>
                         <table class='field-table'>
                             <tr>
                                 <th>
-                                    Room Setpoint</th>
-                                <td><input name='room-setpoint' type='text' class='num-3em' value='20.0'>
+                                    URL</th>
+                                <td><input name='nh_url' style='width: 20em' value='192.168.1.139'>
                                 </td>
-                                <td>&deg;C</td>
                             </tr>
                             <tr>
                                 <th>
-                                    Proportional Gain</th>
-                                <td><input name='room-pg' type='text' class='num-3em' value='5.0'>
+                                    Token</th>
+                                <td><input name='nh_token' style='width: 20em'
+                                        value='6b4f25a5-9de5-460a-a3ac-5845d3fbe095'>
                                 </td>
-                                <td>&deg;C flow per &deg;C room temperature</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                <div class='block'>
+                    <div class='title'>
+                        Valve Test
+                    </div>
+                    <div class='content'>
+                        <table class='field-table'>
+                            <tr>
+                                <th>
+                                    Manual Control</th>
+                                <td style='text-align: left'>
+                                    <input type='checkbox' id='valveControlManual'>
+                                </td>
                             </tr>
                             <tr>
                                 <th>
-                                    Integral Time</th>
-                                <td><input name='room-is' type='text' class='num-3em' value='180.0'>
+                                    Position</th>
+                                <td style='text-align: left'>
+                                    <input type='range' id='valveControlPositionSlider' min='0' max='100'
+                                        value='0'><span id='valveControlPositionValue'>0</span>
                                 </td>
-                                <td>minutes for 1x proportional gain</td>
                             </tr>
+                        </table>
+                    </div>
+                </div>
+                <div class='block'>
+                    <div class='title'>
+                        Salus Valve Reset
+                    </div>
+                    <div class='content'>
+                        <table class='field-table'>
                             <tr>
                                 <th>
+                                    Zone:</th>
+                                <td>
+                                    <select id="zoneToResetSelect">
+                                        <option value="">Not Selected</option>
+                                        <option value="9">1st Floor Landing</option>
+                                        <option value="4">Bastelzimmer</option>
+                                        <option value="11">Bathroom</option>
+                                        <option value="12">Bedroom</option>
+                                        <option value="13">Cinema</option>
+                                        <option value="8">Conservatory</option>
+                                        <option value="10">Dressing Room</option>
+                                        <option value="1">Gallery</option>
+                                        <option value="6">Guest Bedroom</option>
+                                        <option value="5">Hallway</option>
+                                        <option value="15">Hot Water</option>
+                                        <option value="2">Kitchen</option>
+                                        <option value="7">Library</option>
+                                        <option value="3">Living Room</option>
+                                        <option value="14">Shower Room</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Setpoint:</th>
+                                <td>
+                                    <div id="resetZoneSetpoint" type="button" class="zone-on"></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th></th>
+                                <td>
+                                    <div class="reset-progress-bar">
+                                        <div id="resetProgressIndicator" style="display: none"></div>
+                                        <div style="width: 90px" class="on">
+                                            30s on
+                                        </div>
+                                        <div style="width: 45px" class="off">
+                                            15s off
+                                        </div>
+                                        <div style="width: 45px" class="on">
+                                            15s on
+                                        </div>
+                                        <div style="width: 45px" class="off">
+                                            15s off
+                                        </div>
+                                        <div style="width: 90px" class="on">
+                                            30s on
+                                        </div>
+                                        <div style="width: 30px; border-left: 1px solid green" class="on">
+                                            Auto
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th colspan=2>
+                                    <button id="resetZoneStartButton" type="button" disabled>Start Reset Sequence</button>
+                                    <button id="resetZoneStopButton" type="button" style="display:none">Stop</button>
                                 </th>
-                                <td colspan=2><small>K<sub>i</sub> = 0.000</small></td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-                <div class='block'>
-                    <div class='title'>
-                        Manifold Configuration
-                    </div>
-                    <div class='content'>
-                        <table class='field-table'>
-                            <tr>
-                                <th>
-                                    Flow Range</th>
-                                <td><input name='flow-setpoint-min' type='text' class='num-3em' value='25.0'>
-                                </td>
-                                <td>&mdash;<input name='flow-setpoint-max' type='text' class='num-3em' value='37.0'>
-                                    &deg;C</td>
-                            </tr>
-                            <tr>
-                                <th>
-                                    Proportional Gain</th>
-                                <td><input name='flow-pg' type='text' class='num-3em' value='3.0'>
-                                </td>
-                                <td>% per &deg;C flow temperature</td>
-                            </tr>
-                            <tr>
-                                <th>
-                                    Integral Time</th>
-                                <td><input name='flow-is' type='text' class='num-3em' value='10.0'>
-                                </td>
-                                <td>minutes for 1x proportional gain</td>
-                            </tr>
-                            <tr>
-                                <th>
-                                </th>
-                                <td colspan=2><small>K<sub>i</sub> = 0.300</small></td>
-                            </tr>
-                            <tr>
-                                <th>
-                                    Valve Direction</th>
-                                <td colspan=2><select name='valve-direction'>
-                                        <option value='0'>Standard (clockwise)</option>
-                                        <option value='1' selected>Inverted (counter-clockwise)</option>
-                                    </select>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                </div>
-                <div class='block'>
-                    <div class='title'>
-                        Sensor Names
-                    </div>
-                    <div class='content'>
-                        <table class='field-table'>
-                            <thead>
-                                </tr>
-                                <th>Sensor Id</th>
-                                <th>Name</th>
-                                <th class='delete-header'></th>
-                                </tr>
-                            </thead>
-                            <tbody class='dragDropList'>
-                                <tr>
-                                    <th class='handle'>
-                                        28D3447E000000C8</th>
-                                    <td><input name='s-28D3447E000000C8' type='text' value='Input'>
-                                    </td>
-                                    <td class='delete-row'></td>
-                                </tr>
-                                <tr>
-                                    <th class='handle'>
-                                        2884BA7E00000067</th>
-                                    <td><input name='s-2884BA7E00000067' type='text' value='Return'>
-                                    </td>
-                                    <td class='delete-row'></td>
-                                </tr>
-                                <tr>
-                                    <th class='handle'>
-                                        2839C57E00000028</th>
-                                    <td><input name='s-2839C57E00000028' type='text' value='Flow'>
-                                    </td>
-                                    <td class='delete-row'></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class='block'>
-                    <div class='title'>
-                        Sensor Functions
-                    </div>
-                    <div class='content'>
-                        <table class='field-table'>
-                            <tr>
-                                <th>
-                                    Input temperature</th>
-                                <td><select name='sensor-input'>
-                                        <option value=''>Not Selected</option>
-                                        <option value='28D3447E000000C8' selected>Input</option>
-                                        <option value='2884BA7E00000067'>Return</option>
-                                        <option value='2839C57E00000028'>Flow</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>
-                                    Flow temperature</th>
-                                <td><select name='sensor-flow'>
-                                        <option value=''>Not Selected</option>
-                                        <option value='28D3447E000000C8'>Input</option>
-                                        <option value='2884BA7E00000067'>Return</option>
-                                        <option value='2839C57E00000028' selected>Flow</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>
-                                    Return temperature</th>
-                                <td><select name='sensor-return'>
-                                        <option value=''>Not Selected</option>
-                                        <option value='28D3447E000000C8'>Input</option>
-                                        <option value='2884BA7E00000067' selected>Return</option>
-                                        <option value='2839C57E00000028'>Flow</option>
-                                    </select>
-                                </td>
                             </tr>
                         </table>
                     </div>

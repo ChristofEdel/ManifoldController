@@ -7,7 +7,7 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ESPOTA = Path.home() / ".platformio/packages/framework-arduinoespressif32/tools/espota.py"
-FIRMWARE_BIN = Path(".pio/build/arduino_nano_esp32_espidf_debug/firmware.bin")
+FIRMWARE_BIN = Path(".pio/build/debug/firmware.bin")
 
 
 def upload_with_log(ip: str, firmware: Path):

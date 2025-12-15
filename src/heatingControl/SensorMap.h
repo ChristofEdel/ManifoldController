@@ -11,7 +11,7 @@ struct SensorMapEntry {
     SensorMapEntry(const String& id, const String& name, int index) : id(id), name(name), index(index) {};
 };
 
-class SensorMap {
+class CSensorMap {
   private:
   public:
     SensorMapEntry** m_sensorMapStorage;
@@ -22,8 +22,9 @@ class SensorMap {
     bool m_changed;
 
   public:
-    SensorMap(int maxSensorCount);
-    ~SensorMap();
+    static const int maxSensorCount = 20;
+    CSensorMap();
+    ~CSensorMap();
     bool save(SdFs* fs, const char* fileName);
     bool load(SdFs* fs, const char* fileName);
     int getCount() const { return m_sensorCount; }
@@ -49,5 +50,7 @@ class SensorMap {
     SensorMapEntry* findEntryById(const String& id) const;
     void removeEntry(SensorMapEntry* ep);
 };
+
+extern CSensorMap SensorMap;
 
 #endif

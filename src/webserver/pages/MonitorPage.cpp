@@ -1,7 +1,9 @@
 #include "../MyWebServer.h"
+#include "NeohubManager.h"
+#include "ValveManager.h"
 
 const String &CMyWebServer::mapSensorName(const String &id) const{
-  const String &displayName = this->m_sensorMap->getNameForId(id);
+  const String &displayName = SensorMap.getNameForId(id);
   if (displayName.isEmpty()) return id;
   return displayName;
 }
@@ -27,14 +29,14 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
 
         html.fieldTableRow("Room", [this, expertMode, &html]{
           double sp = Config.getRoomSetpoint();
-          double t = this->m_valveManager->inputs.roomTemperature;
+          double t = ValveManager.inputs.roomTemperature;
           double d = t - sp;
           html.element("td", "id='roomSetpoint' class='has-data'",  String(sp,1).c_str());
           html.element("td", "id='roomTemperature' class='has-data'", String(t,1).c_str());
           html.element("td", "id='roomError' class='has-data'", String(d,1).c_str());
           if (expertMode) {
-            html.element("td", "id='roomD' class='has-data'", String(this->m_valveManager->getRoomProportionalTerm(),1).c_str());
-            html.element("td", "id='roomI' class='has-data'", String(this->m_valveManager->getRoomIntegralTerm(),1).c_str());
+            html.element("td", "id='roomD' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
+            html.element("td", "id='roomI' class='has-data'", String(ValveManager.getRoomIntegralTerm(),1).c_str());
           }
         });
         if (NeohubManager.getActiveZones().size() == 1 && NeohubManager.getMonitoredZones().size() == 0) {
@@ -51,20 +53,20 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           }
         }
         html.fieldTableRow("Flow", [this, expertMode, &html]{
-          double sp = this->m_valveManager->getFlowSetpoint();
-          double t = this->m_valveManager->inputs.flowTemperature;
+          double sp = ValveManager.getFlowSetpoint();
+          double t = ValveManager.inputs.flowTemperature;
           double d = t - sp;
           html.element("td", "id='flowSetpoint' class='has-data'", String(sp,1).c_str());
           html.element("td", "id='flowTemperature' class='has-data'", String(t,1).c_str());
           html.element("td", "id='flowError' class='has-data'", String(d,1).c_str());
           if (expertMode) {
-            html.element("td", "id='flowD' class='has-data'", String(this->m_valveManager->getFlowProportionalTerm(),1).c_str());
-            html.element("td", "id='flowI' class='has-data'", String(this->m_valveManager->getFlowIntegralTerm(),1).c_str());
+            html.element("td", "id='flowD' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
+            html.element("td", "id='flowI' class='has-data'", String(ValveManager.getFlowIntegralTerm(),1).c_str());
           }
         });
         html.fieldTableRow("Valve", [this, &html]{
-          html.element("td", "id='valvePosition' class='has-data'", (String(this->m_valveManager->getValvePosition(),0) + "%").c_str());
-          if (this->m_valveManager->valveUnderManualControl()) {
+          html.element("td", "id='valvePosition' class='has-data'", (String(ValveManager.getValvePosition(),0) + "%").c_str());
+          if (ValveManager.valveUnderManualControl()) {
             html.print("<td id='valveManualFlag' colspan=2 class='manual-control'>Manual Control</td>");
           }
           else {
@@ -155,16 +157,16 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
         html.print("<tr class='tight'><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
         html.print("</thead>");
         html.element("tbody", [this, &html]{
-          int sensorCount = this->m_sensorMap->getCount();
+          int sensorCount = SensorMap.getCount();
           int totalReadings = 0;
           int totalCrcErrors = 0;
           int totalNoResponseErrors = 0;
           int totalOtherErrors = 0;
           int totalFailures = 0;
           for (int i = 0; i < sensorCount; i++) {
-            SensorMapEntry * entry = (*m_sensorMap)[i];
-            OneWireSensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
-            float temperature = OneWireManager::SENSOR_NOT_FOUND;
+            SensorMapEntry * entry = SensorMap[i];
+            OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
+            float temperature = COneWireManager::SENSOR_NOT_FOUND;
             if (sensor) {
               temperature = sensor->calibratedTemperature();
               totalReadings += sensor->readings;
@@ -179,7 +181,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             html.print(entry->name.c_str());
             html.print("</th>");
             html.print("<td id='"); html.print(entry->id.c_str()); html.print("-temp' class='has-data'>");
-            if (temperature == OneWireManager::SENSOR_NOT_FOUND) html.print("???");
+            if (temperature == COneWireManager::SENSOR_NOT_FOUND) html.print("???");
             if (temperature > -50) html.print(String(temperature, 1).c_str());
             html.print("</td>");
             if (sensor) {
@@ -203,6 +205,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
       });
     });
   }); // block layout
+  html.footer();
+
 
   html.print("<script>setInterval(monitorPage_refreshData, 5000)</script>");
   finishHttpHtmlResponse(response);
@@ -214,36 +218,36 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
 
   {
     double sp = Config.getRoomSetpoint();
-    double t = this->m_valveManager->inputs.roomTemperature;
+    double t = ValveManager.inputs.roomTemperature;
     statusJson["roomSetpoint"]    = sp;
     if (t != NeohubZoneData::NO_TEMPERATURE) {
       statusJson["roomTemperature"] = t;
       statusJson["roomError"]  = t - sp;
     }
-    statusJson["roomProportionalTerm"] = this->m_valveManager->getRoomProportionalTerm();
-    statusJson["roomIntegralTerm"] = this->m_valveManager->getRoomIntegralTerm();
+    statusJson["roomProportionalTerm"] = ValveManager.getRoomProportionalTerm();
+    statusJson["roomIntegralTerm"] = ValveManager.getRoomIntegralTerm();
   }
   {
-    double sp = this->m_valveManager->getFlowSetpoint();
-    double t = this->m_valveManager->inputs.flowTemperature;
-    statusJson["flowSetpoint"]    = sp;
+    double sp = ValveManager.getFlowSetpoint();
+    double t = ValveManager.inputs.flowTemperature;
+    statusJson["flowSetpoint"] = sp;
     if (t != NeohubZoneData::NO_TEMPERATURE) {
       statusJson["flowTemperature"] = t;
-      statusJson["flowError"]  = t - sp;
+      statusJson["flowError"]       = t - sp;
     }
-    statusJson["flowProportionalTerm"] = this->m_valveManager->getFlowProportionalTerm();
-    statusJson["flowIntegralTerm"] = this->m_valveManager->getFlowIntegralTerm();
+    statusJson["flowProportionalTerm"] = ValveManager.getFlowProportionalTerm();
+    statusJson["flowIntegralTerm"]     = ValveManager.getFlowIntegralTerm();
   }
 
-  statusJson["valvePosition"]   = m_valveManager->getValvePosition();
-  statusJson["valveManualControl"]   = m_valveManager->valveUnderManualControl();
+  statusJson["valvePosition"]        = ValveManager.getValvePosition();
+  statusJson["valveManualControl"]   = ValveManager.valveUnderManualControl();
   
-  int sensorCount = this->m_sensorMap->getCount();
+  int sensorCount = SensorMap.getCount();
 
   int i = 0;
   for (int sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
-      SensorMapEntry * entry = (*this->m_sensorMap)[sensorIndex];
-      OneWireSensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
+      SensorMapEntry * entry = SensorMap[sensorIndex];
+      OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
       if (sensor) {
         statusJson["sensors"][i]["id"] = entry->id;
         statusJson["sensors"][i]["name"] = entry->name;

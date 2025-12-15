@@ -18,7 +18,8 @@ class HtmlGenerator {
 
     void text(const char *s);
     void print(const char *s);
-
+    void printf(const char *s, ...);
+    
     void element(const char *elementName, const char *parameters, std::function<void()> func);
     void element(const char *elementName, const char *parameters, const char *contents);
     void element(const char *elementName, std::function<void()> func) { element(elementName, nullptr, func); };
@@ -47,6 +48,7 @@ class HtmlGenerator {
     void fieldTableSelect(const char *tdParameters, const char *parameters, std::function<void()> func);
 
     void navbar(NavbarPage activePage);
+    void footer();
 
     bool needsEscapingSingleQuotes(const char *s);
     String escapeSingleQuotes(const char *s);

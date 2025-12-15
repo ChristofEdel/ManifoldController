@@ -1,11 +1,12 @@
 #include "../MyWebServer.h"
+#include "NeohubManager.h"
 #include "ESPmDNS.h"
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
   HtmlGenerator html(response);
 
-  m_valveManager->resumeAutomaticValveControl();
+  ValveManager.resumeAutomaticValveControl();
   // Instead of showing the current value on the page, we show "automatic"
   // on the page and make sure the system behaves accordingly.
 
@@ -14,8 +15,15 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   html.element("form", "method='post'", [this, &html]{
     html.blockLayout([this, &html]{
 
-      html.block("Hostname", [this, &html]{
-        html.input("name='hostname'", Config.getHostname().c_str());
+      html.block("Names", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("Display Name", [&html]{
+            html.fieldTableInput("name='displayname'",Config.getName().c_str());
+          });
+          html.fieldTableRow("Hostname", [&html]{
+            html.fieldTableInput("name='hostname'", Config.getHostname().c_str());
+          });
+        });
       });
 
       html.block("Neohub", [this, &html]{
@@ -29,21 +37,63 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
         });
       });
 
+      html.block("Heating Controller", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("URL", [&html]{
+            html.fieldTableInput("name='hc_url' style='width: 20em'", Config.getHeatingControllerAddress().c_str());
+          });
+        });
+      });
+
       html.block("Valve Test", [this, &html]{
         html.fieldTable( [this, &html] {
           html.fieldTableRow("Manual Control", [&html]{
-            html.element("td", "style='text-align: left'", "<input type='checkbox' id='valveControlManual'>");
+            html.element("td", "style='text-align: left'", "<input type='checkbox' id='valveControlManualCheckbox'>");
           });
           html.fieldTableRow("Position", [&html]{
             html.element("td", "style='text-align: left'", [&html] {
               html.print("<input type='range' id='valveControlPositionSlider' min='0' max='100' value='0'>");
-              html.print("<span id='valveControlPositionValue'>0</span>");
+              html.print("<span id='valveControlPositionText'>0</span>");
+            });
+          });
+        });
+      });
+
+      html.block("Salus Valve Reset", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("Zone", [this, &html]{
+            html.element("td", "style='text-align: left'", [this, &html]() {
+              html.select("id='zoneToResetSelect'", [this, &html]{
+                generateZoneOptions(html, 0);
+              });
+            });
+          });
+          html.fieldTableRow("Setpoint", [&html]{
+            html.print("<td><div id='resetZoneSetpoint' type='button' class='zone-on'></div></td>");
+          });
+          html.fieldTableRow("", [&html]{
+            html.print("<td><div class='reset-progress-bar'>");
+            html.print("<div id='resetProgressIndicator' style='display: none'></div>");
+            html.print("<div style='width: 60px' class='on'>30s</div>");
+            html.print("<div style='width: 30px' class='off'>15s</div>");
+            html.print("<div style='width: 30px' class='on'>15s</div>");
+            html.print("<div style='width: 30px' class='off'>15s</div>");
+            html.print("<div style='width: 180px' class='on'>90s</div>");
+            html.print("<div style='width: 40px' class='off'>20s</div>");
+            html.print("<div style='width: 40px; border-left: 1px solid green' class='on'>Auto</div>");
+            html.print("</div></td>");
+          });
+          html.element("tr", [&html]() {
+            html.element("th", "colspan=2", [&html]() {
+              html.print("<button id='resetZoneStartButton' type='button' disabled>Start Reset Sequence</button>");
+              html.print("<button id='resetZoneStopButton' type='button' style='display:none'>Stop</button>");
             });
           });
         });
       });
 
     }); // block layout
+    html.footer();
     html.print("<input type='submit' class='save-button' value='Save Changes'/>");
   }); // </form>
 
@@ -63,6 +113,10 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     if (!p->isPost()) continue;   // Ignore parameters that are not postback parameters
     const String & key = p->name();
 
+    if (key == "displayname" && p->value() != Config.getName()) {
+      Config.setName(p->value());
+      changesMade = true;
+    }
     if (key == "hostname" && p->value() != Config.getHostname()) {
       Config.setHostname(p->value());
       MyWiFi.setHostname(p->value());
@@ -78,10 +132,14 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
       Config.setNeohubToken(p->value());
       changesMade = true;
     }
+    if (key == "hc_url" && p->value() != Config.getHeatingControllerAddress()) {
+      Config.setHeatingControllerAddress(p->value());
+      changesMade = true;
+    }
   }
 
   if (changesMade) {
-    Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap, NeohubManager);
+    Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json");
     Config.print(MyLog);
   }
 

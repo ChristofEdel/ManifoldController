@@ -1,9 +1,10 @@
+#include <vector>
+
+#include "HtmlGenerator.h"
 #include "../MyWebServer.h"
 #include "ESPmDNS.h"
 #include "NeohubManager.h"
-#include <vector>
-#include "../HtmlGenerator.h"
-
+#include "ValveManager.h"
 
 void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response= this->startHttpHtmlResponse(request);
@@ -86,7 +87,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             html.print("<td>minutes for 1x proportional gain</td>");
           });
           html.fieldTableRow("", [this, &html]{
-            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(this->m_valveManager->getRoomIntegralGain(),3) + "</small></td>").c_str());
+            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(ValveManager.getRoomIntegralGain(),3) + "</small></td>").c_str());
           });
         });
       });
@@ -108,7 +109,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             html.print("<td>minutes for 1x proportional gain</td>");
           });
           html.fieldTableRow("", [this, &html]{
-            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(this->m_valveManager->getFlowIntegralGain(),3) + "</small></td>").c_str());
+            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(ValveManager.getFlowIntegralGain(),3) + "</small></td>").c_str());
           });
           html.fieldTableRow("Valve Direction", [&html]{
             html.fieldTableSelect("colspan=2", "name='valve-direction'", [&html]{
@@ -127,16 +128,16 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
           html.fieldTable( [this, &html] {
             html.print("<thead></tr><th>Sensor Id</th><th>Temp.</th><th>Name</th><th class='delete-header'></th></tr></thead>");
             html.element("tbody", "class='dragDropList'", [this, &html]{
-              int sensorCount = this->m_sensorMap->getCount();
+              int sensorCount = SensorMap.getCount();
               for (int i = 0; i < sensorCount; i++) {
-                SensorMapEntry * entry = (*m_sensorMap)[i];
+                SensorMapEntry * entry = SensorMap[i];
                 String fieldParameter = "name='s-" + entry->id + "' type='text'";
                 html.fieldTableRow(entry->id.c_str(), "class='handle'", [this, &html, fieldParameter, entry]{
                   html.print("<td id='"); html.print(entry->id.c_str()); html.print("-temp' class='has-data'>");
-                  float temperature = OneWireManager::SENSOR_NOT_FOUND;
-                  OneWireSensor * sensor = m_sensorManager->getSensor(entry->id.c_str());
+                  float temperature = COneWireManager::SENSOR_NOT_FOUND;
+                  OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
                   if (sensor) temperature = sensor->calibratedTemperature();
-                  if (temperature == OneWireManager::SENSOR_NOT_FOUND) html.print("???");
+                  if (temperature == COneWireManager::SENSOR_NOT_FOUND) html.print("???");
                   if (temperature > -50) html.print(String(temperature, 1).c_str());
                   html.print("</td>");
                   html.fieldTableInput(fieldParameter.c_str(), entry->name.c_str());
@@ -169,6 +170,8 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
       });
 
     }); // block layout
+    html.footer();
+
     html.print("<input type='submit' class='save-button' value='Save Changes'/>");
   }); // </form>
 
@@ -179,11 +182,11 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
 
 void CMyWebServer::generateSensorOptions(HtmlGenerator &html, const String &selectedSensor)
 {
-  int sensorCount = this->m_sensorMap->getCount();
+  int sensorCount = SensorMap.getCount();
   html.option("", "Not Selected", false);
   for (int i = 0; i < sensorCount; i++)
   {
-    SensorMapEntry *entry = (*m_sensorMap)[i];
+    SensorMapEntry *entry = SensorMap[i];
     html.option(entry->id.c_str(), entry->name.c_str(), /* selected: */ selectedSensor == entry->id);
   }
 }
@@ -229,11 +232,11 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     // Process the key-value pair
     if (key.startsWith("s-")) {
       // Handle sensor name updates
-      this->m_sensorMap->updateAtIndex(sensorIndex++, key.substring(2), p->value());
+      SensorMap.updateAtIndex(sensorIndex++, key.substring(2), p->value());
     }
     else if (key == "room-setpoint") {
       if (update(Config.getRoomSetpoint(), &CConfig::setRoomSetpoint, p->value().toFloat())) {
-        m_valveManager->setRooomSetpoint(p->value().toFloat());
+        ValveManager.setRooomSetpoint(p->value().toFloat());
       }
     }
     else if (key == "room-pg") {
@@ -283,14 +286,14 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     }
   }
 
-  this->m_sensorMap->removeFromIndex(sensorIndex); // Remove any remaining sensors
-  Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json", *this->m_sensorMap, NeohubManager);
+  SensorMap.removeFromIndex(sensorIndex); // Remove any remaining sensors
+  Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json");
   if (pidReconfigured) {
-    this->m_valveManager->loadConfig();
+    ValveManager.loadConfig();
     // includes loading the flow range
   }
   else if (flowRangeReconfigured) {
-    this->m_valveManager->setFlowSetpointRange(Config.getFlowMinSetpoint(), Config.getFlowMaxSetpoint());
+    ValveManager.setFlowSetpointRange(Config.getFlowMinSetpoint(), Config.getFlowMaxSetpoint());
   }
 
   Config.print(MyLog);
