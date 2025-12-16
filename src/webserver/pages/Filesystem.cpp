@@ -182,13 +182,15 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
 
         FsFile dir = this->m_sd->open("/", O_RDONLY);
         if (!dir.isOpen()) {
+            this->m_sdMutex->unlock();
             request->send(400, "text/plain", "Unable to open directory");
             return;
         }
 
         if (!dir.isDir()) {
-            request->send(400, "text/plain", "Not a directory");
             dir.close();
+            request->send(400, "text/plain", "Not a directory");
+            this->m_sdMutex->unlock();
             return;
         }
 

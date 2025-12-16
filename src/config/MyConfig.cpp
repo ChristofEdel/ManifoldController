@@ -57,9 +57,9 @@ void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) c
     if (fsMutex.lock(__PRETTY_FUNCTION__)) {
         FsFile file = fs.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
         if (!file) {
+            fsMutex.unlock();
             MyLog.print("Failed to open config file for writing: ");
             MyLog.println(filename);
-            fsMutex.unlock();
             return;
         }
         serializeJsonPretty(configJson, file);

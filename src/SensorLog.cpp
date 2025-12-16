@@ -21,21 +21,25 @@ char* getSensorDataFileName()
 
 void logSensors()
 {
+    char* dataFileName = getSensorDataFileName();
+    bool fileExists = false;
     if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
-        char* dataFileName = getSensorDataFileName();
+        fileExists = !sd.exists(dataFileName);
+    }
 
-        bool printHeaderLine = !sd.exists(dataFileName);
-        if (SensorMap.hasChanged()) {
-            printHeaderLine = true;
-            // SensorMap.dump(Serial);
-            SensorMap.clearChanged();
-        }
+    String logLine = getSensorLogLine();
+    String headerLine;
+    if (SensorMap.hasChanged() || !fileExists) {
+        String headerLine = getSensorHeaderLine();
+        SensorMap.clearChanged();
+    }
+
+    if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
 
         FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
-        String logLine = getSensorLogLine();
+        
         if (dataFile && dataFile.isOpen()) {
-            if (printHeaderLine) dataFile.println(getSensorHeaderLine());
-            logLine = getSensorLogLine();
+            if (headerLine != "") dataFile.println(headerLine);
             dataFile.println(logLine);
             dataFile.close();
             sdCardMutex.unlock();
@@ -50,11 +54,13 @@ void logSensors()
 
 void logSensorHeaderLine()
 {
+    String headerLine = getSensorHeaderLine();
+    char* dataFileName = getSensorDataFileName();
+
     if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
-        char* dataFileName = getSensorDataFileName();
         FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
         if (dataFile && dataFile.isOpen()) {
-            dataFile.println(getSensorHeaderLine());
+            dataFile.println(headerLine);
             dataFile.close();
         }
         sdCardMutex.unlock();

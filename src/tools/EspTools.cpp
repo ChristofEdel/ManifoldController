@@ -10,6 +10,7 @@
 #include <esp_timer.h>
 #include <esp_debug_helpers.h>
 #include <esp_core_dump.h>
+#include <esp_cpu_utils.h>
 
 #include "MyLog.h"
 
@@ -385,7 +386,7 @@ Esp32Backtrace::Esp32Backtrace(int skip /* = 0 */)
     while (frame.pc) {
         if (!frame.pc) break;
         if (skip-- <= 0) {
-            m_backtraceAddress[m_depth++] = frame.pc;
+            m_backtraceAddress[m_depth++] = (intptr_t) esp_cpu_process_stack_pc(frame.pc);
         }
         if (m_depth >= (sizeof(m_backtraceAddress) / sizeof(m_backtraceAddress[0]))) break;
         if (!frame.next_pc) break;

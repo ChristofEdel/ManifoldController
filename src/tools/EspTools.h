@@ -94,6 +94,10 @@ class Esp32Backtrace {
     void print(Print& out) const;
     String toString() const;
     const String &getTaskName() const { return m_taskName; }
+
+  private:
+    Esp32Backtrace(const Esp32Backtrace& other);
+
 };
 
 

@@ -27,7 +27,7 @@ bool MyMutex::lock(const char* who, int timeoutMillis /* = 0 */)
             "MyMutex(%s):\n    locked by: %s in task %s\n               %s\n    failed in: %s in task %s(%d)\n               %s\n    after %d ms",
             m_name.c_str(),
             m_lockHolder.c_str(),
-            backtrace.getTaskName().c_str(),
+            m_lockBacktrace ? m_lockBacktrace->getTaskName().c_str() : "???",
             m_lockBacktrace ? m_lockBacktrace->toString().c_str() : "NO BACKTRACE???",
             who,
             pcTaskGetName(task),
