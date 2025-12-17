@@ -252,10 +252,15 @@ void setupOta()
 // Core dumps
 //
 
+
 void Esp32CoreDump::ensureInitialised() 
 {
     if (this->m_initialised) return;
+
+    // The core dump partition has a header, the actual core dump starts 24 bytes in
+    static const int partitionHeaderSize = 24;
     
+    // Try to get the image information and partition
     esp_err_t err = esp_core_dump_image_get(&this->m_address, &this->m_size);
     if (err != ESP_OK) {
         this->m_address = 0;
@@ -269,6 +274,20 @@ void Esp32CoreDump::ensureInitialised()
             nullptr
         );
     }
+
+    // If we only have a header or less, we don't have a core dump
+    if (this->m_size <= partitionHeaderSize) {
+        this->m_address = 0;
+        this->m_size = 0;
+        this->m_partition = 0;
+    }
+
+    // Otherwise, we remove the header by adjusting position and size
+    else {
+        this->m_address += partitionHeaderSize;
+        this->m_size -= partitionHeaderSize;
+    }
+
     this->m_initialised = true;
     return;
 }
@@ -290,14 +309,12 @@ String Esp32CoreDump::getFormat()
     ensureInitialised();
     if (!this->m_partition) return emptyString;
 
-    const int magicBytesPosition = 24;
-
     size_t addr = 0;
     size_t size = 0;
-    if (esp_core_dump_image_get(&addr, &size) != ESP_OK || size < magicBytesPosition+4) return emptyString;
+    if (esp_core_dump_image_get(&addr, &size) != ESP_OK || size < 4) return emptyString;
 
     uint8_t hdr[4];
-    if (esp_partition_read(this->m_partition, addr - this->m_partition->address + magicBytesPosition, hdr, sizeof(hdr)) != ESP_OK)
+    if (esp_partition_read(this->m_partition, addr - this->m_partition->address, hdr, sizeof(hdr)) != ESP_OK)
         return emptyString;
 
     if (hdr[0] == 0x7F && hdr[1] == 'E' && hdr[2] == 'L' && hdr[3] == 'F')

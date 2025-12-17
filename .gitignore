@@ -11,3 +11,4 @@ CMakeLists.txt
 /src/commit.h
 /managed_components
 /dependencies.lock
+/coredump.elf
