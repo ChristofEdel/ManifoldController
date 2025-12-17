@@ -292,7 +292,11 @@ size_t AsyncBasicResponse::write_send_buffs(AsyncWebServerRequest *request, size
       // we were not able to fit all headers in current buff, send this part here and return later for the rest
       if (!request->client()->send()) {
         // something is wrong, what should we do here?
-        request->client()->close();
+        // The original code called close() on the client, but that led to
+        // it being deleted andthen a coredump when straggling events happened
+        // so we do NOTHING instead.
+        // A slight memory leak is preferable over a regular crash
+        // request->client()->close();
         return 0;
       }
       return pcb_written;
