@@ -86,9 +86,6 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             html.fieldTableInput("name='room-is' type='text' class='num-3em'", Config.getRoomIntegralMinutes(), 1);
             html.print("<td>minutes for 1x proportional gain</td>");
           });
-          html.fieldTableRow("", [this, &html]{
-            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(ValveManager.getRoomIntegralGain(),3) + "</small></td>").c_str());
-          });
         });
       });
 
@@ -106,10 +103,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
           });
           html.fieldTableRow("Integral Time", [&html]{
             html.fieldTableInput("name='flow-is' type='text' class='num-3em'", Config.getFlowIntegralSeconds(), 1);
-            html.print("<td>minutes for 1x proportional gain</td>");
-          });
-          html.fieldTableRow("", [this, &html]{
-            html.print(("<td colspan=2><small>K<sub>i</sub> = " + String(ValveManager.getFlowIntegralGain(),3) + "</small></td>").c_str());
+            html.print("<td>seconds for 1x proportional gain</td>");
           });
           html.fieldTableRow("Valve Direction", [&html]{
             html.fieldTableSelect("colspan=2", "name='valve-direction'", [&html]{

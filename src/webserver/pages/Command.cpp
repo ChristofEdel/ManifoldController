@@ -131,8 +131,10 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
         UBaseType_t prio = uxTaskPriorityGet(NULL);
         vTaskPrioritySet(NULL, 13);
 
+        MyLog.println("Scanning for OneWire sensors");
         OneWireManager.scanForSensors();
         if (OneWireManager.getCount() == 0) OneWireManager.scanForSensors();
+        MyLog.printf("%d sensors present\n", OneWireManager.getCount());
         
         for (int i = 0; i < OneWireManager.getCount(); i++) {
             const char* id = OneWireManager[i].id;
