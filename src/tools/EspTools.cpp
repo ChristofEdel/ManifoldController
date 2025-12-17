@@ -307,14 +307,10 @@ size_t Esp32CoreDump::size()
 String Esp32CoreDump::getFormat()
 {
     ensureInitialised();
-    if (!this->m_partition) return emptyString;
-
-    size_t addr = 0;
-    size_t size = 0;
-    if (esp_core_dump_image_get(&addr, &size) != ESP_OK || size < 4) return emptyString;
+    if (!this->m_partition || !this->m_address) return emptyString;
 
     uint8_t hdr[4];
-    if (esp_partition_read(this->m_partition, addr - this->m_partition->address, hdr, sizeof(hdr)) != ESP_OK)
+    if (esp_partition_read(this->m_partition, this->m_address - this->m_partition->address, hdr, sizeof(hdr)) != ESP_OK)
         return emptyString;
 
     if (hdr[0] == 0x7F && hdr[1] == 'E' && hdr[2] == 'L' && hdr[3] == 'F')

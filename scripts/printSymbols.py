@@ -16,10 +16,10 @@ ELF_FILE = os.path.join(PROJECT_DIR, ".pio/build/debug/firmware.elf")
 # helper: replace PROJECT_DIR and PACKAGE_DIR in paths so we have more streamlined output
 def normalisePath(p: str) -> str:
     p = p.replace("\\", "/")
-    p = p.replace(PROJECT_DIR+"/", "")
-    p = re.sub(re.escape(XTENSA_DIR), "xtensa::", p, flags=re.IGNORECASE)
-    p = re.sub(re.escape(ESPIDF_DIR), "ESPIDF:", p, flags=re.IGNORECASE)
-    p = re.sub(re.escape(PACKAGE_DIR), "PACKAGE:", p, flags=re.IGNORECASE)
+    p = p.replace(PROJECT_DIR+"/",     "PROJECT ")
+    p = re.sub(re.escape(XTENSA_DIR),  "XTENSA  ", p, flags=re.IGNORECASE)
+    p = re.sub(re.escape(ESPIDF_DIR),  "ESPIDF  ", p, flags=re.IGNORECASE)
+    p = re.sub(re.escape(PACKAGE_DIR), "PACKAGE ", p, flags=re.IGNORECASE)
     return p
 
 def main():
@@ -51,7 +51,11 @@ def main():
 
     # we now have line pairs for each address, 1st line function, 2nd line file
     it = iter(lines)
-    print (PACKAGE_DIR)
+    print ("")
+    print ("XTENSA  = " + XTENSA_DIR)
+    print ("ESPIDF  = " + ESPIDF_DIR)
+    print ("PACKAGE = " + PACKAGE_DIR)
+    print ("")
 
     for function in it:
         # extract function and location
@@ -71,6 +75,7 @@ def main():
             # long function name: separate lines
             print(location)
             print(" " * 80 + function)
+    print ("")
     
 if __name__ == "__main__":
     main()

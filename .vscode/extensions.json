@@ -1,5 +1,11 @@
 {
     "recommendations": [
+        "editorconfig.editorconfig",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.cpptools-themes",
+        "ms-vscode.vscode-serial-monitor",
         "pioarduino.pioarduino-ide"
     ],
     "unwantedRecommendations": [
