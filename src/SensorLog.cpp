@@ -25,6 +25,7 @@ void logSensors()
     bool fileExists = false;
     if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
         fileExists = !sd.exists(dataFileName);
+        sdCardMutex.unlock();
     }
 
     String logLine = getSensorLogLine();
