@@ -4,7 +4,7 @@
 #include "AsyncTCP.h"
 #include "AsyncTCPLogging.h"
 #include "AsyncTCPSimpleIntrusiveList.h"
-#include "MyLog.h"
+
 /**
  * LibreTiny specific configurations
  */
@@ -564,15 +564,10 @@ typedef struct {
     } bind;
     uint8_t backlog;
   };
-  void check() {
-    if (!this) return;
-    if (*this->pcb == (void *) 0xFEFEFEFE) abort();
-  }
 } tcp_api_call_t;
 
 static err_t _tcp_output_api(struct tcpip_api_call_data *api_call_msg) {
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
-  msg->check();
   msg->err = ERR_CONN;
   if (*msg->pcb) {
     msg->err = tcp_output(*msg->pcb);
@@ -586,7 +581,6 @@ static esp_err_t _tcp_output(tcp_pcb **pcb) {
   }
   tcp_api_call_t msg;
   msg.pcb = pcb;
-  msg.check();
   tcpip_api_call(_tcp_output_api, (struct tcpip_api_call_data *)&msg);
   return msg.err;
 }
@@ -594,7 +588,6 @@ static esp_err_t _tcp_output(tcp_pcb **pcb) {
 static err_t _tcp_write_api(struct tcpip_api_call_data *api_call_msg) {
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
   msg->err = ERR_CONN;
-  msg->check();
   if (*msg->pcb) {
     msg->err = tcp_write(*msg->pcb, msg->write.data, msg->write.size, msg->write.apiflags);
   }
@@ -610,16 +603,13 @@ static esp_err_t _tcp_write(tcp_pcb **pcb, const char *data, size_t size, uint8_
   msg.write.data = data;
   msg.write.size = size;
   msg.write.apiflags = apiflags;
-  msg.check();
   tcpip_api_call(_tcp_write_api, (struct tcpip_api_call_data *)&msg);
   return msg.err;
 }
 
 static err_t _tcp_recved_api(struct tcpip_api_call_data *api_call_msg) {
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
-  if (msg) msg->check();
   msg->err = ERR_CONN;
-  msg->check();
   if (*msg->pcb) {
     msg->err = 0;
     tcp_recved(*msg->pcb, msg->received);
@@ -634,7 +624,6 @@ static esp_err_t _tcp_recved(tcp_pcb **pcb, size_t len) {
   tcp_api_call_t msg;
   msg.pcb = pcb;
   msg.received = len;
-  msg.check();
   tcpip_api_call(_tcp_recved_api, (struct tcpip_api_call_data *)&msg);
   return msg.err;
 }
@@ -650,7 +639,6 @@ static err_t _tcp_close_api(struct tcpip_api_call_data *api_call_msg) {
 
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
   msg->err = ERR_CONN;
-  msg->check();
   if (*msg->pcb) {
     tcp_pcb *pcb = *msg->pcb;
     _reset_tcp_callbacks(pcb, msg->close);
@@ -673,16 +661,13 @@ static esp_err_t _tcp_close(tcp_pcb **pcb, AsyncClient *client) {
   tcp_api_call_t msg;
   msg.pcb = pcb;
   msg.close = client;
-  msg.check();
   tcpip_api_call(_tcp_close_api, (struct tcpip_api_call_data *)&msg);
-  msg.check();
   return msg.err;
 }
 
 static err_t _tcp_abort_api(struct tcpip_api_call_data *api_call_msg) {
   // Like close(), we must ensure that the queue is cleared
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
-  msg->check();
   if (*msg->pcb) {
     tcp_abort(*msg->pcb);
     *msg->pcb = nullptr;  // PCB is now the property of LwIP
@@ -700,17 +685,13 @@ static esp_err_t _tcp_abort(tcp_pcb **pcb, AsyncClient *client) {
   tcp_api_call_t msg;
   msg.pcb = pcb;
   msg.close = client;
-  msg.check();
   tcpip_api_call(_tcp_abort_api, (struct tcpip_api_call_data *)&msg);
-  msg.check();
   return msg.err;
 }
 
 static err_t _tcp_connect_api(struct tcpip_api_call_data *api_call_msg) {
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
-  msg->check();
   msg->err = tcp_connect(*msg->pcb, msg->connect.addr, msg->connect.port, msg->connect.cb);
-  msg->check();
   return msg->err;
 }
 
@@ -723,9 +704,7 @@ static esp_err_t _tcp_connect(tcp_pcb *pcb, ip_addr_t *addr, uint16_t port, tcp_
   msg.connect.addr = addr;
   msg.connect.port = port;
   msg.connect.cb = cb;
-  msg.check();
   tcpip_api_call(_tcp_connect_api, (struct tcpip_api_call_data *)&msg);
-  msg.check();
   return msg.err;
 }
 
@@ -733,7 +712,6 @@ static err_t _tcp_bind_api(struct tcpip_api_call_data *api_call_msg) {
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
   tcp_pcb *pcb = *msg->pcb;
   msg->err = tcp_bind(pcb, msg->bind.addr, msg->bind.port);
-  msg->check();
   if (msg->err != ERR_OK) {
     // Close the pcb on behalf of the server without an extra round-trip through the LwIP lock
     if (tcp_close(pcb) != ERR_OK) {
@@ -752,18 +730,14 @@ static esp_err_t _tcp_bind(tcp_pcb **pcb, ip_addr_t *addr, uint16_t port) {
   msg.pcb = pcb;
   msg.bind.addr = addr;
   msg.bind.port = port;
-  msg.check();
   tcpip_api_call(_tcp_bind_api, (struct tcpip_api_call_data *)&msg);
-  msg.check();
   return msg.err;
 }
 
 static err_t _tcp_listen_api(struct tcpip_api_call_data *api_call_msg) {
   tcp_api_call_t *msg = (tcp_api_call_t *)api_call_msg;
   msg->err = 0;
-  msg->check();
   *msg->pcb = tcp_listen_with_backlog(*msg->pcb, msg->backlog);
-  msg->check();
   return msg->err;
 }
 
@@ -774,16 +748,13 @@ static tcp_pcb *_tcp_listen_with_backlog(tcp_pcb *pcb, uint8_t backlog) {
   tcp_api_call_t msg;
   msg.pcb = &pcb;
   msg.backlog = backlog ? backlog : 0xFF;
-  msg.check();
   tcpip_api_call(_tcp_listen_api, (struct tcpip_api_call_data *)&msg);
-  msg.check();
   return pcb;
 }
 
 /*
   Async TCP Client
  */
-static int nextId = 1;
 
 AsyncClient::AsyncClient(tcp_pcb *pcb)
   : _connect_cb(0), _connect_cb_arg(0), _discard_cb(0), _discard_cb_arg(0), _sent_cb(0), _sent_cb_arg(0), _error_cb(0), _error_cb_arg(0), _recv_cb(0),
@@ -794,14 +765,9 @@ AsyncClient::AsyncClient(tcp_pcb *pcb)
     _rx_last_packet = millis();
     _bind_tcp_callbacks(_pcb, this);
   }
-  this->id = nextId++;
-  Esp32Backtrace t;
-  MyDebugLog.printf("                    | %2d AsyncClient()      | %s\n", id, t.toString().c_str());
 }
 
 AsyncClient::~AsyncClient() {
-  Esp32Backtrace t;
-  MyDebugLog.printf("                    | %2d ~AsyncClient()     | %s\n", id, t.toString().c_str());
   if (_pcb) {
     _close();
   }
@@ -994,12 +960,8 @@ size_t AsyncClient::add(const char *data, size_t size, uint8_t apiflags) {
 bool AsyncClient::send() {
   auto backup = _tx_last_packet;
   _tx_last_packet = millis();
-  esp_err_t result = _tcp_output(&_pcb);
-  if (result == ERR_OK) {
+  if (_tcp_output(&_pcb) == ERR_OK) {
     return true;
-  }
-  else {
-    MyDebugLog.printf("******************* | %2d _tcp_output returned %d\n",id, result);
   }
   _tx_last_packet = backup;
   return false;
@@ -1112,7 +1074,6 @@ int8_t AsyncClient::_recv(tcp_pcb *pcb, pbuf *pb, int8_t err) {
       if (!_ack_pcb) {
         _rx_ack_len += b->len;
       } else if (_pcb) {
-        if (_pcb == (void *)0xfefefefe) abort();
         _tcp_recved(&_pcb, b->len);
       }
       pbuf_free(b);
