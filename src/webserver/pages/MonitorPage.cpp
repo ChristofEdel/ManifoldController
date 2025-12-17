@@ -1,6 +1,7 @@
 #include "../MyWebServer.h"
 #include "NeohubManager.h"
 #include "ValveManager.h"
+#include "StringTools.h"
 
 const String &CMyWebServer::mapSensorName(const String &id) const{
   const String &displayName = SensorMap.getNameForId(id);
@@ -27,17 +28,21 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
         }
         html.print("</tr></thead>");
 
-        html.fieldTableRow("Room", [this, expertMode, &html]{
+        time_t now = time(nullptr);
+
+        html.fieldTableRow("Room", [this, now, expertMode, &html]{
           double sp = Config.getRoomSetpoint();
           double t = ValveManager.inputs.roomTemperature;
           double d = t - sp;
           html.element("td", "id='roomSetpoint' class='has-data'",  String(sp,1).c_str());
-          html.element("td", "id='roomTemperature' class='has-data'", String(t,1).c_str());
-          html.element("td", "id='roomError' class='has-data'", String(d,1).c_str());
+          html.element("td", "id='roomTemperature' class='has-data'", t > -50 ? String(t,1).c_str() : "");
+          html.element("td", "id='roomError' class='has-data'", t > -50 ? String(d,1).c_str() : "");
           if (expertMode) {
-            html.element("td", "id='roomD' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
+            html.element("td", "id='roomP' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
             html.element("td", "id='roomI' class='has-data'", String(ValveManager.getRoomIntegralTerm(),1).c_str());
           }
+          html.print(StringPrintf("<td id='roomAged' class='data-is-aged'%s>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime) ? "" : "style='display: none'").c_str());
+          html.print(StringPrintf("<td id='roomDead' class='data-is-dead'%s>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime) ? "" : "style='display: none'").c_str());
         });
         if (NeohubManager.getActiveZones().size() == 1 && NeohubManager.getMonitoredZones().size() == 0) {
           NeohubZoneData *d = NeohubManager.getZoneData(NeohubManager.getActiveZones().back().id);
@@ -52,17 +57,19 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             });
           }
         }
-        html.fieldTableRow("Flow", [this, expertMode, &html]{
+        html.fieldTableRow("Flow", [this, now, expertMode, &html]{
           double sp = ValveManager.getFlowSetpoint();
           double t = ValveManager.inputs.flowTemperature;
           double d = t - sp;
           html.element("td", "id='flowSetpoint' class='has-data'", String(sp,1).c_str());
-          html.element("td", "id='flowTemperature' class='has-data'", String(t,1).c_str());
-          html.element("td", "id='flowError' class='has-data'", String(d,1).c_str());
+          html.element("td", "id='flowTemperature' class='has-data'", t > -50 ? String(t,1).c_str() : "");
+          html.element("td", "id='flowError' class='has-data'", t > -50 ? String(d,1).c_str() : "");
           if (expertMode) {
-            html.element("td", "id='flowD' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
+            html.element("td", "id='flowP' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
             html.element("td", "id='flowI' class='has-data'", String(ValveManager.getFlowIntegralTerm(),1).c_str());
           }
+          html.print(StringPrintf("<td id='flowAged' class='data-is-aged'%s>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime) ? "" : "style='display: none'").c_str());
+          html.print(StringPrintf("<td id='flowDead' class='data-is-dead'%s>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime) ? "" : "style='display: none'").c_str());
         });
         html.fieldTableRow("Valve", [this, &html]{
           html.element("td", "id='valvePosition' class='has-data'", (String(ValveManager.getValvePosition(),0) + "%").c_str());
@@ -83,11 +90,12 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.print("<tr class='tight'><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Zone</th><th colspan=4>Temperatures</th></tr>");
           html.print("<tr class='tight'><th>Air</th><th>Floor</th></tr>");
           html.print("</thead>");
-          html.element("tbody", [this, &html]{
+          time_t now = time(nullptr);
+          html.element("tbody", [this, now, &html]{
             for (NeohubZone z: NeohubManager.getActiveZones()) {
               NeohubZoneData *d = NeohubManager.getZoneData(z.id);
               if (!d) continue;
-              html.element("tr", [this, &html, d] {
+              html.element("tr", [this, now, &html, d] {
 
                 html.element("th", "class='gap-right active'", [d, &html]{
                   html.print(d->zone.name.c_str());
@@ -112,13 +120,15 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
                     html.print(String(d->floorTemperature,1).c_str());
                   }
                 });
+                html.print(StringPrintf("<td id='z%d-aged' class='data-is-aged'%s>OLD</td>", d->zone.id, d->isAged(now) ? "" : "style='display: none'").c_str());
+                html.print(StringPrintf("<td id='z%d-dead' class='data-is-dead'%s>DEAD</td>", d->zone.id, d->isDead(now) ? "" : "style='display: none'").c_str());
               });
             }
 
             for (NeohubZone z: NeohubManager.getMonitoredZones()) {
               NeohubZoneData *d = NeohubManager.getZoneData(z.id);
               if (!d) continue;
-              html.element("tr", [this, &html, d] {
+              html.element("tr", [this, now, &html, d] {
 
                 html.element("th", "class='gap-right'", [d, &html]{
                   html.print(d->zone.name.c_str());
@@ -143,6 +153,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
                     html.print(String(d->floorTemperature,1).c_str());
                   }
                 });
+                html.print(StringPrintf("<td id='z%d-aged' class='data-is-aged'%s>OLD</td>", d->zone.id, d->isAged(now) ? "" : "style='display: none'").c_str());
+                html.print(StringPrintf("<td id='z%d-dead' class='data-is-dead'%s>DEAD</td>", d->zone.id, d->isDead(now) ? "" : "style='display: none'").c_str());
               });
             }
           });
@@ -163,6 +175,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           int totalNoResponseErrors = 0;
           int totalOtherErrors = 0;
           int totalFailures = 0;
+          time_t now = time(nullptr);
           for (int i = 0; i < sensorCount; i++) {
             SensorMapEntry * entry = SensorMap[i];
             OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
@@ -199,6 +212,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             else {
               html.print("<td colspan=99></td>");
             }
+            html.print(StringPrintf("<td id='%s-aged' class='data-is-aged'%s>OLD</td>", sensor->id, sensor->isAged(now) ? "" : "style='display: none'").c_str());
+            html.print(StringPrintf("<td id='%s-dead' class='data-is-dead'%s>DEAD</td>", sensor->id, sensor->isDead(now) ? "" : "style='display: none'").c_str());
             html.print("</tr>");
           }
         });
@@ -215,6 +230,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
 
 void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
   JsonDocument statusJson;
+  time_t now = time(nullptr);
 
   {
     double sp = Config.getRoomSetpoint();
@@ -226,6 +242,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     }
     statusJson["roomProportionalTerm"] = ValveManager.getRoomProportionalTerm();
     statusJson["roomIntegralTerm"] = ValveManager.getRoomIntegralTerm();
+    statusJson["roomAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime);
+    statusJson["roomDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime);
   }
   {
     double sp = ValveManager.getFlowSetpoint();
@@ -237,28 +255,33 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     }
     statusJson["flowProportionalTerm"] = ValveManager.getFlowProportionalTerm();
     statusJson["flowIntegralTerm"]     = ValveManager.getFlowIntegralTerm();
+    statusJson["flowAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime);
+    statusJson["flowDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime);
   }
 
   statusJson["valvePosition"]        = ValveManager.getValvePosition();
   statusJson["valveManualControl"]   = ValveManager.valveUnderManualControl();
+  statusJson["uptimeText"]           = uptimeText();
   
   int sensorCount = SensorMap.getCount();
 
   int i = 0;
   for (int sensorIndex = 0; sensorIndex < sensorCount; sensorIndex++) {
-      SensorMapEntry * entry = SensorMap[sensorIndex];
-      OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
-      if (sensor) {
-        statusJson["sensors"][i]["id"] = entry->id;
-        statusJson["sensors"][i]["name"] = entry->name;
-        statusJson["sensors"][i]["temperature"] = sensor->calibratedTemperature();
-        statusJson["sensors"][i]["readings"] = sensor->readings;
-        statusJson["sensors"][i]["crcErrors"] = sensor->crcErrors;
-        statusJson["sensors"][i]["noResponseErrors"] = sensor->noResponseErrors;
-        statusJson["sensors"][i]["otherErrors"] = sensor->otherErrors;
-        statusJson["sensors"][i]["failures"] = sensor->failures;
-        i++;
-      }
+    SensorMapEntry * entry = SensorMap[sensorIndex];
+    OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
+    if (sensor) {
+      statusJson["sensors"][i]["id"] = entry->id;
+      statusJson["sensors"][i]["name"] = entry->name;
+      statusJson["sensors"][i]["temperature"] = sensor->calibratedTemperature();
+      statusJson["sensors"][i]["readings"] = sensor->readings;
+      statusJson["sensors"][i]["crcErrors"] = sensor->crcErrors;
+      statusJson["sensors"][i]["noResponseErrors"] = sensor->noResponseErrors;
+      statusJson["sensors"][i]["otherErrors"] = sensor->otherErrors;
+      statusJson["sensors"][i]["failures"] = sensor->failures;
+      statusJson["sensors"][i]["isAged"] = sensor->isAged(now);
+      statusJson["sensors"][i]["isDead"] = sensor->isDead(now);
+      i++;
+    }
   }
 
   i = 0;
@@ -274,6 +297,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
       }
       statusJson["zones"][i]["roomOff"] = !d->demand;
       statusJson["zones"][i]["floorOff"] = d->floorLimitTriggered;
+      statusJson["zones"][i]["isAged"] = d->isAged(now);
+      statusJson["zones"][i]["isDead"] = d->isDead(now);
       i++;
     }
   }
@@ -289,9 +314,19 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
       }
       statusJson["zones"][i]["roomOff"] = !d->demand;
       statusJson["zones"][i]["floorOff"] = d->floorLimitTriggered;
+      statusJson["zones"][i]["isAged"] = d->isAged(now);
+      statusJson["zones"][i]["isDead"] = d->isDead(now);
       i++;
     }
   }
+
+  // Debug code - delay the response so we can test dropped TCP connections
+  // static int countdown = 3;
+  // if (countdown == 0) {
+  //   MyDebugLog.printf("******************* |    delayed response\n");
+  //   delay(20000);
+  // }
+  // countdown--;
 
   String result;
   serializeJsonPretty(statusJson, result);

@@ -262,12 +262,14 @@ table.monitor-table > tbody > tr > th.active {
     font-weight: bold;
 }
 
-table.monitor-table > tbody > tr > td.manifold-aged {
+table.field-table > tbody > tr > td.data-is-aged,
+table.monitor-table > tbody > tr > td.data-is-aged {
     background-color: var(--bg-warning);
     color: var(--text-warning);
     font-weight: bold;
 }
-table.monitor-table > tbody > tr > td.manifold-dead {
+table.field-table > tbody > tr > td.data-is-dead,
+table.monitor-table > tbody > tr > td.data-is-dead {
     background-color: var(--bg-error) ;
     color: var(--text-error) ;
     font-weight: bold;

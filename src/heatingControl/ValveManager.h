@@ -22,12 +22,12 @@ struct ValveManagerOutputs {
 
 // Timestamps for key activities to allow monitoring
 struct ValveManagerTimestamps {
-    time_t roomDataLoadTime;
-    time_t flowDataLoadTime;
-    time_t flowCalculatedTime;
-    time_t valveCalculatedTime;
-    bool isAged(time_t now, time_t t) volatile { return t - now > 10 && !isDead(now, t); }
-    bool isDead(time_t now, time_t t) volatile { return t - now > 30; }
+    time_t roomDataLoadTime = 0;
+    time_t flowDataLoadTime = 0;
+    time_t flowCalculatedTime = 0;
+    time_t valveCalculatedTime = 0;
+    bool isAged(time_t now, time_t t) volatile { return now - t > 10 && !isDead(now, t); }
+    bool isDead(time_t now, time_t t) volatile { return now - t > 30; }
 };
 
 class CValveManager {

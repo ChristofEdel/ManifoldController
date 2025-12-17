@@ -264,39 +264,65 @@ function monitorPage_refreshData() {
         dataType: "json",
         timeout: 3000,
         success: function (data) {
+
+            $(".uptime").text(data.uptimeText + " since last start")
+
             $("#roomSetpoint").text(fmt(data.roomSetpoint, 1))
-            $("#roomTemperature").text(fmt(data.roomTemperature, 1))
-            $("#roomD").text(fmt(data.roomProportionalTerm, 1))
+            if(data.roomTemperature > -50) {
+                $("#roomTemperature").text(fmt(data.roomTemperature, 1))
+                var d = fmt(data.roomError, 1)
+                if (fmt != '0.0' && data.roomError > 0) d = '+' + d
+                $("#roomError").text(d)
+            }
+            else {
+                $("#roomTemperature").text("")
+                $("#roomError").text("")
+            }
+            $("#roomP").text(fmt(data.roomProportionalTerm, 1))
             $("#roomI").text(fmt(data.roomIntegralTerm, 1))
+            $("#roomAged").toggle(data.roomAged)
+            $("#roomDead").toggle(data.roomDead)
 
             $("#flowSetpoint").text(fmt(data.flowSetpoint, 1))
-            $("#flowTemperature").text(fmt(data.flowTemperature, 1))
-            $("#flowD").text(fmt(data.flowProportionalTerm, 1))
+            if(data.flowTemperature > -50) {
+                $("#flowTemperature").text(fmt(data.flowTemperature, 1))
+                d = fmt(data.flowError, 1)
+                if (fmt != '0.0' && data.flowError > 0) d = '+' + d
+                $("#flowError").text(d)
+            }
+            else {
+                $("#flowTemperature").text("")
+                $("#flowError").text("")
+            }
+            $("#flowP").text(fmt(data.flowProportionalTerm, 1))
             $("#flowI").text(fmt(data.flowIntegralTerm, 1))
-
-            var d = fmt(data.roomError, 1)
-            if (fmt != '0.0' && data.roomError > 0) d = '+' + d
-            $("#roomError").text(d)
-
-            d = fmt(data.flowError, 1)
-            if (fmt != '0.0' && data.flowError > 0) d = '+' + d
-            $("#flowError").text(d)
+            $("#flowAged").toggle(data.flowAged)
+            $("#flowDead").toggle(data.flowDead)
 
             $("#valvePosition").text(fmt(data.valvePosition, 0) + "%")
             $("#valveManualFlag").toggle(data.valveManualControl)
             if (data.sensors) {
                 data.sensors.forEach(function (sensor) {
-                    $("#" + sensor.id + "-temp").text(fmt(sensor.temperature, 1))
+                    if (sensor.temperature > -50) {
+                        $("#" + sensor.id + "-temp").text(fmt(sensor.temperature, 1))
+                    }
+                    else {
+                        $("#" + sensor.id + "-temp").text("")
+                    }
                     $("#" + sensor.id + "-crc").text(fmt(sensor.crcErrors))
                     $("#" + sensor.id + "-nr").text(fmt(sensor.noResponseErrors))
                     $("#" + sensor.id + "-oe").text(fmt(sensor.otherErrors))
                     $("#" + sensor.id + "-f").text(fmt(sensor.failures))
+                    $("#" + sensor.id + "-aged").toggle(sensor.isAged)
+                    $("#" + sensor.id + "-dead").toggle(sensor.isDead)
                 })
             }
             if (data.zones) {
                 data.zones.forEach(function (zone) {
                     $("#z" + zone.id + "-room-temp").text(fmt(zone.roomTemperature, 1))
                     $("#z" + zone.id + "-floor-temp").text(fmt(zone.foorTemperature, 1))
+                    $("#z" + zone.id + "-aged").toggle(zone.isAged)
+                    $("#z" + zone.id + "-dead").toggle(zone.isDead)
                     if (zone.roomOff) {
                         $("#z" + zone.id + "-room-temp").closest("td").addClass("off")
                     }

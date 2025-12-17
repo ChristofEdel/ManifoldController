@@ -98,7 +98,7 @@ void PidController::calculateOutput()
     unsigned long now = millis();
 
     // if we have no measurement, we skip this iteration
-    if (this->m_input < -50) return;
+    if (this->m_input <= -50) return;
 
     // if this is the first time round, we only remember the time and input and do nothing
     if (this->m_state.first) {

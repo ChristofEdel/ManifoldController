@@ -81,7 +81,7 @@ void CValveManager::calculateValvePosition() {
 
     // If we have a valid room temperature, we recalculate the flow
     // temperature
-    if (this->inputs.roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+    if (this->inputs.roomTemperature > NeohubZoneData::NO_TEMPERATURE) {
         this->m_flowController.setInput(this->inputs.roomTemperature);
         this->m_flowController.calculateOutput();
         this->timestamps.flowCalculatedTime = time(nullptr);
@@ -95,8 +95,10 @@ void CValveManager::calculateValvePosition() {
     // the valve position
     this->m_valveController.setInput(this->inputs.flowTemperature);
     this->m_valveController.setSetpoint(this->outputs.targetFlowTemperature);
-    this->m_valveController.calculateOutput();
-    this->timestamps.valveCalculatedTime = time(nullptr);
+    if (this->inputs.flowTemperature > -50) {
+        this->m_valveController.calculateOutput();
+        this->timestamps.valveCalculatedTime = time(nullptr);
+    }
 
     this->outputs.targetValvePosition = this->m_valveController.getOutput();
 }
