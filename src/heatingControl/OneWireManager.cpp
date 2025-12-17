@@ -76,6 +76,8 @@ void OneWireSensor::clear()
 {
     memset(&this->oneWireAddress, 0, sizeof(this->oneWireAddress));
     memset(&this->ds18b20_info, 0, sizeof(this->ds18b20_info));
+    
+    this->lastUpdate = 0;
     this->temperature = COneWireManager::INVALID_READING;
     this->calibrationOffset = 0.0;
     this->calibrationFactor = 1.0;
@@ -249,7 +251,10 @@ void COneWireManager::readAllSensors()
         while (attemptsLeft--) {
             result = ds18b20_read_temp(&si->ds18b20_info, &si->temperature);
             si->readings++;
-            if (result == DS18B20_OK) break;
+            if (result == DS18B20_OK) {
+                si->lastUpdate = time(nullptr);
+                break;
+            }
 
             // Count specific error types
             if (result == DS18B20_ERROR_CRC) {

@@ -11,6 +11,7 @@ int NeohubConnection::nextInstanceNo = 100;
 // in this NeohubZoneData object
 void NeohubZoneData::storeZoneData(JsonVariant obj)
 {
+    this->lastUpdate = time(nullptr);
     this->online = !obj["OFFLINE"].as<bool>();
     if (!this->online) {
         this->clear();
@@ -149,16 +150,15 @@ bool CNeohubManager::ensureNeohubConnection()
         return false;
     }
 
+    // we are already connected --> done
+    if (this->m_connection) {
+        noUrlReported = false;
+        noTokenReported = false;
+        return true;
+    }
+    
     // We have URL and token - ensure we have a conneciton
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
-
-        // we are already connected --> done
-        if (this->m_connection) {
-            m_neohubMutex.unlock();
-            noUrlReported = false;
-            noTokenReported = false;
-            return true;
-        }
 
         // Create connection object if necessary
         this->m_connection = new NeohubConnection(url, token);
@@ -179,8 +179,8 @@ bool CNeohubManager::ensureNeohubConnection()
         // Start the connection. Actuial connection establishment is asynchronous
         if (!this->m_connection->start()) {
             MyLog.printf("Starting connection to Neohub %s failed\n", url.c_str());
-            delete this->m_connection;
             this->m_connection = nullptr;
+            delete this->m_connection;
             m_neohubMutex.unlock();
             return false;
         }
@@ -197,7 +197,11 @@ bool CNeohubManager::ensureNeohubConnection()
 
     if (!this->m_connection || !this->m_connection->isConnected()) {
         MyLog.printf("Establishing connection to Neohub %s failed\n", url.c_str());
-        this->m_connection = nullptr;
+        if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
+            delete this->m_connection;
+            this->m_connection = nullptr;
+            m_neohubMutex.unlock();
+        }
         return false;
     }
 
@@ -229,7 +233,15 @@ String CNeohubManager::neohubCommand(const String& command, int timeoutMillis /*
     bool error = false;
     String result;
 
+
     if (m_neohubMutex.lock(__PRETTY_FUNCTION__)) {
+
+        if (!this->m_connection || !this->m_connection->isConnected()) {
+            MyLog.println("Unable to send to Neohub - not connected.");
+            m_neohubMutex.unlock();
+            return emptyString;
+        }
+
         this->m_connection->send(
             command,
             [&done, &result](String response) {
@@ -240,7 +252,10 @@ String CNeohubManager::neohubCommand(const String& command, int timeoutMillis /*
                 result = message;
                 error = true;
             },
-            timeoutMillis);
+            timeoutMillis
+        );
+        // we do not check the result here; if sending fails
+        // this is reported using onError which is processed below
 
         // Wait for response
         unsigned long startMillis = millis();
@@ -248,7 +263,7 @@ String CNeohubManager::neohubCommand(const String& command, int timeoutMillis /*
         while (
             millis() - startMillis < timeoutMillis  // until timeout
             && !done && !error                      // or until completed
-            ) delay(100);
+        ) delay(100);
         m_neohubMutex.unlock();
     }
 
@@ -257,7 +272,7 @@ String CNeohubManager::neohubCommand(const String& command, int timeoutMillis /*
         MyLog.printf("Command was '%s'\n", command.c_str());
         return emptyString;
     }
-    if (!done) {
+    else if (!done) {
         MyLog.printf("Timeout when waiting for Neohub response: %s\n", result.c_str());
         MyLog.printf("Command was '%s'\n", command.c_str());
         return emptyString;
@@ -363,7 +378,7 @@ bool CNeohubManager::hasMonitoredZone(int id)
 // (or for all zones if the parameter all is set to ture)
 void CNeohubManager::loadZoneDataFromNeohub(bool all /* = false */)
 {
-    this->ensureNeohubConnection();
+    if (!this->ensureNeohubConnection()) return;
 
     std::vector<String> zoneNames;
     if (all) {
@@ -431,7 +446,7 @@ static void _processZoneCommand(CNeohubManager* _this, const String& command)
         String name = obj["device"];
         NeohubZoneData* data = _this->getZoneData(name);
         if (data) {
-            data->lastUpdated = time(nullptr);
+            data->lastUpdate = time(nullptr);
             data->storeZoneData(obj);
         }
     }

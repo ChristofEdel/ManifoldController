@@ -40,11 +40,11 @@ class NeohubConnection {
     // Constructor: for access to a particular hub with a particular access token
     NeohubConnection(const String& host, const String& accessToken) : m_host(host), m_accessToken(accessToken) {
         instanceNo = nextInstanceNo++;
-        DEBUG_LOG("Created %d", instanceNo);
+        //DEBUG_LOG("%d - NeohubConnection()", instanceNo);
     };
     ~NeohubConnection() {
-        DEBUG_LOG("Deleting %d", instanceNo);
         this->stop();
+        //DEBUG_LOG("%d - ~NeohubConnection()", instanceNo);
     };
 
     // Connecetion lifecyle -------------------------------------------------------

@@ -25,7 +25,7 @@ struct NeohubZone {
 struct NeohubZoneData {
     NeohubZone zone;
 
-    time_t lastUpdated = 0;
+    time_t lastUpdate = 0;
 
     double roomSetpoint = NO_TEMPERATURE;
     double roomTemperature = NO_TEMPERATURE;
@@ -41,6 +41,9 @@ struct NeohubZoneData {
 
     void clear();
     void storeZoneData(JsonVariant json);
+
+    bool isAged(time_t now) { return now - lastUpdate > 10 && !isDead(now); }
+    bool isDead(time_t now) { return now - lastUpdate > 30; }
 
   private:
     bool found = true;
@@ -98,7 +101,7 @@ class CNeohubManager {
 
   private:
     // Connecetion to Neohub
-    NeohubConnection* m_connection;
+    NeohubConnection* m_connection = nullptr;
 
     // Vector with the data for all zones
     std::vector<NeohubZoneData> m_zoneData;

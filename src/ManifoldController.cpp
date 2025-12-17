@@ -61,7 +61,6 @@ void setup()
     esp_log_level_set("*", ESP_LOG_ERROR);
     handleReboot();
 
-
     // Set pins immediately so we don't trigger any relays by accident
     // pinMode(hotWaterValveCallOutPin, OUTPUT);
     // digitalWrite(heatingValveCallOutPin,LOW);
@@ -78,7 +77,8 @@ void setup()
     // Initialise clock and memory debugging
     MyRtc.start();
     setupMemDebug();
-  WatchdogManager.setup();
+    WatchdogManager.setup();
+    
 
     // Initialise logging to serial
     MyLog.enableSerialLog();
@@ -260,6 +260,7 @@ void manageValveControls()
     for (NeohubZone z : NeohubManager.getActiveZones()) {
         NeohubZoneData* d = NeohubManager.getZoneData(z.id);
         if (d && d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+            if (d->lastUpdate > ValveManager.timestamps.roomDataLoadTime) ValveManager.timestamps.roomDataLoadTime = d->lastUpdate;
             temperatureTotal += d->roomTemperature;
             tempCount++;
         }
@@ -271,6 +272,8 @@ void manageValveControls()
     float flowTemperature = OneWireManager.getCalibratedTemperature(Config.getFlowSensorId().c_str());
     float returnTemperature = OneWireManager.getCalibratedTemperature(Config.getReturnSensorId().c_str());
 
+    if (flowTemperature > -50) ValveManager.timestamps.flowDataLoadTime = time(nullptr);
+    
     ValveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);
     ValveManager.calculateValvePosition();
     ValveManager.sendCurrentValvePosition();

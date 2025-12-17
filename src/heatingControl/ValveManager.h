@@ -20,6 +20,16 @@ struct ValveManagerOutputs {
   double targetValvePosition;    // 0..100 %
 };
 
+// Timestamps for key activities to allow monitoring
+struct ValveManagerTimestamps {
+    time_t roomDataLoadTime;
+    time_t flowDataLoadTime;
+    time_t flowCalculatedTime;
+    time_t valveCalculatedTime;
+    bool isAged(time_t now, time_t t) volatile { return t - now > 10 && !isDead(now, t); }
+    bool isDead(time_t now, time_t t) volatile { return t - now > 30; }
+};
+
 class CValveManager {
   private:
     PidController m_flowController;
@@ -34,6 +44,7 @@ class CValveManager {
     double m_manualValvePosition;
 
   public:
+    volatile ValveManagerTimestamps timestamps;
     volatile ValveManagerInputs inputs;
     volatile ValveManagerOutputs outputs;
 

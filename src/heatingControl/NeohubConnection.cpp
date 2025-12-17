@@ -23,6 +23,7 @@
 //
 bool NeohubConnection::start()
 {
+    DEBUG_LOG("%d - start()", this->instanceNo);
     esp_websocket_client_config_t cfg = {};
     cfg.host = this->m_host.c_str();               // the URL, split in its components
     cfg.port = 4243;                               //
@@ -50,6 +51,7 @@ bool NeohubConnection::start()
 // Disconnect the WebSocket
 void NeohubConnection::stop()
 {
+    DEBUG_LOG("%d - stop()", this->instanceNo);
     if (this->m_websocketClient == nullptr) return;
     esp_websocket_client_stop(this->m_websocketClient);
     esp_websocket_client_destroy(this->m_websocketClient);
@@ -59,6 +61,7 @@ void NeohubConnection::stop()
 // Check if the underlying WebSocket is currently connected
 bool NeohubConnection::isConnected()
 {
+    if (!this->m_websocketClient) return false;
     return esp_websocket_client_is_connected(this->m_websocketClient);
 }
 
@@ -73,7 +76,11 @@ bool NeohubConnection::send(
     int timeoutMillis
 )
 {
-    if (!this->isConnected()) return false;
+    DEBUG_LOG("%d - send(...)", this->instanceNo);
+    if (!this->isConnected()) {
+        if (onError) onError("NeohubConnection: not connected, cannot send");
+        return false;
+    }
     
     // Beause all of this is asynchroneous, we do this in a Conversation
     // and store it for the processing of the results
@@ -92,7 +99,7 @@ bool NeohubConnection::send(
     // If it failed to send, we report an error and return false
     if (result < 0) {
         if (c->m_onError) c->m_onError("NeohubConnection: send to WebSocketClient failed");
-        m_conversations.remove(c->id);  // don't keep this there will be no response
+        m_conversations.remove(c->id);  // don't keep this, there will be no response
         delete c;
         return false;
     }
@@ -101,6 +108,7 @@ bool NeohubConnection::send(
 
 void NeohubConnection::handleTimeouts()
 {
+    DEBUG_LOG("%d - handleTimeouts(...)", this->instanceNo);
     ThreadSafePtrMap::Iterator it(m_conversations);
     while (it.next()) {
         NeohubConversation* c = (NeohubConversation*)it.value();
@@ -121,7 +129,8 @@ void NeohubConnection::handleTimeouts()
 {
     NeohubConnection* _this = (NeohubConnection*)arg;
     esp_websocket_event_data_t *data = (esp_websocket_event_data_t *) eventData;
-    
+    DEBUG_LOG("%d - webSocketEventHandler(...)", _this->instanceNo);
+
     switch (eventId) {
 
         // Artificial events which we don't need

@@ -3,6 +3,7 @@
 #include "ds18b20.h"
 #include "owb.h"
 #include "owb_rmt.h"
+#include <time.h>
 
 struct OneWireSensor {
   public:
@@ -17,6 +18,7 @@ struct OneWireSensor {
     int noResponseErrors;  // how many times the sensor did not respond
     int otherErrors;       // how many times an other error occurred
     int failures;          // how many times the sensor could still not be read even after retrying
+    time_t lastUpdate;     // When this was last updated
 
     inline float calibratedTemperature() { return (this->temperature + calibrationOffset) * calibrationFactor; };
 
@@ -31,6 +33,8 @@ struct OneWireSensor {
     void setOneWireAddress(const OneWireBus_ROMCode& addr);
     void setId(const char* id);
     void clear();
+    bool isAged(time_t now) { return now - lastUpdate > 10 && !isDead(now); }
+    bool isDead(time_t now) { return now - lastUpdate > 30; }
 
   private:
     void deviceAddressToString(const OneWireBus_ROMCode& deviceAddress, char* result);
