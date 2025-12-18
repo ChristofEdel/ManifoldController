@@ -61,7 +61,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           double sp = ValveManager.getFlowSetpoint();
           double t = ValveManager.inputs.flowTemperature;
           double d = t - sp;
-          html.element("td", "id='flowSetpoint' class='has-data'", String(sp,1).c_str());
+          html.element("td", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", String(sp,1).c_str());
           html.element("td", "id='flowTemperature' class='has-data'", t > -50 ? String(t,1).c_str() : "");
           html.element("td", "id='flowError' class='has-data'", t > -50 ? String(d,1).c_str() : "");
           if (expertMode) {
@@ -72,7 +72,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.print(StringPrintf("<td id='flowDead' class='data-is-dead'%s>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime) ? "" : "style='display: none'").c_str());
         });
         html.fieldTableRow("Valve", [this, &html]{
-          html.element("td", "id='valvePosition' class='has-data'", (String(ValveManager.getValvePosition(),0) + "%").c_str());
+          html.element("td", "id='valvePosition' class='has-data' onclick=\"openSetValueDialog(this, 'Set Valve Position', 'SetValvePidOutput')\"", (String(ValveManager.getValvePosition(),0) + "%").c_str());
           if (ValveManager.valveUnderManualControl()) {
             html.print("<td id='valveManualFlag' colspan=2 class='manual-control'>Manual Control</td>");
           }
@@ -220,6 +220,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
       });
     });
   }); // block layout
+  html.print("<div id='changeDialog' title='Set XXX' style='display:none;'><input id='newValue' type='text'></div>");
   html.footer();
 
 

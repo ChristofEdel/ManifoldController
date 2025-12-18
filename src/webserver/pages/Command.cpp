@@ -87,7 +87,10 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
             ValveManager.setFlowSetpoint(ValveManager.getFlowSetpoint());
         }
         else {
-            ValveManager.setFlowSetpoint(commandJson["value"].as<double>());
+            double value = commandJson["value"].as<double>();
+            if (value > 0) {
+                ValveManager.setFlowSetpoint(value);
+            }
         }
         // default response
     }
@@ -97,7 +100,10 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
             ValveManager.setValvePosition(ValveManager.getFlowSetpoint());
         }
         else {
-            ValveManager.setValvePosition(commandJson["value"].as<double>());
+            double value = commandJson["value"].as<double>();
+            if (value > 0) {
+                ValveManager.setValvePosition(value);
+            }
         }
         // default response
     }

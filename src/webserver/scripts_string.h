@@ -253,6 +253,45 @@ function valveControlSliderChanged() {
     })
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// "Set value" command and dialog
+//
+
+function sendSetValueCommand(command, value) {
+    var value = document.getElementById("newValue").value
+
+    $.ajax({
+        url: "/command",
+        type: "POST",
+        contentType: 'application/json',
+        data: JSON.stringify({ command: command, value: value }),
+        success: function () {
+            $("#changeDialog").dialog("close")
+            monitorPage_refreshData()
+        },
+        error: function () {
+            alert("Error sending command")
+        }
+    })
+}
+
+
+function openSetValueDialog(element, title, command) {
+    $("#newValue").val("")
+
+    $("#changeDialog")
+        .dialog("option", "title", title)
+        .dialog("option", "position", {
+            my: "left center",
+            at: "right center",
+            of: element,
+            collision: "flipfit"
+        })
+        .data("command", command)
+        .dialog("open")
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // Monitor anc Config page - data refresh
@@ -448,6 +487,7 @@ $(function () {
         }
     }).disableSelection()
 
+    // Manual valve controls
     $('#valveControlManualCheckbox').on('change', function (e) {
         // Ignore programmatic changes (from slider logic)
         if (!e.originalEvent) return
@@ -471,6 +511,34 @@ $(function () {
     // Stop and reset everything
     $('#resetZoneStopButton').on('click', function () {
         stopResetSequence()
+    })
+
+    // "Change value" dialaog
+    $("#changeDialog").dialog({
+        autoOpen: false,
+        modal: true,
+        width: 200,
+        height: 140,
+        closeText: "",
+        buttons: [
+            {
+                text: "Ok",
+                class: "call-to-action-button",
+                click: function () {
+                    sendSetValueCommand(
+                        $(this).data("command"),
+                        document.getElementById("newValue").value
+                    )
+                }
+            },
+            {
+                text: "Cancel",
+                class: "cancel-button",
+                click: function () {
+                    $(this).dialog("close")
+                }
+            }
+        ]
     })
 
 })

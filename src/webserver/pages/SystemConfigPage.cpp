@@ -94,7 +94,7 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
 
     }); // block layout
     html.footer();
-    html.print("<input type='submit' class='save-button' value='Save Changes'/>");
+    html.print("<button type='submit' class='call-to-action-button save-button'>Save Changes</button>");
   }); // </form>
 
   finishHttpHtmlResponse(response);
