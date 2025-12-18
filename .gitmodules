@@ -2,3 +2,6 @@
 	path = src/tools
 	url = https://github.com/ChristofEdel/Esp32Tools.git
 	branch = PROD
+[submodule "lib"]
+	path = lib
+	url = https://github.com/ChristofEdel/LibClones.git
