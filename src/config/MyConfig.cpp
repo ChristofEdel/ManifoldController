@@ -1,7 +1,7 @@
 #include <SdFat.h>
 #include "MyConfig.h"
 
-#include "../heatingControl/NeohubManager.h"
+#include "NeohubManager.h"
 #include "MyLog.h"
 #include "SensorMap.h"
 

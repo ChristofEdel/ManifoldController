@@ -5,3 +5,7 @@
 [submodule "lib"]
 	path = lib
 	url = https://github.com/ChristofEdel/LibClones.git
+[submodule "src/heatingTools"]
+	path = src/heatingTools
+	url = https://github.com/ChristofEdel/HeatingTools.git
+	branch = PROD
