@@ -48,8 +48,6 @@ MyMutex sdCardMutex("::sdCardMutex");
 #define SD_CONFIG SdSpiConfig(sdCardCsPin, SHARED_SPI, SD_SCK_MHZ(50))
 
 // The valve position (preserved across resets)
-RTC_NOINIT_ATTR double lastKownValvePosition;
-RTC_NOINIT_ATTR double lastKnownFlowSetpoint;
 
 void readSensors();
 bool dayChanged();
@@ -142,17 +140,14 @@ void setup()
 
     ValveManager.setup();
     ValveManager.setRooomSetpoint(Config.getRoomSetpoint());
-    if (!rtcMemoryIsValid()) {
-        lastKnownFlowSetpoint = 0;
-        lastKownValvePosition = 0;
+    MyRtcData *rtcData = getMyRtcData();
+    if (rtcData->getLastKnownValveControllerIntegralSet()) {
+        MyLog.printf("Initialising valve integral to %.0f%\n", rtcData->getLastKnownValveControllerIntegral());
+        ValveManager.setValveIntegralTerm(rtcData->getLastKnownValveControllerIntegral());
     }
-    if (lastKnownFlowSetpoint > 1) {  // sometimes after reset this value is -0.0
-        MyLog.printf("Initialising flow setpoint to %.1f degrees\n", lastKnownFlowSetpoint);
-        ValveManager.setFlowSetpoint(lastKownValvePosition);
-    }
-    if (lastKownValvePosition > 1) {  // sometimes after reset this value is -0.0
-        MyLog.printf("Initialising valve position to %.0f%%\n", lastKownValvePosition);
-        ValveManager.setValvePosition(lastKownValvePosition);
+    if (rtcData->getLastKnownFlowControllerIntegralSet()) {
+        MyLog.printf("Initialising flow integral to %.1f\n", rtcData->getLastKnownFlowControllerIntegral());
+        ValveManager.setFlowIntegralTerm(rtcData->getLastKnownFlowControllerIntegral());
     }
     MyWebServer.setup(&sd, &sdCardMutex);
     ledBlinkSetup();
@@ -255,6 +250,8 @@ QueueHandle_t valveControlQueue = NULL;
 
 void manageValveControls()
 {
+    // First, calculate the average room temperature for all zones which are configured
+    // Update the timestamp when we collected the lastest room temperature if we can obtain at least one
     int tempCount = 0;
     double temperatureTotal = 0;
     for (NeohubZone z : NeohubManager.getActiveZones()) {
@@ -268,18 +265,19 @@ void manageValveControls()
     float roomTemperature = NeohubZoneData::NO_TEMPERATURE;
     if (tempCount > 0) roomTemperature = temperatureTotal / tempCount;
 
+    // Then, get the temperatures from the manifold
+    // the flowTemperature is the one that matters, the other ones are currently FYI
+    // Update the timestamp when we last collected a valid flowTemperature
     float inputTemperature = OneWireManager.getCalibratedTemperature(Config.getInputSensorId().c_str());
     float flowTemperature = OneWireManager.getCalibratedTemperature(Config.getFlowSensorId().c_str());
     float returnTemperature = OneWireManager.getCalibratedTemperature(Config.getReturnSensorId().c_str());
 
     if (flowTemperature > -50) ValveManager.timestamps.flowDataLoadTime = time(nullptr);
-    
+
+    // run the control loop
     ValveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);
     ValveManager.calculateValvePosition();
     ValveManager.sendCurrentValvePosition();
-
-    lastKnownFlowSetpoint = ValveManager.outputs.targetFlowTemperature;
-    lastKownValvePosition = ValveManager.outputs.targetValvePosition;
 
     // Serial.printf(
     //   "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf\n",
@@ -313,6 +311,11 @@ void valveControlTask(void* parameter)
 
             // Control loop first
             manageValveControls();
+
+            // remember the integral values for use at next reboot
+            MyRtcData *rtcData = getMyRtcData();
+            rtcData->setLastKnownFlowControllerIntegral (ValveManager.getRoomIntegralTerm());
+            rtcData->setLastKnownValveControllerIntegral(ValveManager.getFlowIntegralTerm());
 
             // Then log if requested
             if (writeLogLine) {
