@@ -317,6 +317,11 @@ function monitorPage_refreshData() {
                 $("#roomTemperature").text("")
                 $("#roomError").text("")
             }
+            var ageClass="";
+            if (data.roomTemperatureAged) cssClass="data-is-aged"
+            if (data.roomTemperatureDead) cssClass="data-is-dead"
+            $("#roomTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
+
             $("#roomP").text(fmt(data.roomProportionalTerm, 1))
             $("#roomI").text(fmt(data.roomIntegralTerm, 1))
             $("#roomAged").toggle(data.roomAged)
@@ -333,6 +338,11 @@ function monitorPage_refreshData() {
                 $("#flowTemperature").text("")
                 $("#flowError").text("")
             }
+            var ageClass="";
+            if (data.flowTemperatureAged) cssClass="data-is-aged"
+            if (data.flowTemperatureDead) cssClass="data-is-dead"
+            $("#flowTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
+
             $("#flowP").text(fmt(data.flowProportionalTerm, 1))
             $("#flowI").text(fmt(data.flowIntegralTerm, 1))
             $("#flowAged").toggle(data.flowAged)
@@ -362,18 +372,8 @@ function monitorPage_refreshData() {
                     $("#z" + zone.id + "-floor-temp").text(fmt(zone.foorTemperature, 1))
                     $("#z" + zone.id + "-aged").toggle(zone.isAged)
                     $("#z" + zone.id + "-dead").toggle(zone.isDead)
-                    if (zone.roomOff) {
-                        $("#z" + zone.id + "-room-temp").closest("td").addClass("off")
-                    }
-                    else {
-                        $("#z" + zone.id + "-room-temp").closest("td").removeClass("off")
-                    }
-                    if (zone.floorOff) {
-                        $("#z" + zone.id + "-floor-temp").closest("td").addClass("off")
-                    }
-                    else {
-                        $("#z" + zone.id + "-floor-temp").closest("td").removeClass("off")
-                    }
+                    $("#z" + zone.id + "-room-off").toggle(zone.roomOff)
+                    $("#z" + zone.id + "-floor-off").toggle(zone.floorOff)
                 })
             }
         },
