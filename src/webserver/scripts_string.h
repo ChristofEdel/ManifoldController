@@ -435,6 +435,7 @@ $(function () {
             method: "POST",
             data: { filename: fileName },
             success: function () {
+                if (fileName == "coredump.elf") $row.next('tr').remove()
                 $row.remove()
             },
             error: function () {

@@ -34,6 +34,7 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
           html.fieldTableRow("Token", [&html]{
             html.fieldTableInput("name='nh_token' style='width: 20em'",Config.getNeohubToken().c_str());
           });
+          html.print("<tr><th colspan=2><a href='/messagelog.txt'>Message Log</a></th></tr>");
         });
       });
 

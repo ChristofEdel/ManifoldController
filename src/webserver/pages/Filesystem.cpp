@@ -89,6 +89,14 @@ void CMyWebServer::processCrashLogRequest(AsyncWebServerRequest* request)
     request->send(response);
 }
 
+void CMyWebServer::processMessageLogRequest(AsyncWebServerRequest* request)
+{
+    AsyncResponseStream* response = request->beginResponseStream("text/plain");
+    response->setCode(200);
+    NeohubManager.printLatestMessages(*response);
+    request->send(response);
+}
+
 size_t CMyWebServer::sendFileChunk(WebResponseContext* context, uint8_t* buffer, size_t maxLen, size_t fromPosition)
 {
     // Acquire a lock. If we can't we end this file.

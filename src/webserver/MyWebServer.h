@@ -43,6 +43,7 @@ class CMyWebServer {
     void processCoreDumpRequest(AsyncWebServerRequest* request);
     void processCrashLogRequest(AsyncWebServerRequest* request);
 
+    void processMessageLogRequest(AsyncWebServerRequest* request);
 
     // Heatmiser Neohub pass-through
     void respondFromNeohub(AsyncWebServerRequest* request);
