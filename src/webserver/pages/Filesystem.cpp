@@ -2,6 +2,7 @@
 #include "../MyWebServer.h"
 #include "MyLog.h"
 #include "EspTools.h"
+#include "NeohubManager.h"
 
 #include <SdFat.h>
 
@@ -72,7 +73,7 @@ void CMyWebServer::processCoreDumpRequest(AsyncWebServerRequest* request)
     request->send(response);
 }
 
-void CMyWebServer::processCrashLogRequest(AsyncWebServerRequest* request)
+void CMyWebServer::processBacktraceRequest(AsyncWebServerRequest* request)
 {
     Esp32CoreDump coreDump;
     if (!coreDump.exists()) {
@@ -231,16 +232,14 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
     response->println("<div class='navbar-border'></div>");
     response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th><th>Modified</th><th class='delete-header'></th></tr></thead><tbody>");
     Esp32CoreDump coreDump;
-    if (coreDump.exists()) {
+    if (coreDump.exists() && coreDump.getFormat() == "elf") {
         response->print("<tr>");
-        if (coreDump.getFormat() == "elf") {
             response->printf("<td><a href='/coredump.elf'>coredump.elf</a></td>");
-        }
-        else {
-            response->printf("<td><a href='/coredump.bin'>coredump.bin</a></td>");
-        }
         response->printf("<td class='right'>%.1f</td>", coreDump.size() / 1024.0);
         response->printf("<td></td><td class='delete-file'></td></tr>");
+        response->print("<tr>");
+            response->printf("<td><a href='/backtrace.txt'>backtrace.txt</a></td><td></td><td></td><td></td>");
+        response->printf("</tr>");
     }
     for (DirectoryEntry& e : entries) {
         response->print("<tr>");

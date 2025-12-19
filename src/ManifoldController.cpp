@@ -98,7 +98,7 @@ void setup()
     BackgroundFileWriter.setup(&sd, &sdCardMutex);
     MyLog.enableSdCardLog("log.txt");
     MyWebLog.enableSdCardLog("weblog.txt");
-    MyCrashLog.enableSdCardLog("crashlog.txt");
+    MyCrashLog.enableSdCardLog("bootlog.txt");
 
     MyLog.println("-------------------------------------------------------------------------------------------");
     Config.loadFromSdCard(sd, sdCardMutex, "config.json");

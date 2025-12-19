@@ -35,29 +35,40 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
     this->m_sd = sd;
     this->m_sdMutex = sdMutex;
     this->m_server.on(AsyncURIMatcher::exact("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
+
+    // Filesystem
     this->m_server.on(AsyncURIMatcher::exact("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
-    this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });
     this->m_server.on(AsyncURIMatcher::dir  ("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });
+
+    // Static files
+    this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
+    this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
+
+    // Core dumps and other debug helpers
     this->m_server.on(AsyncURIMatcher::exact("/coredump.elf"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCoreDumpRequest(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/coredump.bin"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCoreDumpRequest(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/crashlog.txt"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCrashLogRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/backtrace.txt"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->processBacktraceRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/messagelog.txt"),HTTP_GET, [this](AsyncWebServerRequest *r) { this->processMessageLogRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
+    this->m_server.on(AsyncURIMatcher::exact("/reset"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareReset(SW_RESET_USER_RESET); });
+
+    // Web pages
     this->m_server.on(AsyncURIMatcher::exact("/monitor"),       HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_POST,[this](AsyncWebServerRequest *r) { this->processSystemConfigPagePost(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithHeatingConfigPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->processHeatingConfigPagePost(r); });
     this->m_server.on(AsyncURIMatcher::exact("/tasks"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
-    this->m_server.on(AsyncURIMatcher::exact("/reset"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareReset(SW_RESET_USER_RESET); });
-    this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
+    
+    // JSON
     this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_POST,[this](AsyncWebServerRequest *r) { this->executeCommand(r); }, nullptr, CMyWebServer::assemblePostBody);
-    this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
-    this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
-    this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });
-    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_POST,[this](AsyncWebServerRequest *r) { this->executeCommand(r); }, nullptr, CMyWebServer::assemblePostBody);
+    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
+
+    // Catch-all: no random file links
+    this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });
     this->m_server.onNotFound([this](AsyncWebServerRequest *r) { this->respondWithError(r, 400, "Unsupported Method: " + methodToString(r->method()) + " on URL " + r->url()); });
     this->m_server.begin();
 }

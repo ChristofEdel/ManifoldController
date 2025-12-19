@@ -41,8 +41,7 @@ class CMyWebServer {
     void processDeleteFileRequest(AsyncWebServerRequest* request);
 
     void processCoreDumpRequest(AsyncWebServerRequest* request);
-    void processCrashLogRequest(AsyncWebServerRequest* request);
-
+    void processBacktraceRequest(AsyncWebServerRequest* request);
     void processMessageLogRequest(AsyncWebServerRequest* request);
 
     // Heatmiser Neohub pass-through
