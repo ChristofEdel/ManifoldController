@@ -105,6 +105,7 @@ void CMyWebServer::respondFromNeohub(AsyncWebServerRequest* r)
     String responseString;
 
     String* body = (String*)r->_tempObject;
+    r->_tempObject = nullptr; // take ownership of the body
     if (!body) {
         responseCode = 400;
         responseString = "{ \"error\": \"Empty request\" }";
@@ -117,7 +118,8 @@ void CMyWebServer::respondFromNeohub(AsyncWebServerRequest* r)
             responseString = "{ \"error\": \"Unable to retrieve data from Neohub\" }";
         }
     }
-
+    delete body;
+    
     AsyncWebServerResponse* response = r->beginResponse(responseCode, "application/json", responseString);
     response->addHeader("Access-Control-Allow-Origin", "*");
     response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");

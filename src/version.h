@@ -1,6 +1,6 @@
 #ifndef __VERSION_H
 #define __VERSION_H
 
-const char* VERSION = "0.9.49";
+const char* VERSION = "1.0.2";
 
 #endif

@@ -51,12 +51,16 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
     JsonDocument responseJson;
 
     const String* body = (String*)request->_tempObject;
+    request->_tempObject = nullptr; // take ownership of the body
+
     if (!body || *body == emptyString) {
         request->send(makeCommandResponse(request, 400, "{ \"error\": \"Empty request\" }"));
+        if (body) delete body;
         return;
     }
 
     DeserializationError error = deserializeJson(commandJson, *body);
+    delete body;
     if (error) {
         request->send(makeCommandResponse(request, 400, "{ \"error\": \"Invalid Json\" }"));
         return;
