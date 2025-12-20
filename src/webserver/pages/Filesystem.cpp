@@ -114,7 +114,7 @@ size_t CMyWebServer::sendFileChunk(WebResponseContext* context, uint8_t* buffer,
     // Fill the buffer
     int bytesRead = 0;
     if (file.seek(fromPosition)) {
-        bytesRead = file.readBytes((char*)buffer, maxLen);
+        bytesRead = file.read(buffer, maxLen);
     }
 
     // Close the file until the next time round and free the lock

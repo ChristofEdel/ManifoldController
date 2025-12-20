@@ -41,6 +41,10 @@ void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
     this->m_server.on(AsyncURIMatcher::dir  ("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });
 
+    // Filesystem: LittleFs
+    this->m_server.on(AsyncURIMatcher::exact("/littlefs"),      HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithLittleFsDirectory(r, "/"); });
+    this->m_server.on(AsyncURIMatcher::dir  ("/littlefs"),      HTTP_GET, [this](AsyncWebServerRequest *r) { this->processLittleFsFileRequest(r); });
+
     // Static files
     this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
     this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });

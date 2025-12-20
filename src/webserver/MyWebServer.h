@@ -44,6 +44,12 @@ class CMyWebServer {
     void processBacktraceRequest(AsyncWebServerRequest* request);
     void processMessageLogRequest(AsyncWebServerRequest* request);
 
+    // LittleFs File server
+    void processLittleFsFileRequest(AsyncWebServerRequest* request);
+    void respondWithLittleFsDirectory(AsyncWebServerRequest* request, const String& path);
+    void respondWithLittleFsFileContents(AsyncWebServerRequest* request, const String& fileName);
+    size_t sendLittleFsFileChunk(WebResponseContext* context, uint8_t* buffer, size_t maxLen, size_t index);
+
     // Heatmiser Neohub pass-through
     void respondFromNeohub(AsyncWebServerRequest* request);
 
@@ -76,6 +82,7 @@ class CMyWebServer {
         uint8_t* data, size_t len,
         size_t index, size_t total
     );
+    static String getMimeType(const String& fileName);
 
 };
 
