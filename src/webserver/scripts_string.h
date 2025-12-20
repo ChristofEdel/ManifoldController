@@ -6,9 +6,11 @@ const char SCRIPTS_JS_STRING[] PROGMEM = R"RAW_STRING(
 //
 // General helper functions
 //
-function fmt(value, digits) {
+function fmt(value, digits, sign) {
     var x = Number(value).toFixed(digits)
-    if (x == "NaN") x = value
+    if (x == "NaN") return value; // probably non-numerical text, return 1:1
+    // Number, prepend + sign if requested
+    if (sign === "+" && x > 0) return "+" + x
     return x
 }
 
@@ -310,7 +312,6 @@ function monitorPage_refreshData() {
             if(data.roomTemperature > -50) {
                 $("#roomTemperature").text(fmt(data.roomTemperature, 1))
                 var d = fmt(data.roomError, 1)
-                if (fmt != '0.0' && data.roomError > 0) d = '+' + d
                 $("#roomError").text(d)
             }
             else {
@@ -330,8 +331,7 @@ function monitorPage_refreshData() {
             $("#flowSetpoint").text(fmt(data.flowSetpoint, 1))
             if(data.flowTemperature > -50) {
                 $("#flowTemperature").text(fmt(data.flowTemperature, 1))
-                d = fmt(data.flowError, 1)
-                if (fmt != '0.0' && data.flowError > 0) d = '+' + d
+                d = fmt(data.flowError, 1, "+")
                 $("#flowError").text(d)
             }
             else {

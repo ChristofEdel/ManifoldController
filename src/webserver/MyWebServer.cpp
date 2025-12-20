@@ -164,3 +164,17 @@ void CMyWebServer::assemblePostBody(
     // append what we just received
     body->concat((const char*)data, len);
 }
+
+String CMyWebServer::getMimeType(const String &fileName) {
+
+    return 
+        fileName.endsWith(".js.min") ? "application/javascript" : 
+        fileName.endsWith(".js.min.gz") ? "application/javascript" : 
+        fileName.endsWith(".css.min") ? "text/css" : 
+        fileName.endsWith(".css.min.gz") ? "text/css" : 
+        fileName.endsWith(".json") ? "application/json" : 
+        fileName.endsWith(".csv") ? "text/plain" : 
+        fileName.endsWith(".txt") ? "text/plain" : 
+        "application/octet-stream";
+}
+
