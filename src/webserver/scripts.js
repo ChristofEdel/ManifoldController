@@ -314,8 +314,8 @@ function monitorPage_refreshData() {
                 $("#roomError").text("")
             }
             var ageClass="";
-            if (data.roomTemperatureAged) cssClass="data-is-aged"
-            if (data.roomTemperatureDead) cssClass="data-is-dead"
+            if (data.roomTemperatureAged) ageClass="data-is-aged"
+            if (data.roomTemperatureDead) ageClass="data-is-dead"
             $("#roomTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
 
             $("#roomP").text(fmt(data.roomProportionalTerm, 1))
@@ -335,8 +335,8 @@ function monitorPage_refreshData() {
                 $("#flowError").text("")
             }
             var ageClass="";
-            if (data.flowTemperatureAged) cssClass="data-is-aged"
-            if (data.flowTemperatureDead) cssClass="data-is-dead"
+            if (data.flowTemperatureAged) ageClass="data-is-aged"
+            if (data.flowTemperatureDead) ageClass="data-is-dead"
             $("#flowTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
 
             $("#flowP").text(fmt(data.flowProportionalTerm, 1))

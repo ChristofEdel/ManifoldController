@@ -20,6 +20,7 @@
 #include "ManifoldConnections.h"
 #include "BackgroundFileWriter.h"
 #include "sensorLog.h"
+#include "Watchdog.h"
 
 // Pin Assignments - digital pins --------------------------------
 const uint8_t openThermInPin = A0;  // Repurposed analog pins for OpenTherm module I/O
@@ -75,7 +76,7 @@ void setup()
     // Initialise clock and memory debugging
     MyRtc.start();
     setupMemDebug();
-    WatchdogManager.setup();
+    WatchdogManager.setup(100); // Check our watchdogs every 100 ms
     
 
     // Initialise logging to serial
@@ -324,6 +325,7 @@ void valveControlTask(void* parameter)
                 const String &host = Config.getHeatingControllerAddress();
                 if (host != "" && host != "null") {
                     ManifoldData data;
+                    time_t now = time(nullptr);
                     String hostname = Config.getHostname();
                     if (hostname != "" && hostname.indexOf('.') == -1) hostname = hostname + ".local";
                     data.name = Config.getName() == "" ? hostname : Config.getName();
@@ -337,6 +339,12 @@ void valveControlTask(void* parameter)
                     data.flowDeltaT = data.flowTemperature - data.flowSetpoint;
                     data.valvePosition = ValveManager.getValvePosition();
                     data.flowDemand = data.flowSetpoint;
+                    data.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
+                    data.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
+                    data.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
+                    data.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
+                    data.uptimeSeconds = uptime();
+
                     ManifoldDataPostJob::post(data, host);
                 }
             }
