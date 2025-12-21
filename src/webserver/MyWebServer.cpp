@@ -169,7 +169,7 @@ String CMyWebServer::getMimeType(const String &fileName) {
         fileName.endsWith(".css.min") ? "text/css" : 
         fileName.endsWith(".css.min.gz") ? "text/css" : 
         fileName.endsWith(".json") ? "application/json" : 
-        fileName.endsWith(".csv") ? "text/plain" : 
+        fileName.endsWith(".csv") ? "text/csv" : 
         fileName.endsWith(".txt") ? "text/plain" : 
         "application/octet-stream";
 }
