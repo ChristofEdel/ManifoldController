@@ -296,6 +296,7 @@ void triggerValveControls(bool writeLogLine)
 void valveControlTask(void* parameter)
 {
     bool writeLogLine = false;
+
     readSensors();
     for (;;) {
         // Wait for notification from main loop
