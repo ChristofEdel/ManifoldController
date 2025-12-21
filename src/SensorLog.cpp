@@ -7,15 +7,12 @@
 #include "SensorLog.h"
 #include "NeohubManager.h"
 #include "ValveManager.h"
-#include <SdFat.h>
+#include "Filesystem.h"
 
-extern MyMutex sdCardMutex;
-extern SdFs sd;
-
-char sensorDataFileName[] = "Sensor Values yyyy-mm-dd.csv";
+char sensorDataFileName[] = "/sdcard/Sensor Values yyyy-mm-dd.csv";
 char* getSensorDataFileName()
 {
-    sprintf(sensorDataFileName, "Sensor Values %s.csv", MyRtc.getTime().getDateText().c_str());
+    sprintf(sensorDataFileName, "/sdcard/Sensor Values %s.csv", MyRtc.getTime().getDateText().c_str());
     return sensorDataFileName;
 }
 
@@ -23,9 +20,9 @@ void logSensors()
 {
     char* dataFileName = getSensorDataFileName();
     bool fileExists = false;
-    if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
-        fileExists = !sd.exists(dataFileName);
-        sdCardMutex.unlock();
+    if (Filesystem.lock()) {
+        fileExists = !Filesystem.exists(dataFileName);
+        Filesystem.unlock();
     }
 
     String logLine = getSensorLogLine();
@@ -35,18 +32,18 @@ void logSensors()
         SensorMap.clearChanged();
     }
 
-    if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
+    if (Filesystem.lock()) {
 
-        FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
+        File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
         
-        if (dataFile && dataFile.isOpen()) {
+        if (dataFile) {
             if (headerLine != "") dataFile.println(headerLine);
             dataFile.println(logLine);
             dataFile.close();
-            sdCardMutex.unlock();
+            Filesystem.unlock();
         }
         else {
-            sdCardMutex.unlock();
+            Filesystem.unlock();
             MyLog.print("error opening ");
             MyLog.println(dataFileName);
         }
@@ -58,13 +55,13 @@ void logSensorHeaderLine()
     String headerLine = getSensorHeaderLine();
     char* dataFileName = getSensorDataFileName();
 
-    if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
-        FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
-        if (dataFile && dataFile.isOpen()) {
+    if (Filesystem.lock()) {
+        File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
+        if (dataFile) {
             dataFile.println(headerLine);
             dataFile.close();
         }
-        sdCardMutex.unlock();
+        Filesystem.unlock();
     }
 }
 

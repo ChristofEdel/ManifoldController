@@ -425,7 +425,7 @@ $(function () {
     $('.delete-file').on('click', function (e) {
         e.preventDefault()
         const $row = $(this).closest('tr')
-        const fileName = $row.find("a").first().text()
+        const fileName = $row.find("a").first().attr('href')
         $.ajax({
             url: "/delete-file",
             method: "POST",

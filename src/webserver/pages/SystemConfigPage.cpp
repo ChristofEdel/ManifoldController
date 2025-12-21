@@ -140,7 +140,7 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
   }
 
   if (changesMade) {
-    Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json");
+    Config.save();
     Config.print(MyLog);
   }
 

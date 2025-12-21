@@ -2,10 +2,8 @@
 #define __MYWEBSERVER_H
 
 #include <ESPAsyncWebServer.h>
-#include <SdFat.h>
 
 #include "../tools/HtmlGenerator.h"
-#include "MyMutex.h"
 #include "MyWifi.h"
 #include "NeohubConnection.h"
 #include "OneWireManager.h"  // OneWire sensor reading and management
@@ -21,12 +19,10 @@ class SdFs;
 class CMyWebServer {
   private:
     AsyncWebServer m_server;
-    SdFs* m_sd;
-    MyMutex* m_sdMutex;
 
   public:
     CMyWebServer(void);
-    void setup(SdFs* sd, MyMutex* sdMutex);
+    void setup();
 
   private:
     // Simple responses
@@ -43,12 +39,6 @@ class CMyWebServer {
     void processCoreDumpRequest(AsyncWebServerRequest* request);
     void processBacktraceRequest(AsyncWebServerRequest* request);
     void processMessageLogRequest(AsyncWebServerRequest* request);
-
-    // LittleFs File server
-    void processLittleFsFileRequest(AsyncWebServerRequest* request);
-    void respondWithLittleFsDirectory(AsyncWebServerRequest* request, const String& path);
-    void respondWithLittleFsFileContents(AsyncWebServerRequest* request, const String& fileName);
-    size_t sendLittleFsFileChunk(WebResponseContext* context, uint8_t* buffer, size_t maxLen, size_t index);
 
     // Heatmiser Neohub pass-through
     void respondFromNeohub(AsyncWebServerRequest* request);

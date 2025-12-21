@@ -30,20 +30,16 @@ String methodToString(WebRequestMethodComposite m)
     }
 }
 
-void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
+void CMyWebServer::setup()
 {
-    this->m_sd = sd;
-    this->m_sdMutex = sdMutex;
     this->m_server.on(AsyncURIMatcher::exact("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
 
     // Filesystem
-    this->m_server.on(AsyncURIMatcher::exact("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
-    this->m_server.on(AsyncURIMatcher::dir  ("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/sdcard"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/sdcard"); });
+    this->m_server.on(AsyncURIMatcher::dir  ("/sdcard"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/flash"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/flash"); });
+    this->m_server.on(AsyncURIMatcher::dir  ("/flash"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });
-
-    // Filesystem: LittleFs
-    this->m_server.on(AsyncURIMatcher::exact("/littlefs"),      HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithLittleFsDirectory(r, "/"); });
-    this->m_server.on(AsyncURIMatcher::dir  ("/littlefs"),      HTTP_GET, [this](AsyncWebServerRequest *r) { this->processLittleFsFileRequest(r); });
 
     // Static files
     this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
@@ -100,8 +96,8 @@ AsyncResponseStream* CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest* 
     response->println("    <link rel='icon' href='data:,'>");
     response->println("    <script src='https://code.jquery.com/jquery-3.7.1.min.js'></script>");
     response->println("    <script src='https://code.jquery.com/ui/1.14.1/jquery-ui.min.js'></script>");
-    response->println("    <script src='scripts.js'></script>");
-    response->println("    <link rel='stylesheet' href='styles.css'>");
+    response->println("    <script src='/scripts.js'></script>");
+    response->println("    <link rel='stylesheet' href='/styles.css'>");
     response->println("  </head>");
     response->println("  <body>");
     response->println("    <div class='page-div'>");

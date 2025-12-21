@@ -3,30 +3,31 @@
 #include "MyLog.h"
 #include "EspTools.h"
 #include "NeohubManager.h"
-
-#include <SdFat.h>
+#include "Filesystem.h"
+#include "StringTools.h"
+#include <dirent.h>   // DIR, opendir(), readdir(), closedir(), struct dirent
 
 void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
     
     String fileName = request->url();
-    if (!fileName.startsWith("/files")) {
+    if (!fileName.startsWith("/sdcard") && !fileName.startsWith("/flash")) {
         request->send(404, "text/plain", "File not found");
         return;
     }
-    fileName = fileName.substring(6);
 
     // Open the file briefly and check for existence and what it is
-    if (!this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
-        request->send(400, "text/plain", "Unable to access SD card");
+    if (!Filesystem.lock()) {
+        request->send(400, "text/plain", "Unable to lock filesystem");
         return;
     }
 
-    FsFile f = this->m_sd->open(fileName, O_RDONLY);
-    bool exists = f.isOpen();
-    bool isDir = f.isDir();
-    bool isFile = f.isFile();
+    File f = Filesystem.open(fileName, FILE_READ);
+    bool exists = f;
+    bool isDir = f.isDirectory();
+    bool isFile = !isDir;
     f.close();
-    this->m_sdMutex->unlock();
+    
+    Filesystem.unlock();
 
     // Errors unless it is a file or directoy
     if (!exists) {
@@ -101,13 +102,13 @@ void CMyWebServer::processMessageLogRequest(AsyncWebServerRequest* request)
 size_t CMyWebServer::sendFileChunk(WebResponseContext* context, uint8_t* buffer, size_t maxLen, size_t fromPosition)
 {
     // Acquire a lock. If we can't we end this file.
-    if (!this->m_sdMutex->lock(__PRETTY_FUNCTION__)) return 0;
+    if (!Filesystem.lock()) return 0;
 
     // Open the file and stop if we can't
-    FsFile file = this->m_sd->open(context->fileName, O_RDONLY);
-    if (!file || !file.isOpen()) {
-        this->m_sdMutex->unlock();
+    File file = Filesystem.open(context->fileName, FILE_READ);
+    if (!file) {
         delete context;
+        Filesystem.unlock();
         return 0;
     }
 
@@ -119,17 +120,17 @@ size_t CMyWebServer::sendFileChunk(WebResponseContext* context, uint8_t* buffer,
 
     // Close the file until the next time round and free the lock
     file.close();
-    this->m_sdMutex->unlock();
     if (bytesRead == 0) {
         delete context;
     }
 
+    Filesystem.unlock();
     return bytesRead;
 }
 
 void CMyWebServer::respondWithFileContents(AsyncWebServerRequest* request, const String& fileName)
 {
-    String contentType = fileName.endsWith(".csv") ? "text/csv" : "text/plain";
+    String contentType = getMimeType(fileName);
 
     // Allocate a streaming context on heap so it outlives this function
     WebResponseContext* ctx = new WebResponseContext();
@@ -144,111 +145,72 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest* request, const
     request->send(response);
 }
 
-struct DirectoryEntry {
-    String name;
-    uint16_t date;
-    uint16_t time;
-    bool isDirectory;
-    double sizeKb;
-    DirectoryEntry(FsFile& file)
-    {
-        char nameBuffer[64];
-        file.getName(nameBuffer, sizeof(nameBuffer));
-        name = nameBuffer;
-        sizeKb = file.size() / 1024.0;
-        isDirectory = file.isDirectory();
-        if (isDirectory || !file.getModifyDateTime(&date, &time)) {
-            date = 0;
-            time = 0;
-        }
-    }
-    const char* formatDate(char* buf, size_t len)
-    {
-        if (date == 0) {
-            buf[0] = '\0';
-        }
-        else {
-            uint16_t y = ((date >> 9) & 0x7F) + 1980;
-            uint8_t m = (date >> 5) & 0x0F;
-            uint8_t d = date & 0x1F;
-
-            uint8_t hh = time >> 11;
-            uint8_t mm = (time >> 5) & 0x3F;
-            uint8_t ss = (time & 0x1F) * 2;
-
-            snprintf(buf, len, "%02u/%02u/%04u %02u:%02u:%02u", d, m, y, hh, mm, ss);
-        }
-        return buf;
-    }
-};
-
 void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const String& path)
 {
-    // REad the directory information
-    std::vector<DirectoryEntry> entries;
-    if (this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
-        // Collect all files in the directory
-
-        FsFile dir = this->m_sd->open("/", O_RDONLY);
-        if (!dir.isOpen()) {
-            this->m_sdMutex->unlock();
-            request->send(400, "text/plain", "Unable to open directory");
-            return;
-        }
-
-        if (!dir.isDir()) {
-            dir.close();
-            request->send(400, "text/plain", "Not a directory");
-            this->m_sdMutex->unlock();
-            return;
-        }
-
-        FsFile file;
-        while (file.openNext(&dir, O_RDONLY)) {
-            if (file.isHidden()) continue;
-            entries.push_back(DirectoryEntry(file));
-            file.close();
-        }
-        dir.close();
-
-        this->m_sdMutex->unlock();
+    String dirPath = path;
+    if (!dirPath.startsWith("/")) dirPath = "/" + dirPath;
+    if (!dirPath.endsWith("/")) dirPath += "/";
+    
+    // Collect all files in the directory
+    File dir = Filesystem.open(dirPath, FILE_READ);
+    if (!dir) {
+        this->respondWithError(request, 404, StringPrintf("Unable to open directory '%s'", dirPath.c_str()));
+        Filesystem.unlock();
+        return;
     }
 
-    // Sort by descending timestamp, with directories on top
+    if (!dir.isDirectory()) {
+        dir.close();
+        this->respondWithError(request, 500, StringPrintf("'%s' is not a directory", dirPath.c_str()));
+        Filesystem.unlock();
+        return;
+    }
 
-    auto cmp = [](const DirectoryEntry& a, const DirectoryEntry& b) {
-        if (a.isDirectory != b.isDirectory) return a.isDirectory;  // directories first
-        if (a.date != b.date) return a.date > b.date;              // newest first
-        if (a.time != b.time) return a.time > b.time;              // newest first
-        return a.name > b.name;
-    };
-
-    std::sort(entries.begin(), entries.end(), cmp);
+    std::vector<DirectoryEntry> entries = Filesystem.dir(dirPath);
+    
+    bool hasDate = false;
+    for (DirectoryEntry& e : entries) hasDate |= e.lastModified > 0;
+    bool canDelete = dirPath.startsWith("/sdcard/");
 
     // Now print HTML
     AsyncResponseStream* response = startHttpHtmlResponse(request);
     HtmlGenerator html(response);
     html.navbar(NavbarPage::Files);
     response->println("<div class='navbar-border'></div>");
-    response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th><th>Modified</th><th class='delete-header'></th></tr></thead><tbody>");
+    response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th>");
+    if (hasDate) response->println("<th>Modified</th>");
+    if (canDelete) response->println("<th class='delete-header'></th>");
+    response->println("</tr></thead><tbody>");
+
     Esp32CoreDump coreDump;
-    if (coreDump.exists() && coreDump.getFormat() == "elf") {
+    if (coreDump.exists() && coreDump.getFormat() == "elf" && dirPath == "/sdcard/") {
         response->print("<tr>");
-            response->printf("<td><a href='/coredump.elf'>coredump.elf</a></td>");
+        response->printf("<td><a href='/coredump.elf'>coredump.elf</a></td>");
         response->printf("<td class='right'>%.1f</td>", coreDump.size() / 1024.0);
         response->printf("<td></td><td class='delete-file'></td></tr>");
         response->print("<tr>");
-            response->printf("<td><a href='/backtrace.txt'>backtrace.txt</a></td><td></td><td></td><td></td>");
+        response->printf("<td><a href='/backtrace.txt'>backtrace.txt</a></td><td></td><td></td><td></td>");
         response->printf("</tr>");
     }
     for (DirectoryEntry& e : entries) {
         response->print("<tr>");
-        response->printf("<td><a href='/files/%s'>%s</a></td>", e.name.c_str(), e.name.c_str());
-        response->printf("<td class='right'>%.1f</td>", e.sizeKb);
-
-        char buf[25];
-        response->printf("<td>%s</td>", e.formatDate(buf, sizeof(buf)));
-        response->println("<td class='delete-file'></td></tr>");
+        response->printf("<td><a href='%s'>%s</a></td>", e.path.c_str(), e.name.c_str());
+        if (!e.isDirectory) {
+            response->printf("<td class='right'>%.1f</td>", e.sizeKb);
+        }
+        else {
+            response->println("<td></td>");
+        }
+        if (hasDate) response->printf("<td>%s</td>", e.lastModifiedText().c_str());
+        if (canDelete) {
+            if (!e.isDirectory) {
+                response->println("<td class='delete-file'></td>");
+            }
+            else {
+                response->println("<td></td>");
+            }
+        }
+        response->println("</tr>");
     }
     response->println("</tbody></table>");
     finishHttpHtmlResponse(response);
@@ -263,10 +225,10 @@ void CMyWebServer::processDeleteFileRequest(AsyncWebServerRequest* request)
         return;
     }
 
-    String filename = p->value();
+    String path = p->value();
 
     // Process special file "coredump.*"
-    if (filename == "coredump.bin" || filename == "coredump.elf") {
+    if (path == "/coredump.elf") {
         Esp32CoreDump dump;
         if (!dump.exists()) request->send(200, "text/plain", "coredump does not exist");
         if (dump.remove()) {
@@ -278,20 +240,18 @@ void CMyWebServer::processDeleteFileRequest(AsyncWebServerRequest* request)
     }
 
     else {
-        if (filename.startsWith("/files")) filename = filename.substring(6);  // strip leading /files
-        if (!filename.startsWith("/"))                                        // SdFat needs leading slash
-            filename = "/" + filename;
+        if (!path.startsWith("/")) path = "/" + path; // ensure leading slash
 
-        if (filename.indexOf("..") != -1) {  // prevent navigating up
+        if (path.indexOf("..") != -1) {  // prevent navigating up
             request->send(400, "text/plain", "relative navigation not permitted");
             return;
         }
 
         bool result = false;
 
-        if (this->m_sdMutex->lock(__PRETTY_FUNCTION__)) {
-            result = this->m_sd->remove(filename.c_str());
-            this->m_sdMutex->unlock();
+        if (Filesystem.lock()) {
+            result = Filesystem.remove(path);
+            Filesystem.unlock();
         }
         if (result)
             request->send(200, "text/plain", "file deleted");

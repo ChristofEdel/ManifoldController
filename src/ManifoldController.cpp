@@ -16,11 +16,11 @@
 #include "ValveManager.h"
 #include "Watchdog.h"
 #include "webserver/MyWebServer.h"  // Request handing and web page generator
-#include <SdFat.h>                // SD Card with FAT filesystem
 #include "ManifoldConnections.h"
 #include "BackgroundFileWriter.h"
 #include "sensorLog.h"
 #include "Watchdog.h"
+#include "Filesystem.h"
 
 // Pin Assignments - digital pins --------------------------------
 const uint8_t openThermInPin = A0;  // Repurposed analog pins for OpenTherm module I/O
@@ -43,10 +43,6 @@ const uint8_t sdCardCsPin = D10;  // SD card chip select
 // Pin 13: PIN_SPI_SCK
 // Pin 14/15/16: Built-in RGB LED (R/B/G)
 
-// SD Card access
-SdFs sd;
-MyMutex sdCardMutex("::sdCardMutex");
-#define SD_CONFIG SdSpiConfig(sdCardCsPin, SHARED_SPI, SD_SCK_MHZ(50))
 
 // The valve position (preserved across resets)
 
@@ -86,23 +82,23 @@ void setup()
     MyWebLog.enableSerialLog();
     MyWebLog.logTimestamps(MyRtc);
 
-    MyCrashLog.logTimestamps(MyRtc);
+    MyBootLog.logTimestamps(MyRtc);
 
     MyLog.println("-------------------------------------------------------------------------------------------");
 
     // Initialise SD card access and start logging to SD card as well
-    MyLog.print("Initializing SD card...");
-    if (!sd.begin(SD_CONFIG)) {
-        sd.initErrorHalt(&Serial);
+    MyLog.print("Initializing Filesystems...");
+    if (!Filesystem.setup(sdCardCsPin)) {
+
     }
     MyLog.println("done.");
-    BackgroundFileWriter.setup(&sd, &sdCardMutex);
-    MyLog.enableSdCardLog("log.txt");
-    MyWebLog.enableSdCardLog("weblog.txt");
-    MyCrashLog.enableSdCardLog("bootlog.txt");
+    BackgroundFileWriter.setup();
+    MyLog.enableSdCardLog("/sdcard/log.txt");
+    MyWebLog.enableSdCardLog("/sdcard/weblog.txt");
+    MyBootLog.enableSdCardLog("/sdcard/bootlog.txt");
 
     MyLog.println("-------------------------------------------------------------------------------------------");
-    Config.loadFromSdCard(sd, sdCardMutex, "config.json");
+    Config.load();
     SensorMap.clearChanged();
 
     MyLog.printlnSdOnly("-------------------------------------------------------------------------------------------");
@@ -122,13 +118,13 @@ void setup()
     MyLog.println(resetReason);
     if (resetMessage != emptyString) MyLog.println(resetMessage);
 
-    MyCrashLog.print("RESTART - Last reset reason: ");
-    MyCrashLog.println(resetReason);
-    if (resetMessage != emptyString) MyCrashLog.println(resetMessage);
+    MyBootLog.print("RESTART - Last reset reason: ");
+    MyBootLog.println(resetReason);
+    if (resetMessage != emptyString) MyBootLog.println(resetMessage);
     if (getResetReason() == ESP_RST_PANIC || getResetReason() == ESP_RST_INT_WDT) {
         Esp32CoreDump dump;
         if (dump.exists()) {
-            dump.writeBacktrace(MyCrashLog);
+            dump.writeBacktrace(MyBootLog);
         }
     }
 
@@ -150,7 +146,7 @@ void setup()
         MyLog.printf("Initialising flow integral to %.1f\n", rtcData->getLastKnownFlowControllerIntegral());
         ValveManager.setFlowIntegralTerm(rtcData->getLastKnownFlowControllerIntegral());
     }
-    MyWebServer.setup(&sd, &sdCardMutex);
+    MyWebServer.setup();
     ledBlinkSetup();
 
     startValveControlTask();

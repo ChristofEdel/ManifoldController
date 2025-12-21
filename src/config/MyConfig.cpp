@@ -1,13 +1,13 @@
-#include <SdFat.h>
 #include "MyConfig.h"
 
 #include "NeohubManager.h"
 #include "MyLog.h"
 #include "SensorMap.h"
+#include "Filesystem.h"
 
 CConfig Config;
 
-void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) const
+void CConfig::save() const
 {
     JsonDocument configJson;
 
@@ -54,38 +54,38 @@ void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) c
 
     // Serialize to SD card
     MyLog.print("Saving configuration...");
-    if (fsMutex.lock(__PRETTY_FUNCTION__)) {
-        FsFile file = fs.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
+    if (Filesystem.lock()) {
+        File file = Filesystem.open(fileName, FILE_WRITE);
         if (!file) {
-            fsMutex.unlock();
-            MyLog.print("Failed to open config file for writing: ");
-            MyLog.println(filename);
+            Filesystem.unlock();
+            MyLog.printf("Failed to open config file '%s' for writing\n", fileName);
             return;
         }
         serializeJsonPretty(configJson, file);
         file.close();
-        fsMutex.unlock();
+        Filesystem.unlock();
     }
     MyLog.println("done");
 }
 
-void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename)
+void CConfig::load()
 {
     MyLog.print("Loading configuration...");
 
     String contents;
-    if (fsMutex.lock(__PRETTY_FUNCTION__)) {
-        FsFile file = fs.open(filename, O_RDONLY);
+    if (Filesystem.lock()) {
+        File file = Filesystem.open(fileName, FILE_READ);
+        if (!file) file = Filesystem.open("/sdcard/config.json", FILE_READ);   // old name / location
         if (!file) {
-            fsMutex.unlock();
-            MyLog.println("Failed to open config file");
+            Filesystem.unlock();
+            MyLog.printf("Failed to open config file %s for reading\n", fileName);
             this->applyDefaults();
             return;
         }
 
         contents = file.readString();
         file.close();
-        fsMutex.unlock();
+        Filesystem.unlock();
     }
 
     JsonDocument configJson;

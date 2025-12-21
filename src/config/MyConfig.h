@@ -31,6 +31,8 @@ class CConfig {
     double roomProportionalGain;
     double roomIntegralMinutes;
 
+    const char* fileName = "/flash/config.json";
+
   public:
     inline const String& getName() const { return name; };
     inline const String& getHostname() const { return hostname; };
@@ -74,8 +76,8 @@ class CConfig {
     inline void setRoomProportionalGain(double value) { roomProportionalGain = value; };
     inline void setRoomIntegralMinutes(double value) { roomIntegralMinutes = value; };
 
-    void saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) const;
-    void loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename);
+    void save() const;
+    void load();
 
     void applyDefaults();
     void print(CMyLog& p) const;

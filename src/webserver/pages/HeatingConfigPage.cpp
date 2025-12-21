@@ -281,7 +281,7 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
   }
 
   SensorMap.removeFromIndex(sensorIndex); // Remove any remaining sensors
-  Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json");
+  Config.save();
   if (pidReconfigured) {
     ValveManager.loadConfig();
     // includes loading the flow range
