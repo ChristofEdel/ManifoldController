@@ -76,7 +76,7 @@ String getSensorLogLine()
     result += ",";
     result += String(ValveManager.getRoomSetpoint(), 1);
     result += ",";
-    if (ValveManager.inputs.roomTemperature > -50) result += String(ValveManager.inputs.flowTemperature, 1);
+    if (ValveManager.inputs.roomTemperature > -50) result += String(ValveManager.inputs.roomTemperature, 1);
 
     // Manifold control
     //   - Setpoint
