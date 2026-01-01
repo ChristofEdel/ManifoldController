@@ -296,7 +296,7 @@ function openSetValueDialog(element, title, command) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Monitor anc Config page - data refresh
+// Monitor and Config page - data refresh
 //
 
 function monitorPage_refreshData() {
@@ -435,7 +435,7 @@ $(function () {
             method: "POST",
             data: { filename: fileName },
             success: function () {
-                if (fileName == "coredump.elf") $row.next('tr').remove()
+                if (fileName == "/coredump.elf") $row.next('tr').remove()
                 $row.remove()
             },
             error: function () {
