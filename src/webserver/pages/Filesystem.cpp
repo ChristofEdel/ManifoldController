@@ -2,7 +2,7 @@
 #include "../MyWebServer.h"
 #include "MyLog.h"
 #include "EspTools.h"
-#include "NeohubManager.h"
+#include "NeohubConnection.h"
 #include "Filesystem.h"
 #include "StringTools.h"
 #include <dirent.h>   // DIR, opendir(), readdir(), closedir(), struct dirent
@@ -95,7 +95,7 @@ void CMyWebServer::processMessageLogRequest(AsyncWebServerRequest* request)
 {
     AsyncResponseStream* response = request->beginResponseStream("text/plain");
     response->setCode(200);
-    NeohubManager.printLatestMessages(*response);
+    NeohubConnection.printLatestMessages(*response);
     request->send(response);
 }
 

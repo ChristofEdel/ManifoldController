@@ -1,5 +1,5 @@
 #include "../MyWebServer.h"
-#include "NeohubManager.h"
+#include "NeohubZoneManager.h"
 #include "ValveManager.h"
 #include "StringTools.h"
 
@@ -47,8 +47,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.print(StringPrintf("<td id='roomAged' class='data-is-aged'%s>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime) ? "" : "style='display: none'").c_str());
           html.print(StringPrintf("<td id='roomDead' class='data-is-dead'%s>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime) ? "" : "style='display: none'").c_str());
         });
-        if (NeohubManager.getActiveZones().size() == 1 && NeohubManager.getMonitoredZones().size() == 0) {
-          NeohubZoneData *d = NeohubManager.getZoneData(NeohubManager.getActiveZones().back().id);
+        if (NeohubZoneManager.getActiveZones().size() == 1 && NeohubZoneManager.getMonitoredZones().size() == 0) {
+          NeohubZoneData *d = NeohubZoneManager.getZoneData(NeohubZoneManager.getActiveZones().back().id);
           if (d && d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
             html.fieldTableRow("Floor", [d, &html]{
               html.print("<td></td>");
@@ -89,7 +89,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
       });
     });
 
-    if (NeohubManager.getActiveZones().size() > 1 || NeohubManager.getMonitoredZones().size() > 0) {
+    if (NeohubZoneManager.getActiveZones().size() > 1 || NeohubZoneManager.getMonitoredZones().size() > 0) {
       html.block("Zones", [this, &html]{
         html.element("table", "class='monitor-table tight'", [this, &html]{
           html.print("<thead>");
@@ -98,8 +98,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.print("</thead>");
           time_t now = time(nullptr);
           html.element("tbody", [this, now, &html]{
-            for (NeohubZone z: NeohubManager.getActiveZones()) {
-              NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+            for (NeohubZone z: NeohubZoneManager.getActiveZones()) {
+              NeohubZoneData *d = NeohubZoneManager.getZoneData(z.id);
               if (!d) continue;
               html.element("tr", [this, now, &html, d] {
 
@@ -127,8 +127,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
               });
             }
 
-            for (NeohubZone z: NeohubManager.getMonitoredZones()) {
-              NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+            for (NeohubZone z: NeohubZoneManager.getMonitoredZones()) {
+              NeohubZoneData *d = NeohubZoneManager.getZoneData(z.id);
               if (!d) continue;
               html.element("tr", [this, now, &html, d] {
 
@@ -289,8 +289,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
   }
 
   i = 0;
-  for (NeohubZone z: NeohubManager.getActiveZones()) {
-    NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+  for (NeohubZone z: NeohubZoneManager.getActiveZones()) {
+    NeohubZoneData *d = NeohubZoneManager.getZoneData(z.id);
     if (d) {
       statusJson["zones"][i]["id"] = d->zone.id;
       if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
@@ -306,8 +306,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
       i++;
     }
   }
-  for (NeohubZone z: NeohubManager.getMonitoredZones()) {
-    NeohubZoneData *d = NeohubManager.getZoneData(z.id);
+  for (NeohubZone z: NeohubZoneManager.getMonitoredZones()) {
+    NeohubZoneData *d = NeohubZoneManager.getZoneData(z.id);
     if (d) {
       statusJson["zones"][i]["id"] = d->zone.id;
       if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {

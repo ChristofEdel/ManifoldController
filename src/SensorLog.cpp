@@ -5,7 +5,7 @@
 #include "SensorMap.h"
 #include "ValveManager.h"
 #include "SensorLog.h"
-#include "NeohubManager.h"
+#include "NeohubZoneManager.h"
 #include "ValveManager.h"
 #include "Filesystem.h"
 
@@ -97,8 +97,8 @@ String getSensorLogLine()
 
     // All room sensors
 
-    for (NeohubZone z : NeohubManager.getActiveZones()) {
-        NeohubZoneData* d = NeohubManager.getZoneData(z.id);
+    for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (!d) { result += ",,"; continue; }
         result += ",";
         if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
@@ -110,8 +110,8 @@ String getSensorLogLine()
         }
     }
 
-    for (NeohubZone z : NeohubManager.getMonitoredZones()) {
-        NeohubZoneData* d = NeohubManager.getZoneData(z.id);
+    for (NeohubZone z : NeohubZoneManager.getMonitoredZones()) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (!d) { result += ",,"; continue; }
         result += ",";
         if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
@@ -156,14 +156,14 @@ String getSensorHeaderLine()
     String flowSensorId = Config.getFlowSensorId();
     String returnSensorId = Config.getReturnSensorId();
 
-    for (NeohubZone z : NeohubManager.getActiveZones()) {
+    for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
         result += ",";
         result += z.name;
         result += ",";
         result += z.name + "Floor";
     }
 
-    for (NeohubZone z : NeohubManager.getMonitoredZones()) {
+    for (NeohubZone z : NeohubZoneManager.getMonitoredZones()) {
         result += ",";
         result += z.name;
         result += ",";

@@ -9,7 +9,6 @@
 #include "freertos/idf_additions.h"
 #include "styles_string.h"
 #include "scripts_string.h"
-#include "NeohubManager.h"
 #include "EspTools.h"
 
 CMyWebServer MyWebServer;
@@ -65,7 +64,6 @@ void CMyWebServer::setup()
     this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_POST,[this](AsyncWebServerRequest *r) { this->executeCommand(r); }, nullptr, CMyWebServer::assemblePostBody);
     this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
 
     // Catch-all: no random file links
     this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });
@@ -107,36 +105,6 @@ AsyncResponseStream* CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest* 
 void CMyWebServer::finishHttpHtmlResponse(AsyncResponseStream* response)
 {
     response->println("</div></body></html>");
-}
-
-void CMyWebServer::respondFromNeohub(AsyncWebServerRequest* r)
-{
-    const int timeoutMillis = 2000;
-    bool disconnected = false;
-    int responseCode = 200;
-    String responseString;
-
-    String* body = (String*)r->_tempObject;
-    r->_tempObject = nullptr; // take ownership of the body
-    if (!body) {
-        responseCode = 400;
-        responseString = "{ \"error\": \"Empty request\" }";
-    }
-    else {
-        responseString = NeohubManager.neohubCommand(*body, timeoutMillis);
-
-        if (responseString == emptyString) {
-            responseCode = 400;
-            responseString = "{ \"error\": \"Unable to retrieve data from Neohub\" }";
-        }
-    }
-    delete body;
-    
-    AsyncWebServerResponse* response = r->beginResponse(responseCode, "application/json", responseString);
-    response->addHeader("Access-Control-Allow-Origin", "*");
-    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-    r->send(response);
 }
 
 void CMyWebServer::assemblePostBody(

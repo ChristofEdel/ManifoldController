@@ -1,5 +1,5 @@
 #include "../MyWebServer.h"
-#include "NeohubManager.h"
+#include "NeohubConnection.h"
 #include "ESPmDNS.h"
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
@@ -145,9 +145,8 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
   }
 
   if (reconnectNeohub) {
-    NeohubManager.reconnect();
+    NeohubConnection.reconnect();
   }
-
 
   // After processing POST, respond with the config page again
   if (!hostnameChanged) {

@@ -40,9 +40,6 @@ class CMyWebServer {
     void processBacktraceRequest(AsyncWebServerRequest* request);
     void processMessageLogRequest(AsyncWebServerRequest* request);
 
-    // Heatmiser Neohub pass-through
-    void respondFromNeohub(AsyncWebServerRequest* request);
-
     // HTML pages - main functions
     AsyncResponseStream* startHttpHtmlResponse(AsyncWebServerRequest* request);
     void finishHttpHtmlResponse(AsyncResponseStream* response);

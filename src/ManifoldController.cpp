@@ -10,7 +10,7 @@
 #include "MyMutex.h"
 #include "MyRtc.h"   // Real time clock
 #include "MyWiFi.h"  // WiFi access
-#include "NeohubManager.h"
+#include "NeohubZoneManager.h"
 #include "OneWireManager.h"  // OneWire temperature sensor reading and management
 #include "SensorMap.h"       // Sensor name mapping
 #include "ValveManager.h"
@@ -251,8 +251,8 @@ void manageValveControls()
     // Update the timestamp when we collected the lastest room temperature if we can obtain at least one
     int tempCount = 0;
     double temperatureTotal = 0;
-    for (NeohubZone z : NeohubManager.getActiveZones()) {
-        NeohubZoneData* d = NeohubManager.getZoneData(z.id);
+    for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (d && d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
             if (d->lastUpdate > ValveManager.timestamps.roomDataLoadTime) ValveManager.timestamps.roomDataLoadTime = d->lastUpdate;
             temperatureTotal += d->roomTemperature;
