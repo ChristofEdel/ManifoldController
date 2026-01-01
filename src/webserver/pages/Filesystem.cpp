@@ -16,11 +16,7 @@ void CMyWebServer::processFileRequest(AsyncWebServerRequest *request) {
     }
 
     // Open the file briefly and check for existence and what it is
-    if (!Filesystem.lock()) {
-        request->send(400, "text/plain", "Unable to lock filesystem");
-        return;
-    }
-
+    Filesystem.lock();
     File f = Filesystem.open(fileName, FILE_READ);
     bool exists = f;
     bool isDir = f.isDirectory();
@@ -101,10 +97,8 @@ void CMyWebServer::processMessageLogRequest(AsyncWebServerRequest* request)
 
 size_t CMyWebServer::sendFileChunk(WebResponseContext* context, uint8_t* buffer, size_t maxLen, size_t fromPosition)
 {
-    // Acquire a lock. If we can't we end this file.
-    if (!Filesystem.lock()) return 0;
-
     // Open the file and stop if we can't
+    Filesystem.lock();
     File file = Filesystem.open(context->fileName, FILE_READ);
     if (!file) {
         delete context;
@@ -249,10 +243,10 @@ void CMyWebServer::processDeleteFileRequest(AsyncWebServerRequest* request)
 
         bool result = false;
 
-        if (Filesystem.lock()) {
-            result = Filesystem.remove(path);
-            Filesystem.unlock();
-        }
+        Filesystem.lock();
+        result = Filesystem.remove(path);
+        Filesystem.unlock();
+        
         if (result)
             request->send(200, "text/plain", "file deleted");
         else

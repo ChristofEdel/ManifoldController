@@ -20,10 +20,9 @@ void logSensors()
 {
     char* dataFileName = getSensorDataFileName();
     bool fileExists = false;
-    if (Filesystem.lock()) {
-        fileExists = !Filesystem.exists(dataFileName);
-        Filesystem.unlock();
-    }
+    Filesystem.lock();
+    fileExists = !Filesystem.exists(dataFileName);
+    Filesystem.unlock();
 
     String logLine = getSensorLogLine();
     String headerLine;
@@ -32,21 +31,20 @@ void logSensors()
         SensorMap.clearChanged();
     }
 
-    if (Filesystem.lock()) {
+    Filesystem.lock();
 
-        File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
-        
-        if (dataFile) {
-            if (headerLine != "") dataFile.println(headerLine);
-            dataFile.println(logLine);
-            dataFile.close();
-            Filesystem.unlock();
-        }
-        else {
-            Filesystem.unlock();
-            MyLog.print("error opening ");
-            MyLog.println(dataFileName);
-        }
+    File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
+    
+    if (dataFile) {
+        if (headerLine != "") dataFile.println(headerLine);
+        dataFile.println(logLine);
+        dataFile.close();
+        Filesystem.unlock();
+    }
+    else {
+        Filesystem.unlock();
+        MyLog.print("error opening ");
+        MyLog.println(dataFileName);
     }
 }
 
@@ -55,14 +53,13 @@ void logSensorHeaderLine()
     String headerLine = getSensorHeaderLine();
     char* dataFileName = getSensorDataFileName();
 
-    if (Filesystem.lock()) {
-        File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
-        if (dataFile) {
-            dataFile.println(headerLine);
-            dataFile.close();
-        }
-        Filesystem.unlock();
+    Filesystem.lock();
+    File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
+    if (dataFile) {
+        dataFile.println(headerLine);
+        dataFile.close();
     }
+    Filesystem.unlock();
 }
 
 String getSensorLogLine()
