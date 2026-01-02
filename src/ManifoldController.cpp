@@ -46,9 +46,9 @@ void setup()
     if (Config.getNeohubProxyEnabled()) {
         NeohubProxyServer.start();
     }
-    // else {
-    //     NeohubProxyClient.start();
-    // }
+    else {
+        NeohubProxyClient.start();
+    }
     
     // Initialise the valve manager from the configuration
     ValveManager.setup();

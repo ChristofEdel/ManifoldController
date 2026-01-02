@@ -1,6 +1,8 @@
 #include "../MyWebServer.h"
 #include "NeohubConnection.h"
 #include "ESPmDNS.h"
+#include "StringTools.h"
+#include "NeohubProxy.h"
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
@@ -35,6 +37,12 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
             html.fieldTableInput("name='nh_token' style='width: 20em'",Config.getNeohubToken().c_str());
           });
           html.print("<tr><th colspan=2><a href='/messagelog.txt'>Message Log</a></th></tr>");
+          html.fieldTableRow("Enable Proxy", [&html]{
+            html.element("td", "style='text-align: left'", [&html] {
+              html.print("<input type='hidden' name='nh_proxy' value='false'>");
+              html.printf("<input type='checkbox' name='nh_proxy' value='true'%s>", Config.getNeohubProxyEnabled() ? " checked" : "");
+            });
+          });
         });
       });
 
@@ -132,6 +140,21 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     if (key == "nh_token" && p->value() != Config.getNeohubToken()) {
       Config.setNeohubToken(p->value());
       changesMade = true;
+    }
+    if(key == "nh_proxy") {
+      bool value = p->value() == "true";
+      if (value != Config.getNeohubProxyEnabled()) {
+        changesMade = true;
+        Config.setNeohubProxyEnabled(value);
+        if (value == false) {
+          NeohubProxyServer.stop();
+          NeohubProxyClient.start();
+        }
+        else {
+          NeohubProxyClient.stop();
+          NeohubProxyServer.start();
+        }
+      }
     }
     if (key == "hc_url" && p->value() != Config.getHeatingControllerAddress()) {
       Config.setHeatingControllerAddress(p->value());
