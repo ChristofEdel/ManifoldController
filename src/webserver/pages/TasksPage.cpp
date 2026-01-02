@@ -23,7 +23,8 @@ KnownTask knownTasks[] = {
     {"ipc1",           "OS       |         | Inter-Processer Communication"},
     {"BgFileWriter",   "APP      |         | Backrgound (log) file writer"},
     {"Watchdogs",      "APP      |         | Watchdogs"},
-    {"NeohubProxy",    "APP      |         | Neohub proxy polling loop"},
+    {"NeohubProxy",    "APP      |         | Neohub data proxy server polling loop"},
+    {"UdpClient",      "APP      |         | UDP receiver task for neohub proxy client"},
     { nullptr,         "?        | ?       | ?" }
 };
 
