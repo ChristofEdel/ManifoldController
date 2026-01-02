@@ -7,7 +7,8 @@
 #include "NeohubZoneManager.h"
 #include "ManifoldConnections.h"
 #include "MyWifi.h"
-#include "sensorLog.h"
+#include "SensorLog.h"
+#include "NeohubProxy.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -41,6 +42,13 @@ void triggerValveControls(bool);
 void setup()
 {
     ManifoldController.setup();
+
+    if (Config.getNeohubProxyEnabled()) {
+        NeohubProxyServer.start();
+    }
+    // else {
+    //     NeohubProxyClient.start();
+    // }
     
     // Initialise the valve manager from the configuration
     ValveManager.setup();

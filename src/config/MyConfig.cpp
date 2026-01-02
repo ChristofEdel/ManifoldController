@@ -15,6 +15,7 @@ void CConfig::save() const
     configJson["hostname"]                 = hostname;
     configJson["neohubAddress"]            = neohubAddress;
     configJson["neohubToken"]              = neohubToken;
+    configJson["neohubProxyEnabled"]       = neohubProxyEnabled;
     configJson["heatingControllerAddress"] = heatingControllerAddress;
 
     configJson["flowMaxSetpoint"]          = flowMaxSetpoint;
@@ -108,6 +109,7 @@ void CConfig::load()
     hostname                    = configJson["hostname"] | emptyString;
     neohubAddress               = configJson["neohubAddress"] | emptyString;
     neohubToken                 = configJson["neohubToken"] | emptyString;
+    neohubProxyEnabled          = configJson["neohubProxyEnabled"].as<bool>();
     heatingControllerAddress    = configJson["heatingControllerAddress"] | emptyString;
 
     flowMaxSetpoint             = configJson["flowMaxSetpoint"];
