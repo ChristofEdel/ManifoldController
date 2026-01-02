@@ -1,13 +1,13 @@
-#include <SdFat.h>
 #include "MyConfig.h"
 
-#include "NeohubManager.h"
+#include "NeohubZoneManager.h"
 #include "MyLog.h"
 #include "SensorMap.h"
+#include "Filesystem.h"
 
 CConfig Config;
 
-void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) const
+void CConfig::save() const
 {
     JsonDocument configJson;
 
@@ -15,6 +15,7 @@ void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) c
     configJson["hostname"]                 = hostname;
     configJson["neohubAddress"]            = neohubAddress;
     configJson["neohubToken"]              = neohubToken;
+    configJson["neohubProxyEnabled"]       = neohubProxyEnabled;
     configJson["heatingControllerAddress"] = heatingControllerAddress;
 
     configJson["flowMaxSetpoint"]          = flowMaxSetpoint;
@@ -39,54 +40,61 @@ void CConfig::saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) c
     }
 
     int i = 0;
-    for (auto z : NeohubManager.getActiveZones()) {
+    for (auto z : NeohubZoneManager.getAllZones()) {
+        configJson["zones"][i]["id"] = z.id;
+        configJson["zones"][i]["name"] = z.name;
+        i++;
+    }
+
+    i = 0;
+    for (auto z : NeohubZoneManager.getActiveZones()) {
         configJson["activeZones"][i]["id"] = z.id;
         configJson["activeZones"][i]["name"] = z.name;
         i++;
     }
 
     i = 0;
-    for (auto z : NeohubManager.getMonitoredZones()) {
+    for (auto z : NeohubZoneManager.getMonitoredZones()) {
         configJson["monitoredZones"][i]["id"] = z.id;
         configJson["monitoredZones"][i]["name"] = z.name;
         i++;
     }
 
     // Serialize to SD card
-    MyLog.print("Saving configuration...");
-    if (fsMutex.lock(__PRETTY_FUNCTION__)) {
-        FsFile file = fs.open(filename, O_WRONLY | O_CREAT | O_TRUNC);
-        if (!file) {
-            fsMutex.unlock();
-            MyLog.print("Failed to open config file for writing: ");
-            MyLog.println(filename);
-            return;
-        }
-        serializeJsonPretty(configJson, file);
-        file.close();
-        fsMutex.unlock();
+    MyLog.print("Saving configuration...");\
+
+    Filesystem.lock();
+    File file = Filesystem.open(fileName, FILE_WRITE);
+    if (!file) {
+        Filesystem.unlock();
+        MyLog.printf("Failed to open config file '%s' for writing\n", fileName);
+        return;
     }
+    serializeJsonPretty(configJson, file);
+    file.close();
+    Filesystem.unlock();
+
     MyLog.println("done");
 }
 
-void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename)
+void CConfig::load()
 {
     MyLog.print("Loading configuration...");
 
     String contents;
-    if (fsMutex.lock(__PRETTY_FUNCTION__)) {
-        FsFile file = fs.open(filename, O_RDONLY);
-        if (!file) {
-            fsMutex.unlock();
-            MyLog.println("Failed to open config file");
-            this->applyDefaults();
-            return;
-        }
-
-        contents = file.readString();
-        file.close();
-        fsMutex.unlock();
+    Filesystem.lock();
+    File file = Filesystem.open(fileName, FILE_READ);
+    if (!file) file = Filesystem.open("/sdcard/config.json", FILE_READ);   // old name / location
+    if (!file) {
+        Filesystem.unlock();
+        MyLog.printf("Failed to open config file %s for reading\n", fileName);
+        this->applyDefaults();
+        return;
     }
+
+    contents = file.readString();
+    file.close();
+    Filesystem.unlock();
 
     JsonDocument configJson;
     DeserializationError error = deserializeJson(configJson, contents);
@@ -101,6 +109,7 @@ void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename)
     hostname                    = configJson["hostname"] | emptyString;
     neohubAddress               = configJson["neohubAddress"] | emptyString;
     neohubToken                 = configJson["neohubToken"] | emptyString;
+    neohubProxyEnabled          = configJson["neohubProxyEnabled"].as<bool>();
     heatingControllerAddress    = configJson["heatingControllerAddress"] | emptyString;
 
     flowMaxSetpoint             = configJson["flowMaxSetpoint"];
@@ -126,16 +135,22 @@ void CConfig::loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename)
     }
 
     // Iterate over zones
+    JsonArray zones = configJson["zones"].as<JsonArray>();
+    NeohubZoneManager.clearZones();
+    for (JsonObject zone : zones) {
+        NeohubZoneManager.addZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
+    }
+
     JsonArray activeZones = configJson["activeZones"].as<JsonArray>();
-    NeohubManager.clearActiveZones();
+    NeohubZoneManager.clearActiveZones();
     for (JsonObject zone : activeZones) {
-        NeohubManager.addActiveZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
+        NeohubZoneManager.addActiveZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
     }
 
     JsonArray monitoredZones = configJson["monitoredZones"].as<JsonArray>();
-    NeohubManager.clearMonitoredZones();
+    NeohubZoneManager.clearMonitoredZones();
     for (JsonObject zone : monitoredZones) {
-        NeohubManager.addMonitoredZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
+        NeohubZoneManager.addMonitoredZone(NeohubZone(zone["id"].as<int>(), zone["name"].as<String>()));
     }
 
     MyLog.println("done");

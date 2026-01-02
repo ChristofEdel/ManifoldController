@@ -14,6 +14,7 @@ class CConfig {
     String hostname;
     String neohubAddress;
     String neohubToken;
+    bool neohubProxyEnabled;
     String heatingControllerAddress;
 
     double flowMaxSetpoint;
@@ -31,11 +32,14 @@ class CConfig {
     double roomProportionalGain;
     double roomIntegralMinutes;
 
+    const char* fileName = "/flash/config.json";
+
   public:
     inline const String& getName() const { return name; };
     inline const String& getHostname() const { return hostname; };
     inline const String& getNeohubAddress() const { return neohubAddress; };
     inline const String& getNeohubToken() const { return neohubToken; };
+    inline const bool getNeohubProxyEnabled() const { return neohubProxyEnabled; };
     inline const String& getHeatingControllerAddress() const { return heatingControllerAddress; };
 
     inline double getFlowMaxSetpoint() const { return flowMaxSetpoint; };
@@ -57,6 +61,7 @@ class CConfig {
     inline void setName(const String& value) { name = value; };
     inline void setNeohubAddress(const String& value) { neohubAddress = value; };
     inline void setNeohubToken(const String& value) { neohubToken = value; };
+    inline void setNeohubProxyEnabled(bool value)  { neohubProxyEnabled = value; };
     inline void setHeatingControllerAddress(const String& value) { heatingControllerAddress = value; };
 
     inline void setFlowMaxSetpoint(double value) { flowMaxSetpoint = value; };
@@ -74,8 +79,8 @@ class CConfig {
     inline void setRoomProportionalGain(double value) { roomProportionalGain = value; };
     inline void setRoomIntegralMinutes(double value) { roomIntegralMinutes = value; };
 
-    void saveToSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename) const;
-    void loadFromSdCard(SdFs& fs, MyMutex& fsMutex, const String& filename);
+    void save() const;
+    void load();
 
     void applyDefaults();
     void print(CMyLog& p) const;

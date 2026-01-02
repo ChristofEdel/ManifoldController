@@ -20,6 +20,8 @@ const char STYLES_CSS_STRING[] PROGMEM = R"RAW_STRING(
   --bg-odd:              var(--bg-global);
   --bg-warning:          yellow;
   --bg-error:            red;
+  --bg-inverted:         black;
+  --text-inverted:       white;
   --text-warning:        black;
   --text-error:          white;
   --color-red:           red;
@@ -328,6 +330,12 @@ table.monitor-table > tbody > tr > th.active {
     font-weight: bold;
 }
 
+table.field-table > tbody > tr > td.data-is-off,
+table.monitor-table > tbody > tr > td.data-is-off {
+    background-color: var(--bg-inverted);
+    color: var(--text-inverted);
+    font-weight: bold;
+}
 table.field-table > tbody > tr > td.data-is-aged,
 table.monitor-table > tbody > tr > td.data-is-aged {
     background-color: var(--bg-warning);

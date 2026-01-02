@@ -2,9 +2,11 @@
 //
 // General helper functions
 //
-function fmt(value, digits) {
+function fmt(value, digits, sign) {
     var x = Number(value).toFixed(digits)
-    if (x == "NaN") x = value
+    if (x == "NaN") return value; // probably non-numerical text, return 1:1
+    // Number, prepend + sign if requested
+    if (sign === "+" && x > 0) return "+" + x
     return x
 }
 
@@ -290,7 +292,7 @@ function openSetValueDialog(element, title, command) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// Monitor anc Config page - data refresh
+// Monitor and Config page - data refresh
 //
 
 function monitorPage_refreshData() {
@@ -306,13 +308,17 @@ function monitorPage_refreshData() {
             if(data.roomTemperature > -50) {
                 $("#roomTemperature").text(fmt(data.roomTemperature, 1))
                 var d = fmt(data.roomError, 1)
-                if (fmt != '0.0' && data.roomError > 0) d = '+' + d
                 $("#roomError").text(d)
             }
             else {
                 $("#roomTemperature").text("")
                 $("#roomError").text("")
             }
+            var ageClass="";
+            if (data.roomTemperatureAged) ageClass="data-is-aged"
+            if (data.roomTemperatureDead) ageClass="data-is-dead"
+            $("#roomTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
+
             $("#roomP").text(fmt(data.roomProportionalTerm, 1))
             $("#roomI").text(fmt(data.roomIntegralTerm, 1))
             $("#roomAged").toggle(data.roomAged)
@@ -321,14 +327,18 @@ function monitorPage_refreshData() {
             $("#flowSetpoint").text(fmt(data.flowSetpoint, 1))
             if(data.flowTemperature > -50) {
                 $("#flowTemperature").text(fmt(data.flowTemperature, 1))
-                d = fmt(data.flowError, 1)
-                if (fmt != '0.0' && data.flowError > 0) d = '+' + d
+                d = fmt(data.flowError, 1, "+")
                 $("#flowError").text(d)
             }
             else {
                 $("#flowTemperature").text("")
                 $("#flowError").text("")
             }
+            var ageClass="";
+            if (data.flowTemperatureAged) ageClass="data-is-aged"
+            if (data.flowTemperatureDead) ageClass="data-is-dead"
+            $("#flowTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
+
             $("#flowP").text(fmt(data.flowProportionalTerm, 1))
             $("#flowI").text(fmt(data.flowIntegralTerm, 1))
             $("#flowAged").toggle(data.flowAged)
@@ -358,18 +368,8 @@ function monitorPage_refreshData() {
                     $("#z" + zone.id + "-floor-temp").text(fmt(zone.foorTemperature, 1))
                     $("#z" + zone.id + "-aged").toggle(zone.isAged)
                     $("#z" + zone.id + "-dead").toggle(zone.isDead)
-                    if (zone.roomOff) {
-                        $("#z" + zone.id + "-room-temp").closest("td").addClass("off")
-                    }
-                    else {
-                        $("#z" + zone.id + "-room-temp").closest("td").removeClass("off")
-                    }
-                    if (zone.floorOff) {
-                        $("#z" + zone.id + "-floor-temp").closest("td").addClass("off")
-                    }
-                    else {
-                        $("#z" + zone.id + "-floor-temp").closest("td").removeClass("off")
-                    }
+                    $("#z" + zone.id + "-room-off").toggle(zone.roomOff)
+                    $("#z" + zone.id + "-floor-off").toggle(zone.floorOff)
                 })
             }
         },
@@ -425,12 +425,13 @@ $(function () {
     $('.delete-file').on('click', function (e) {
         e.preventDefault()
         const $row = $(this).closest('tr')
-        const fileName = $row.find("a").first().text()
+        const fileName = $row.find("a").first().attr('href')
         $.ajax({
             url: "/delete-file",
             method: "POST",
             data: { filename: fileName },
             success: function () {
+                if (fileName == "/coredump.elf") $row.next('tr').remove()
                 $row.remove()
             },
             error: function () {

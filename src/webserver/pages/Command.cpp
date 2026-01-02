@@ -1,7 +1,7 @@
 #include "HtmlGenerator.h"
 #include "../MyWebServer.h"
 #include "MyLog.h"
-#include "NeohubManager.h"
+#include "NeohubZoneManager.h"
 #include "ValveManager.h"
 #include "StringTools.h"
 
@@ -51,12 +51,16 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
     JsonDocument responseJson;
 
     const String* body = (String*)request->_tempObject;
+    request->_tempObject = nullptr; // take ownership of the body
+
     if (!body || *body == emptyString) {
         request->send(makeCommandResponse(request, 400, "{ \"error\": \"Empty request\" }"));
+        if (body) delete body;
         return;
     }
 
     DeserializationError error = deserializeJson(commandJson, *body);
+    delete body;
     if (error) {
         request->send(makeCommandResponse(request, 400, "{ \"error\": \"Invalid Json\" }"));
         return;
@@ -110,16 +114,16 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
 
     else if (command == "GetZoneStatus" || command == "ZoneOn" || command == "ZoneOff" || command == "ZoneAuto") {
         int zoneId = commandJson["zoneId"].as<int>();
-        String zoneName = NeohubManager.getZoneName(zoneId);
+        String zoneName = NeohubZoneManager.getZoneName(zoneId);
         if (zoneName == emptyString) {
             request->send(makeCommandResponse(request, 400, "{ \"error\": \"unknown zone\" }"));
             return;
         }
         NeohubZoneData* zd;
-        if (command == "GetZoneStatus") zd = NeohubManager.getZoneData(zoneName, /* forceLoad: */ true);
-        else if (command == "ZoneOn") zd = NeohubManager.forceZoneOn(zoneName);
-        else if (command == "ZoneOff") zd = NeohubManager.forceZoneOff(zoneName);
-        else if (command == "ZoneAuto") zd = NeohubManager.setZoneToAutomatic(zoneName);
+        if (command == "GetZoneStatus") zd = NeohubConnection.loadZoneData(zoneName);
+        else if (command == "ZoneOn") zd = NeohubConnection.forceZoneOn(zoneName);
+        else if (command == "ZoneOff") zd = NeohubConnection.forceZoneOff(zoneName);
+        else if (command == "ZoneAuto") zd = NeohubConnection.setZoneToAutomatic(zoneName);
         if (!zd) {
             request->send(makeCommandResponse(request, 400, "{ \"error\": \"unable to configure zone\" }"));
             return;

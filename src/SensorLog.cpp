@@ -5,17 +5,14 @@
 #include "SensorMap.h"
 #include "ValveManager.h"
 #include "SensorLog.h"
-#include "NeohubManager.h"
+#include "NeohubZoneManager.h"
 #include "ValveManager.h"
-#include <SdFat.h>
+#include "Filesystem.h"
 
-extern MyMutex sdCardMutex;
-extern SdFs sd;
-
-char sensorDataFileName[] = "Sensor Values yyyy-mm-dd.csv";
+char sensorDataFileName[] = "/sdcard/Sensor Values yyyy-mm-dd.csv";
 char* getSensorDataFileName()
 {
-    sprintf(sensorDataFileName, "Sensor Values %s.csv", MyRtc.getTime().getDateText().c_str());
+    sprintf(sensorDataFileName, "/sdcard/Sensor Values %s.csv", MyRtc.getTime().getDateText().c_str());
     return sensorDataFileName;
 }
 
@@ -23,10 +20,9 @@ void logSensors()
 {
     char* dataFileName = getSensorDataFileName();
     bool fileExists = false;
-    if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
-        fileExists = !sd.exists(dataFileName);
-        sdCardMutex.unlock();
-    }
+    Filesystem.lock();
+    fileExists = !Filesystem.exists(dataFileName);
+    Filesystem.unlock();
 
     String logLine = getSensorLogLine();
     String headerLine;
@@ -35,21 +31,20 @@ void logSensors()
         SensorMap.clearChanged();
     }
 
-    if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
+    Filesystem.lock();
 
-        FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
-        
-        if (dataFile && dataFile.isOpen()) {
-            if (headerLine != "") dataFile.println(headerLine);
-            dataFile.println(logLine);
-            dataFile.close();
-            sdCardMutex.unlock();
-        }
-        else {
-            sdCardMutex.unlock();
-            MyLog.print("error opening ");
-            MyLog.println(dataFileName);
-        }
+    File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
+    
+    if (dataFile) {
+        if (headerLine != "") dataFile.println(headerLine);
+        dataFile.println(logLine);
+        dataFile.close();
+        Filesystem.unlock();
+    }
+    else {
+        Filesystem.unlock();
+        MyLog.print("error opening ");
+        MyLog.println(dataFileName);
     }
 }
 
@@ -58,14 +53,13 @@ void logSensorHeaderLine()
     String headerLine = getSensorHeaderLine();
     char* dataFileName = getSensorDataFileName();
 
-    if (sdCardMutex.lock(__PRETTY_FUNCTION__)) {
-        FsFile dataFile = sd.open(dataFileName, (O_RDWR | O_CREAT | O_AT_END));
-        if (dataFile && dataFile.isOpen()) {
-            dataFile.println(headerLine);
-            dataFile.close();
-        }
-        sdCardMutex.unlock();
+    Filesystem.lock();
+    File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
+    if (dataFile) {
+        dataFile.println(headerLine);
+        dataFile.close();
     }
+    Filesystem.unlock();
 }
 
 String getSensorLogLine()
@@ -100,8 +94,8 @@ String getSensorLogLine()
 
     // All room sensors
 
-    for (NeohubZone z : NeohubManager.getActiveZones()) {
-        NeohubZoneData* d = NeohubManager.getZoneData(z.id);
+    for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (!d) { result += ",,"; continue; }
         result += ",";
         if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
@@ -113,8 +107,8 @@ String getSensorLogLine()
         }
     }
 
-    for (NeohubZone z : NeohubManager.getMonitoredZones()) {
-        NeohubZoneData* d = NeohubManager.getZoneData(z.id);
+    for (NeohubZone z : NeohubZoneManager.getMonitoredZones()) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (!d) { result += ",,"; continue; }
         result += ",";
         if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
@@ -159,14 +153,14 @@ String getSensorHeaderLine()
     String flowSensorId = Config.getFlowSensorId();
     String returnSensorId = Config.getReturnSensorId();
 
-    for (NeohubZone z : NeohubManager.getActiveZones()) {
+    for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
         result += ",";
         result += z.name;
         result += ",";
         result += z.name + "Floor";
     }
 
-    for (NeohubZone z : NeohubManager.getMonitoredZones()) {
+    for (NeohubZone z : NeohubZoneManager.getMonitoredZones()) {
         result += ",";
         result += z.name;
         result += ",";

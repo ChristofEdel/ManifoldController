@@ -9,7 +9,6 @@
 #include "freertos/idf_additions.h"
 #include "styles_string.h"
 #include "scripts_string.h"
-#include "NeohubManager.h"
 #include "EspTools.h"
 
 CMyWebServer MyWebServer;
@@ -30,33 +29,44 @@ String methodToString(WebRequestMethodComposite m)
     }
 }
 
-void CMyWebServer::setup(SdFs *sd, MyMutex *sdMutex)
+void CMyWebServer::setup()
 {
-    this->m_sd = sd;
-    this->m_sdMutex = sdMutex;
     this->m_server.on(AsyncURIMatcher::exact("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/"); });
+
+    // Filesystem
+    this->m_server.on(AsyncURIMatcher::exact("/sdcard"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/sdcard"); });
+    this->m_server.on(AsyncURIMatcher::dir  ("/sdcard"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/flash"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithDirectory(r, "/flash"); });
+    this->m_server.on(AsyncURIMatcher::dir  ("/flash"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/delete-file"),   HTTP_POST,[this](AsyncWebServerRequest *r) { this->processDeleteFileRequest(r); });
-    this->m_server.on(AsyncURIMatcher::dir  ("/files"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->processFileRequest(r); });
+
+    // Static files
+    this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
+    this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
+
+    // Core dumps and other debug helpers
     this->m_server.on(AsyncURIMatcher::exact("/coredump.elf"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCoreDumpRequest(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/coredump.bin"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCoreDumpRequest(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/crashlog.txt"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCrashLogRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/backtrace.txt"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->processBacktraceRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/messagelog.txt"),HTTP_GET, [this](AsyncWebServerRequest *r) { this->processMessageLogRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
+    this->m_server.on(AsyncURIMatcher::exact("/reset"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareReset(SW_RESET_USER_RESET); });
+
+    // Web pages
     this->m_server.on(AsyncURIMatcher::exact("/monitor"),       HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithMonitorPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithSystemConfigPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config-system"), HTTP_POST,[this](AsyncWebServerRequest *r) { this->processSystemConfigPagePost(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithHeatingConfigPage(r); });
     this->m_server.on(AsyncURIMatcher::exact("/config"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->processHeatingConfigPagePost(r); });
     this->m_server.on(AsyncURIMatcher::exact("/tasks"),         HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithTaskList(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
-    this->m_server.on(AsyncURIMatcher::exact("/reset"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareReset(SW_RESET_USER_RESET); });
-    this->m_server.on(AsyncURIMatcher::exact("/neohub"),        HTTP_POST,[this](AsyncWebServerRequest *r) { this->respondFromNeohub(r); }, nullptr, CMyWebServer::assemblePostBody);
+    
+    // JSON
     this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithStatusData(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_POST,[this](AsyncWebServerRequest *r) { this->executeCommand(r); }, nullptr, CMyWebServer::assemblePostBody);
-    this->m_server.on(AsyncURIMatcher::exact("/scripts.js"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/javascript", SCRIPTS_JS_STRING); });
-    this->m_server.on(AsyncURIMatcher::exact("/styles.css"),    HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithString(r, "text/css", STYLES_CSS_STRING); });
-    this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });
-    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/data/status"),   HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
+    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_POST,[this](AsyncWebServerRequest *r) { this->executeCommand(r); }, nullptr, CMyWebServer::assemblePostBody);
+    this->m_server.on(AsyncURIMatcher::exact("/command"),       HTTP_OPTIONS, [this](AsyncWebServerRequest *r) { this->respondToOptionsRequest(r); });
+
+    // Catch-all: no random file links
+    this->m_server.on(AsyncURIMatcher::dir  ("/"),              HTTP_GET, [this](AsyncWebServerRequest *r) { this->respondWithError(r, 404, "File not found"); });
     this->m_server.onNotFound([this](AsyncWebServerRequest *r) { this->respondWithError(r, 400, "Unsupported Method: " + methodToString(r->method()) + " on URL " + r->url()); });
     this->m_server.begin();
 }
@@ -84,8 +94,8 @@ AsyncResponseStream* CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest* 
     response->println("    <link rel='icon' href='data:,'>");
     response->println("    <script src='https://code.jquery.com/jquery-3.7.1.min.js'></script>");
     response->println("    <script src='https://code.jquery.com/ui/1.14.1/jquery-ui.min.js'></script>");
-    response->println("    <script src='scripts.js'></script>");
-    response->println("    <link rel='stylesheet' href='styles.css'>");
+    response->println("    <script src='/scripts.js'></script>");
+    response->println("    <link rel='stylesheet' href='/styles.css'>");
     response->println("  </head>");
     response->println("  <body>");
     response->println("    <div class='page-div'>");
@@ -95,34 +105,6 @@ AsyncResponseStream* CMyWebServer::startHttpHtmlResponse(AsyncWebServerRequest* 
 void CMyWebServer::finishHttpHtmlResponse(AsyncResponseStream* response)
 {
     response->println("</div></body></html>");
-}
-
-void CMyWebServer::respondFromNeohub(AsyncWebServerRequest* r)
-{
-    const int timeoutMillis = 2000;
-    bool disconnected = false;
-    int responseCode = 200;
-    String responseString;
-
-    String* body = (String*)r->_tempObject;
-    if (!body) {
-        responseCode = 400;
-        responseString = "{ \"error\": \"Empty request\" }";
-    }
-    else {
-        responseString = NeohubManager.neohubCommand(*body, timeoutMillis);
-
-        if (responseString == emptyString) {
-            responseCode = 400;
-            responseString = "{ \"error\": \"Unable to retrieve data from Neohub\" }";
-        }
-    }
-
-    AsyncWebServerResponse* response = r->beginResponse(responseCode, "application/json", responseString);
-    response->addHeader("Access-Control-Allow-Origin", "*");
-    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-    r->send(response);
 }
 
 void CMyWebServer::assemblePostBody(
@@ -146,3 +128,17 @@ void CMyWebServer::assemblePostBody(
     // append what we just received
     body->concat((const char*)data, len);
 }
+
+String CMyWebServer::getMimeType(const String &fileName) {
+
+    return 
+        fileName.endsWith(".js.min") ? "application/javascript" : 
+        fileName.endsWith(".js.min.gz") ? "application/javascript" : 
+        fileName.endsWith(".css.min") ? "text/css" : 
+        fileName.endsWith(".css.min.gz") ? "text/css" : 
+        fileName.endsWith(".json") ? "application/json" : 
+        fileName.endsWith(".csv") ? "text/csv" : 
+        fileName.endsWith(".txt") ? "text/plain" : 
+        "application/octet-stream";
+}
+

@@ -1,145 +1,60 @@
 #include <ArduinoOTA.h>
 #include <cppQueue.h>
-
-#include "Arduino.h"
-#include "EspTools.h"
-#include "LedBlink.h"
-#include "MemDebug.h"
-#include "MyConfig.h"
-#include "MyLog.h"  // Logging to serial and, if available, SD card
-#include "MyMutex.h"
-#include "MyRtc.h"   // Real time clock
-#include "MyWiFi.h"  // WiFi access
-#include "NeohubManager.h"
-#include "OneWireManager.h"  // OneWire temperature sensor reading and management
-#include "SensorMap.h"       // Sensor name mapping
+#include "Esp32Controller.h"
 #include "ValveManager.h"
-#include "Watchdog.h"
-#include "webserver/MyWebServer.h"  // Request handing and web page generator
-#include <SdFat.h>                // SD Card with FAT filesystem
+#include "EspTools.h"
+#include "OneWireManager.h"
+#include "NeohubZoneManager.h"
 #include "ManifoldConnections.h"
-#include "BackgroundFileWriter.h"
-#include "sensorLog.h"
+#include "MyWifi.h"
+#include "SensorLog.h"
+#include "NeohubProxy.h"
 
 // Pin Assignments - digital pins --------------------------------
-const uint8_t openThermInPin = A0;  // Repurposed analog pins for OpenTherm module I/O
-const uint8_t openThermOutPin = A1;
-// A2 and A3 - used by I2C bus
-// A4 - A5: available
+//
+// A0, A1  - OpenTherm module
+// A2, A3  - used by I2C bus
+// A4 - A5 - available
 // A6 - A7 - reserved for "230V present" inputs
-const uint8_t i2cSdaPin = D0;  // I2 pins
-const uint8_t i2cSclPin = D1;
-// Pin 2-4: reserved for relays
-const uint8_t oneWirePin = D5;  // OnwWire sensor interface
-// Pin 6/7 - unallocated
-//           pin 7 causes problems with
-//           SPI if used for OneWire,
+// D0, D1  - I2C pins for the 0-10V DAC
+// D2 - D4 - reserverd for relays
+// D5      - OneWire sensor interface line
+// D6      - unallocated
+// D7      - unallocated, causes problems with SPI if used for OneWire,
 //           best avoided!
-// Pin 8/9: Reserved for UART
-const uint8_t sdCardCsPin = D10;  // SD card chip select
-// Pin 11: PIN_SPI_MOSI
-// Pin 12: PIN_SPI_MISO
-// Pin 13: PIN_SPI_SCK
-// Pin 14/15/16: Built-in RGB LED (R/B/G)
+// D8, D9  - reserverd for UART
+// D10     - SD Card chip select
+// D11-D13 - SPI MOSI, MISO, SCK for SD card communication
+// D14-D16 - Built-in RGB LED (R/B/G)
 
-// SD Card access
-SdFs sd;
-MyMutex sdCardMutex("::sdCardMutex");
-#define SD_CONFIG SdSpiConfig(sdCardCsPin, SHARED_SPI, SD_SCK_MHZ(50))
+const uint8_t openThermInPin = A0;   // Repurposed analog pins for OpenTherm module I/O
+const uint8_t openThermOutPin = A1;  //
+const uint8_t i2cSdaPin = D0;        // I2C pins for the 0-10V DAC
+const uint8_t i2cSclPin = D1;        //
+const uint8_t oneWirePin = D5;       // OnwWire sensor interface line
+const uint8_t sdCardCsPin = D10;     // SD card chip select
 
-// The valve position (preserved across resets)
+Esp32Controller ManifoldController(sdCardCsPin, oneWirePin);
 
-void readSensors();
-bool dayChanged();
 void startValveControlTask();
 void triggerValveControls(bool);
 
 void setup()
 {
-    esp_log_level_set("*", ESP_LOG_ERROR);
-    handleReboot();
+    ManifoldController.setup();
 
-    // Set pins immediately so we don't trigger any relays by accident
-    // pinMode(hotWaterValveCallOutPin, OUTPUT);
-    // digitalWrite(heatingValveCallOutPin,LOW);
-
-    // Initialise the serial line and wait for it to be ready
-    Serial.begin(9600);
-
-    const int serialWaitTimeoutMs = 3000;  // Timeout in case we are not debugging
-    unsigned long serialWaitStart = millis();
-    while (!Serial && (millis() - serialWaitStart < serialWaitTimeoutMs)) {
-        delay(100);
+    if (Config.getNeohubProxyEnabled()) {
+        NeohubProxyServer.start();
     }
-
-    // Initialise clock and memory debugging
-    MyRtc.start();
-    setupMemDebug();
-    WatchdogManager.setup();
+    else {
+        NeohubProxyClient.start();
+    }
     
-
-    // Initialise logging to serial
-    MyLog.enableSerialLog();
-    MyLog.logTimestamps(MyRtc);
-
-    MyWebLog.enableSerialLog();
-    MyWebLog.logTimestamps(MyRtc);
-
-    MyCrashLog.logTimestamps(MyRtc);
-
-    MyLog.println("-------------------------------------------------------------------------------------------");
-
-    // Initialise SD card access and start logging to SD card as well
-    MyLog.print("Initializing SD card...");
-    if (!sd.begin(SD_CONFIG)) {
-        sd.initErrorHalt(&Serial);
-    }
-    MyLog.println("done.");
-    BackgroundFileWriter.setup(&sd, &sdCardMutex);
-    MyLog.enableSdCardLog("log.txt");
-    MyWebLog.enableSdCardLog("weblog.txt");
-    MyCrashLog.enableSdCardLog("crashlog.txt");
-
-    MyLog.println("-------------------------------------------------------------------------------------------");
-    Config.loadFromSdCard(sd, sdCardMutex, "config.json");
-    SensorMap.clearChanged();
-
-    MyLog.printlnSdOnly("-------------------------------------------------------------------------------------------");
-
-    // Connect to WiFi and initialise clock
-    MyWiFi.connect();
-    if (Config.getHostname() != "") {
-        MyWiFi.setHostname(Config.getHostname());
-    }
-    MyWiFi.updateRtcFromTimeServer(&MyRtc);
-
-    // Deal with resets and crashes
-    String resetReason = getResetReasonText();
-    String resetMessage = getSoftwareResetMessage();
-
-    MyLog.print("Last reset reason: ");
-    MyLog.println(resetReason);
-    if (resetMessage != emptyString) MyLog.println(resetMessage);
-
-    MyCrashLog.print("RESTART - Last reset reason: ");
-    MyCrashLog.println(resetReason);
-    if (resetMessage != emptyString) MyCrashLog.println(resetMessage);
-    if (getResetReason() == ESP_RST_PANIC || getResetReason() == ESP_RST_INT_WDT) {
-        Esp32CoreDump dump;
-        if (dump.exists()) {
-            dump.writeBacktrace(MyCrashLog);
-        }
-    }
-
-    // Initialisations for several modules
-    setupOta();
-    OneWireManager.setup(oneWirePin);
-    for (int i = 0; i < SensorMap.getCount(); i++) {
-        OneWireManager.addKnownSensor(SensorMap[i]->id.c_str());
-    }
-
+    // Initialise the valve manager from the configuration
     ValveManager.setup();
     ValveManager.setRooomSetpoint(Config.getRoomSetpoint());
+
+    // Sustain the integral (cumulative error) for the controller stages from last start
     MyRtcData *rtcData = getMyRtcData();
     if (rtcData->getLastKnownValveControllerIntegralSet()) {
         MyLog.printf("Initialising valve integral to %.0f%\n", rtcData->getLastKnownValveControllerIntegral());
@@ -149,43 +64,27 @@ void setup()
         MyLog.printf("Initialising flow integral to %.1f\n", rtcData->getLastKnownFlowControllerIntegral());
         ValveManager.setFlowIntegralTerm(rtcData->getLastKnownFlowControllerIntegral());
     }
-    MyWebServer.setup(&sd, &sdCardMutex);
-    ledBlinkSetup();
 
+    // Launch the backgroud task that performs the valve control loop
     startValveControlTask();
 
-    MyLog.println("-------------------------------------------------------------------------------------------");
+    ManifoldController.start();
 
 }
 
 void loop()
 {
     // How often we do what
-    const unsigned long timeSyncInterval = 60 * 60 * 1000;  // Synchronise time every hour
     const unsigned long controlLoopInterval = 1000;         // Read sensors and set control vale poistion
     const unsigned long logFileInterval = 5000;             // log sensor and control values
-    const unsigned long memoryCheckInterval = 10000;        // Check for possible memory leaks
-    const unsigned long blinkInterval = 100;                // Blink so we can see the loop is running
-    const unsigned long otaCheckInterval = 1000;            // Over-The-Air updates
 
     // When we last did that
-    static unsigned long lastTimeSync = 0;
     static unsigned long lastControlLoop = 0;
     static unsigned long lastLogFile = 0;
-    static unsigned long lastMemoryCheck = 0;
-    static unsigned long lastBlink = 0;
-    static unsigned long lastOtaCheck = 0;
     static bool first = true;
 
     // Do stuff
     unsigned long timeNow = millis();
-
-    if (first || timeNow - lastTimeSync >= timeSyncInterval) {
-        lastTimeSync = timeNow;
-        if (!MyWiFi.updateRtcFromTimeServer(&MyRtc)) {
-            MyLog.println("Failed to synchronise real time clock with network");
-        }
-    }
 
     if (first || timeNow - lastControlLoop >= controlLoopInterval) {
         lastControlLoop = timeNow;
@@ -200,41 +99,11 @@ void loop()
             logSensorIssues();
         }
     }
-
-    if (first || timeNow - lastMemoryCheck >= memoryCheckInterval) {
-        lastMemoryCheck = timeNow;
-        checkMemoryChange(4096);  // Report if we have lost more than 4kB since last check
-    }
-
-    if (first || timeNow - lastOtaCheck >= otaCheckInterval) {
-        lastOtaCheck = timeNow;
-        ArduinoOTA.handle();
-    }
-
-    if (first || timeNow - lastBlink >= blinkInterval) {
-        lastBlink = timeNow;
-        ledBlinkLoop();
-    }
-
     first = false;
+
+    // Trigger common loop functions
+    ManifoldController.loop(timeNow);
     delay(10);
-}
-
-int previousDay = -1;
-
-bool dayChanged()
-{
-    time_t now = time(nullptr);
-    struct tm* t = localtime(&now);
-
-    if (previousDay == -1) {
-        previousDay = t->tm_mday;
-        return false;
-    }
-
-    bool changed = (t->tm_mday != previousDay);
-    previousDay = t->tm_mday;
-    return changed;
 }
 
 void readSensors()
@@ -254,8 +123,8 @@ void manageValveControls()
     // Update the timestamp when we collected the lastest room temperature if we can obtain at least one
     int tempCount = 0;
     double temperatureTotal = 0;
-    for (NeohubZone z : NeohubManager.getActiveZones()) {
-        NeohubZoneData* d = NeohubManager.getZoneData(z.id);
+    for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (d && d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
             if (d->lastUpdate > ValveManager.timestamps.roomDataLoadTime) ValveManager.timestamps.roomDataLoadTime = d->lastUpdate;
             temperatureTotal += d->roomTemperature;
@@ -324,6 +193,7 @@ void valveControlTask(void* parameter)
                 const String &host = Config.getHeatingControllerAddress();
                 if (host != "" && host != "null") {
                     ManifoldData data;
+                    time_t now = time(nullptr);
                     String hostname = Config.getHostname();
                     if (hostname != "" && hostname.indexOf('.') == -1) hostname = hostname + ".local";
                     data.name = Config.getName() == "" ? hostname : Config.getName();
@@ -337,6 +207,12 @@ void valveControlTask(void* parameter)
                     data.flowDeltaT = data.flowTemperature - data.flowSetpoint;
                     data.valvePosition = ValveManager.getValvePosition();
                     data.flowDemand = data.flowSetpoint;
+                    data.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
+                    data.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
+                    data.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
+                    data.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
+                    data.uptimeSeconds = uptime();
+
                     ManifoldDataPostJob::post(data, host);
                 }
             }
@@ -366,57 +242,3 @@ void startValveControlTask()
         &valveControlTaskHandle  // Task handle
     );
 }
-
-// SIMULATION
-//
-// // Queue representing the heating loop
-// const int heatingLoopDelaySeconds = 60;
-// const int measurementDelaySeconds = 10;
-// cppQueue	heatingLoop(sizeof(double), heatingLoopDelaySeconds+10, FIFO);
-// cppQueue	measurementDelay(sizeof(double), measurementDelaySeconds+10, FIFO);
-// bool first = true;
-
-// void simulatedManageValveControls()
-// {
-//   double loopInitialTemperature = 35;
-//   double deltaT = 5;
-//   double inputTemperature = 40.0;
-
-//   if (first) {
-//     for (int i = 0; i < heatingLoopDelaySeconds; i++) {
-//       heatingLoop.push(&loopInitialTemperature);
-//     }
-//     for (int i = 0; i < measurementDelaySeconds; i++) {
-//       measurementDelay.push(&loopInitialTemperature);
-//     }
-//     ValveManager.outputs.targetValvePosition = 50;  // half open
-//     first = false;
-//   }
-
-//   double returnTemperature;
-//   heatingLoop.pull(&returnTemperature);
-//   returnTemperature -= deltaT;
-//   double measuredFlowTemperature;
-//   measurementDelay.pull(&measuredFlowTemperature);
-
-//   double flowTemperature = returnTemperature + (inputTemperature - returnTemperature) * ValveManager.outputs.targetValvePosition / 100.0;
-//   heatingLoop.push(&flowTemperature);
-//   measurementDelay.push(&flowTemperature);
-
-//   // ValveManager.setInputs(...);
-//   // float inputTemp = OneWireManager.getCalibratedTemperature(Config.getInputSensorId().c_str());
-//   // float flowTemp = OneWireManager.getCalibratedTemperature(Config.getFlowSensorId().c_str());
-//   // float returnTemp = OneWireManager.getCalibratedTemperature(Config.getReturnSensorId().c_str());
-//   ValveManager.setInputs(inputTemperature, measuredFlowTemperature, returnTemperature);
-//   ValveManager.calculateValvePosition();
-//   ValveManager.sendCurrentOutputs();
-//   Serial.printf(
-//     "In: %0.1lf, Setpoint: %0.1lf, Valve: %0.1lf, Flow: %0.1lf, Return: %0.1lf (calculated flow: %0.1lf)\n",
-//     inputTemperature,
-//     ValveManager.getSetpoint(),
-//     ValveManager.outputs.targetValvePosition,
-//     measuredFlowTemperature,
-//     returnTemperature,
-//     flowTemperature
-//   );
-// }

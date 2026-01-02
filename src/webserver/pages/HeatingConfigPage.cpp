@@ -3,7 +3,7 @@
 #include "HtmlGenerator.h"
 #include "../MyWebServer.h"
 #include "ESPmDNS.h"
-#include "NeohubManager.h"
+#include "NeohubZoneManager.h"
 #include "ValveManager.h"
 
 void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) {
@@ -28,7 +28,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
               html.print("<td class='delete-row'></td>");
             });
             int i = 0;
-            for (NeohubZone z: NeohubManager.getActiveZones()) {
+            for (NeohubZone z: NeohubZoneManager.getActiveZones()) {
               html.element("tr", [this, &html, i, z]{
                 html.print("<td class='handle seq'/>");
                 html.print(String(i+1).c_str());
@@ -55,7 +55,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
               html.print("<td class='delete-row'></td>");
             });
             int i = 0;
-            for (NeohubZone z: NeohubManager.getMonitoredZones()) {
+            for (NeohubZone z: NeohubZoneManager.getMonitoredZones()) {
               html.element("tr", [this, &html, i, z]{
                 html.print("<td class='handle seq'/>");
                 html.print(String(i+1).c_str());
@@ -187,11 +187,11 @@ void CMyWebServer::generateSensorOptions(HtmlGenerator &html, const String &sele
 
 void CMyWebServer::generateZoneOptions(HtmlGenerator &html, int selectedZone)
 {
-  const std::vector<NeohubZoneData> &zones = NeohubManager.getZoneData();
+  std::vector<NeohubZone> zones = NeohubZoneManager.getAllZones();
   html.option("", "Not Selected", false);
-  for (auto &i: zones)
+  for (NeohubZone& i: zones)
   {
-    html.option(String(i.zone.id).c_str(), i.zone.name.c_str(), /* selected: */ selectedZone == i.zone.id);
+    html.option(String(i.id).c_str(), i.name.c_str(), /* selected: */ selectedZone == i.id);
   }
 }
 
@@ -214,8 +214,8 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
   bool flowRangeReconfigured = false; // Flag to determine if the flow range in the
                                       // controller has to be updated
 
-  NeohubManager.clearActiveZones();
-  NeohubManager.clearMonitoredZones();
+  NeohubZoneManager.clearActiveZones();
+  NeohubZoneManager.clearMonitoredZones();
 
   int count = request->params();
   for (int i = 0; i < count; i++) {
@@ -265,23 +265,23 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     }
     else if (key == "zone_a") {
       int id = p->value().toInt();
-      NeohubZoneData *z = NeohubManager.getZoneData(id);
+      NeohubZoneData *z = NeohubZoneManager.getZoneData(id);
       if (z) {
-        NeohubManager.addActiveZone(z->zone);
+        NeohubZoneManager.addActiveZone(z->zone);
       };
     }
     else if (key == "zone_m") {
       int id = p->value().toInt();
-      NeohubZoneData *z = NeohubManager.getZoneData(id);
+      NeohubZoneData *z = NeohubZoneManager.getZoneData(id);
       if (z) {
-        if (NeohubManager.hasActiveZone(z->zone.id)) break;
-        NeohubManager.addMonitoredZone(z->zone);
+        if (NeohubZoneManager.hasActiveZone(z->zone.id)) break;
+        NeohubZoneManager.addMonitoredZone(z->zone);
       }
     }
   }
 
   SensorMap.removeFromIndex(sensorIndex); // Remove any remaining sensors
-  Config.saveToSdCard(*this->m_sd, *this->m_sdMutex, "/config.json");
+  Config.save();
   if (pidReconfigured) {
     ValveManager.loadConfig();
     // includes loading the flow range
