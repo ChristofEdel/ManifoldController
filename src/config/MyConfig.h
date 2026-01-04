@@ -12,10 +12,13 @@ class CConfig {
   private:
     String name;
     String hostname;
+
     String neohubAddress;
     String neohubToken;
     bool neohubProxyEnabled;
     String heatingControllerAddress;
+
+    String weatherlinkAddress;
 
     double flowMaxSetpoint;
     double flowMinSetpoint;
@@ -35,12 +38,16 @@ class CConfig {
     const char* fileName = "/flash/config.json";
 
   public:
+    // Getters
     inline const String& getName() const { return name; };
     inline const String& getHostname() const { return hostname; };
+
     inline const String& getNeohubAddress() const { return neohubAddress; };
     inline const String& getNeohubToken() const { return neohubToken; };
     inline const bool getNeohubProxyEnabled() const { return neohubProxyEnabled; };
     inline const String& getHeatingControllerAddress() const { return heatingControllerAddress; };
+
+    inline const String& getWeatherlinkAddress() const { return weatherlinkAddress; };
 
     inline double getFlowMaxSetpoint() const { return flowMaxSetpoint; };
     inline double getFlowMinSetpoint() const { return flowMinSetpoint; };
@@ -57,12 +64,16 @@ class CConfig {
     inline double getRoomProportionalGain() const { return roomProportionalGain; };
     inline double getRoomIntegralMinutes() const { return roomIntegralMinutes; };
 
+    // Setters
     inline void setHostname(const String& value) { hostname = value; };
     inline void setName(const String& value) { name = value; };
+
     inline void setNeohubAddress(const String& value) { neohubAddress = value; };
     inline void setNeohubToken(const String& value) { neohubToken = value; };
     inline void setNeohubProxyEnabled(bool value)  { neohubProxyEnabled = value; };
     inline void setHeatingControllerAddress(const String& value) { heatingControllerAddress = value; };
+
+    inline void setWeatherlinkAddress(const String& value) { weatherlinkAddress = value; };
 
     inline void setFlowMaxSetpoint(double value) { flowMaxSetpoint = value; };
     inline void setFlowMinSetpoint(double value) { flowMinSetpoint = value; };
@@ -78,6 +89,10 @@ class CConfig {
     inline void setRoomSetpoint(double value) { roomSetpoint = value; };
     inline void setRoomProportionalGain(double value) { roomProportionalGain = value; };
     inline void setRoomIntegralMinutes(double value) { roomIntegralMinutes = value; };
+
+    // Dummies so shared code compiles
+    inline float getBoilerDefaultSetpointForHeating() { return 0; };
+    inline float getBoilerFlowAddOn() { return 0; };
 
     void save() const;
     void load();

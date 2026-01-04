@@ -2,6 +2,7 @@
 #include "NeohubZoneManager.h"
 #include "ValveManager.h"
 #include "StringTools.h"
+#include "WeatherDataManager.h"
 
 const String &CMyWebServer::mapSensorName(const String &id) const{
   const String &displayName = SensorMap.getNameForId(id);
@@ -167,13 +168,26 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
         html.print("<tr class='tight'><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
         html.print("</thead>");
         html.element("tbody", [this, &html]{
+          time_t now = time(nullptr);
+
+          html.print("<tr><th>Outside</th>");
+          html.print("<td id='outside-temp' class='has-data'>");
+          WeatherData& wd = WeatherDataManager.getWeatherData();
+          float oat = wd.outsideTemperature;
+          if (oat <= -50) html.print("???");
+          else html.print(String(oat, 1).c_str());
+          html.print("</td>");
+          html.print("<td></td><td></td><td></td><td></td>");
+          html.print(StringPrintf("<td id='outside-aged' class='data-is-aged'%s>OLD</td>", wd.isAged(now) ? "" : "style='display: none'").c_str());
+          html.print(StringPrintf("<td id='outside-dead' class='data-is-dead'%s>DEAD</td>", wd.isDead(now) ? "" : "style='display: none'").c_str());
+          html.print("<td></td><td></td><td></td><td></td></tr>");
+
           int sensorCount = SensorMap.getCount();
           int totalReadings = 0;
           int totalCrcErrors = 0;
           int totalNoResponseErrors = 0;
           int totalOtherErrors = 0;
           int totalFailures = 0;
-          time_t now = time(nullptr);
           for (int i = 0; i < sensorCount; i++) {
             SensorMapEntry * entry = SensorMap[i];
             OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
@@ -287,6 +301,12 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
       i++;
     }
   }
+  WeatherData& wd = WeatherDataManager.getWeatherData();
+  statusJson["sensors"][i]["id"] = "outside";
+  statusJson["sensors"][i]["name"] = "Outside";
+  statusJson["sensors"][i]["temperature"] = wd.outsideTemperature;
+  statusJson["sensors"][i]["isAged"] = wd.isAged(now);
+  statusJson["sensors"][i]["isDead"] = wd.isDead(now);
 
   i = 0;
   for (NeohubZone z: NeohubZoneManager.getActiveZones()) {

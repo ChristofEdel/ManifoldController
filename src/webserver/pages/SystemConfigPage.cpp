@@ -3,6 +3,7 @@
 #include "ESPmDNS.h"
 #include "StringTools.h"
 #include "NeohubProxy.h"
+#include "WeatherLinkTemperature.h"
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
@@ -42,6 +43,14 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
               html.print("<input type='hidden' name='nh_proxy' value='false'>");
               html.printf("<input type='checkbox' name='nh_proxy' value='true'%s>", Config.getNeohubProxyEnabled() ? " checked" : "");
             });
+          });
+        });
+      });
+
+      html.block("Weather", [this, &html]{
+        html.fieldTable( [this, &html] {
+          html.fieldTableRow("URL", [&html]{
+            html.fieldTableInput("name='wl_url' style='width: 20em'", Config.getWeatherlinkAddress().c_str());
           });
         });
       });
@@ -112,9 +121,10 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
 
 void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
 
-  bool hostnameChanged = false;     // Flag if we have to redirect to the new hostname
-  bool changesMade     = false;     // Flag if any changes were nade and we need to save them
-  bool reconnectNeohub = false;     // Flag if we have to reconnect to the neohub
+  bool hostnameChanged      = false; // Flag if we have to redirect to the new hostname
+  bool changesMade          = false; // Flag if any changes were nade and we need to save them
+  bool reconnectNeohub      = false; // Flag if we have to reconnect to the neohub
+  bool reconnectWeatherlink = false; // Flag if we have to reconnect to the neohub
 
   int count = request->params();
   for (int i = 0; i < count; i++) {
@@ -135,6 +145,11 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     if (key == "nh_url" && p->value() != Config.getNeohubAddress()) {
       Config.setNeohubAddress(p->value());
       reconnectNeohub = true;
+      changesMade = true;
+    }
+    if (key == "wl_url" && p->value() != Config.getWeatherlinkAddress()) {
+      Config.setWeatherlinkAddress(p->value());
+      reconnectWeatherlink = true;
       changesMade = true;
     }
     if (key == "nh_token" && p->value() != Config.getNeohubToken()) {
@@ -169,6 +184,13 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
 
   if (reconnectNeohub) {
     NeohubConnection.reconnect();
+  }
+
+  if (reconnectWeatherlink) {
+    WeatherLinkTemperature.stop();
+    if (Config.getWeatherlinkAddress() != "") {
+      WeatherLinkTemperature.start(Config.getWeatherlinkAddress());
+    }
   }
 
   // After processing POST, respond with the config page again

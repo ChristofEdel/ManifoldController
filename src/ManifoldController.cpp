@@ -9,6 +9,7 @@
 #include "MyWifi.h"
 #include "SensorLog.h"
 #include "NeohubProxy.h"
+#include "WeatherLinkTemperature.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -63,6 +64,10 @@ void setup()
     if (rtcData->getLastKnownFlowControllerIntegralSet()) {
         MyLog.printf("Initialising flow integral to %.1f\n", rtcData->getLastKnownFlowControllerIntegral());
         ValveManager.setFlowIntegralTerm(rtcData->getLastKnownFlowControllerIntegral());
+    }
+
+    if (Config.getWeatherlinkAddress() != "") {
+        WeatherLinkTemperature.start(Config.getWeatherlinkAddress());
     }
 
     // Launch the backgroud task that performs the valve control loop
