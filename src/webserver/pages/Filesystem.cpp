@@ -194,7 +194,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
     response->println("<div class='navbar-border'></div>");
     response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th>");
     if (hasDate) response->println("<th>Modified</th>");
-    response->println("</tr></thead><tbody>");
+    response->println("<th></th></tr></thead><tbody>");
 
     // Navigation
     if (dirPath == "/sdcard/") {
@@ -239,7 +239,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
             response->println("<td></td>");
         }
         if (hasDate) response->printf("<td>%s</td>", e.lastModifiedText().c_str());
-        if (!isProtected(e.name)) {
+        if (!isProtected(e.path)) {
             if (!e.isDirectory) {
                 response->println("<td class='delete-file'></td>");
             }
