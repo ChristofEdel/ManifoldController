@@ -66,7 +66,14 @@ void CConfig::save() const
 
     // Serialize to SD card
     MyLog.print("Saving configuration...");\
+    save(configJson, masterFileName);
+    save(configJson, secondaryFileName);
 
+
+    MyLog.println("done");
+}
+
+void CConfig::save(JsonDocument &configJson, const char *fileName) const {
     Filesystem.lock();
     File file = Filesystem.open(fileName, FILE_WRITE);
     if (!file) {
@@ -77,8 +84,7 @@ void CConfig::save() const
     serializeJsonPretty(configJson, file);
     file.close();
     Filesystem.unlock();
-
-    MyLog.println("done");
+    return;
 }
 
 void CConfig::load()
@@ -87,11 +93,11 @@ void CConfig::load()
 
     String contents;
     Filesystem.lock();
-    File file = Filesystem.open(fileName, FILE_READ);
-    if (!file) file = Filesystem.open("/sdcard/config.json", FILE_READ);   // old name / location
+    File file = Filesystem.open(masterFileName, FILE_READ);
+    if (!file) file = Filesystem.open(secondaryFileName, FILE_READ);   // old name / location
     if (!file) {
         Filesystem.unlock();
-        MyLog.printf("Failed to open config file %s for reading\n", fileName);
+        MyLog.printf("Failed to open config file %s and %s for reading\n", masterFileName, secondaryFileName);
         this->applyDefaults();
         return;
     }

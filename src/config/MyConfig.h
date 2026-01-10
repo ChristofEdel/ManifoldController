@@ -35,7 +35,8 @@ class CConfig {
     double roomProportionalGain;
     double roomIntegralMinutes;
 
-    const char* fileName = "/flash/config.json";
+    const char* masterFileName = "/flash/config.json";
+    const char* secondaryFileName = "/sdcard/config.json";
 
   public:
     // Getters
@@ -99,6 +100,10 @@ class CConfig {
 
     void applyDefaults();
     void print(CMyLog& p) const;
+
+private:
+    void save(JsonDocument &configJson, const char *fileName) const;
+
 };
 
 extern CConfig Config;

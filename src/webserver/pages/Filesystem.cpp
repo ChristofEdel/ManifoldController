@@ -139,6 +139,28 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest* request, const
     request->send(response);
 }
 
+char* protectedFiles[] = { 
+    "/flash/jquery-ui.min.js.gz",
+    "/flash/jquery-ui.min.js",
+    "/flash/jquery-3.7.1.min.js.gz",
+    "/flash/jquery-3.7.1.min.js",
+    nullptr
+};
+
+bool isProtected(const String &name) {
+    for (char** fnp = protectedFiles; *fnp; fnp++) {
+        if (name == *fnp) return true;
+    }
+    return false;
+}
+
+String parentDir(const String& path) {
+    int end = path.length() - 1;
+    while (end > 0 && path[end] == '/') end--;
+    int pos = path.lastIndexOf('/', end);
+    return (pos < 0) ? "" : path.substring(0, pos);
+}
+
 void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const String& path)
 {
     String dirPath = path;
@@ -164,7 +186,6 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
     
     bool hasDate = false;
     for (DirectoryEntry& e : entries) hasDate |= e.lastModified > 0;
-    bool canDelete = dirPath.startsWith("/sdcard/");
 
     // Now print HTML
     AsyncResponseStream* response = startHttpHtmlResponse(request);
@@ -173,8 +194,30 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
     response->println("<div class='navbar-border'></div>");
     response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th>");
     if (hasDate) response->println("<th>Modified</th>");
-    if (canDelete) response->println("<th class='delete-header'></th>");
     response->println("</tr></thead><tbody>");
+
+    // Navigation
+    if (dirPath == "/sdcard/") {
+        response->print("<tr>");
+        response->print("<td><a href='/flash'>/flash</a></td>");
+        response->print("<td></td><td></td><td'></td>");
+        response->print("</tr>");
+    }
+    else if (dirPath == "/flash/") {
+        response->print("<tr>");
+        response->print("<td><a href='/sdcard'>..</a></td>");
+        response->print("<td></td><td></td><td'></td>");
+        response->print("</tr>");
+    }
+    else {
+        String parent = parentDir(dirPath);
+        if (parent != "") {
+            response->print("<tr>");
+            response->printf("<td><a href='%s'>..</a></td>", parent.c_str());
+            response->printf("<td></td><td></td><td'></td>");
+            response->print("</tr>");
+        }
+    }
 
     Esp32CoreDump coreDump;
     if (coreDump.exists() && coreDump.getFormat() == "elf" && dirPath == "/sdcard/") {
@@ -196,7 +239,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
             response->println("<td></td>");
         }
         if (hasDate) response->printf("<td>%s</td>", e.lastModifiedText().c_str());
-        if (canDelete) {
+        if (!isProtected(e.name)) {
             if (!e.isDirectory) {
                 response->println("<td class='delete-file'></td>");
             }
