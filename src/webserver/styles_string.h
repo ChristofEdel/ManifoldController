@@ -235,6 +235,20 @@ table.list > tbody > tr:nth-child(odd)
     background: var(--bg-odd);
 }
 
+/**********************************************************************
+** Directory
+*/
+
+table.directory > tbody > tr > td:nth-child(1){ /* file name */
+    width:210px;
+}
+table.directory > tbody > tr > td:nth-child(2){ /* size */
+    width:70px;
+}
+table.directory > tbody > tr > td:nth-child(3){ /* date */
+    width:145px;
+    text-align: center;
+}
 
 /**********************************************************************************
 ** Tables with field names in column 1 and fields in column 2
@@ -584,7 +598,7 @@ button.save-button {
 }
 
 /**********************************************************************
-**
+** Reset Valve function on config page
 */
 
 #resetZoneSetpoint {

@@ -139,7 +139,7 @@ void CMyWebServer::respondWithFileContents(AsyncWebServerRequest* request, const
     request->send(response);
 }
 
-char* protectedFiles[] = { 
+const char* protectedFiles[] = { 
     "/flash/jquery-ui.min.js.gz",
     "/flash/jquery-ui.min.js",
     "/flash/jquery-3.7.1.min.js.gz",
@@ -148,7 +148,7 @@ char* protectedFiles[] = {
 };
 
 bool isProtected(const String &name) {
-    for (char** fnp = protectedFiles; *fnp; fnp++) {
+    for (const char** fnp = protectedFiles; *fnp; fnp++) {
         if (name == *fnp) return true;
     }
     return false;
@@ -192,7 +192,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
     HtmlGenerator html(response);
     html.navbar(NavbarPage::Files);
     response->println("<div class='navbar-border'></div>");
-    response->println("<table class='list'><thead><tr><th>File</th><th>Size (kb)</th>");
+    response->println("<table class='list directory'><thead><tr><th>File</th><th>Size (kb)</th>");
     if (hasDate) response->println("<th>Modified</th>");
     response->println("<th></th></tr></thead><tbody>");
 
