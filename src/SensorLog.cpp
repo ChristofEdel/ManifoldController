@@ -18,19 +18,23 @@ char* getSensorDataFileName()
 
 void logSensors()
 {
+    // Check if the current log file already exists
     char* dataFileName = getSensorDataFileName();
     bool fileExists = false;
     Filesystem.lock();
-    fileExists = !Filesystem.exists(dataFileName);
+    fileExists = Filesystem.exists(dataFileName);
     Filesystem.unlock();
 
-    String logLine = getSensorLogLine();
+    // Generate header line (if required) and the log line
+    // We do this before locking the filesystem to minimize the time we hold the lock
     String headerLine;
     if (SensorMap.hasChanged() || !fileExists) {
-        String headerLine = getSensorHeaderLine();
+        headerLine = getSensorHeaderLine();
         SensorMap.clearChanged();
     }
+    String logLine = getSensorLogLine();
 
+    // Now write the header and log lines
     Filesystem.lock();
 
     File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
@@ -48,20 +52,6 @@ void logSensors()
     }
 }
 
-void logSensorHeaderLine()
-{
-    String headerLine = getSensorHeaderLine();
-    char* dataFileName = getSensorDataFileName();
-
-    Filesystem.lock();
-    File dataFile = Filesystem.open(dataFileName, FILE_APPEND);
-    if (dataFile) {
-        dataFile.println(headerLine);
-        dataFile.close();
-    }
-    Filesystem.unlock();
-}
-
 String getSensorLogLine()
 {
     String result;
@@ -73,7 +63,7 @@ String getSensorLogLine()
     result += ",";
     result += String(ValveManager.getRoomSetpoint(), 1);
     result += ",";
-    if (!isnan(ValveManager.inputs.roomTemperature)) result += String(ValveManager.inputs.flowTemperature, 1);
+    if (!isnan(ValveManager.inputs.roomTemperature)) result += String(ValveManager.inputs.roomTemperature, 1);
 
     // Manifold control
     //   - Setpoint
@@ -88,8 +78,10 @@ String getSensorLogLine()
     result += ",";
     if (!isnan(ValveManager.inputs.returnTemperature)) result += String(ValveManager.inputs.returnTemperature, 1);
     result += ",";
-    result += String(ValveManager.outputs.targetValvePosition, 1);
-    result += "%,";
+    if (!isnan(ValveManager.outputs.targetValvePosition)) {
+        result += String(ValveManager.outputs.targetValvePosition, 1);
+        result += "%,";
+    }
     if (!isnan(ValveManager.inputs.flowTemperature)) result += String(ValveManager.inputs.flowTemperature, 1);
 
     // All room sensors
