@@ -221,8 +221,8 @@ function valveControlManualCheckboxChanged() {
     var isChecked = $('#valveControlManualCheckbox').is(':checked')
     var automatic = !isChecked; // true if unchecked, false if checked
 
-    var value = parseInt($('valveControlPositionSlider').val(), 10) || 0
-    $('valveControlPositionText').text(value)
+    var value = parseInt($('#valveControlPositionSlider').val(), 10) || 0
+    $('#valveControlPositionText').text(value)
 
     sendCommand({
         command: 'SetValvePosition',

@@ -9,10 +9,6 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
   HtmlGenerator html(response);
 
-  ValveManager.resumeAutomaticValveControl();
-  // Instead of showing the current value on the page, we show "automatic"
-  // on the page and make sure the system behaves accordingly.
-
   html.navbar(NavbarPage::System);
 
   html.element("form", "method='post'", [this, &html]{
@@ -66,12 +62,15 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
       html.block("Valve Test", [this, &html]{
         html.fieldTable( [this, &html] {
           html.fieldTableRow("Manual Control", [&html]{
-            html.element("td", "style='text-align: left'", "<input type='checkbox' id='valveControlManualCheckbox'>");
+            html.element("td", "style='text-align: left'",  [&html] {
+              html.printf("<input type='checkbox' id='valveControlManualCheckbox' %s>", ValveManager.valveUnderManualControl() ? "checked" : "");
+            });
           });
           html.fieldTableRow("Position", [&html]{
             html.element("td", "style='text-align: left'", [&html] {
-              html.print("<input type='range' id='valveControlPositionSlider' min='0' max='100' value='0'>");
-              html.print("<span id='valveControlPositionText'>0</span>");
+              int p = (int)(std::isnan(ValveManager.getValvePosition()) ? 0 : ValveManager.getValvePosition());
+              html.printf("<input type='range' id='valveControlPositionSlider' min='0' max='100' value='%d' step='1'>", p);
+              html.printf("<span id='valveControlPositionText'>%d</span>", p);
             });
           });
         });
