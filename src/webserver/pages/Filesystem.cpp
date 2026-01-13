@@ -240,7 +240,7 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
         }
         if (hasDate) response->printf("<td>%s</td>", e.lastModifiedText().c_str());
         if (!isProtected(e.path)) {
-            if (!e.isDirectory) {
+            if (e.canBeDeleted) {
                 response->println("<td class='delete-file'></td>");
             }
             else {
