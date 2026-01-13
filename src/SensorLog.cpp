@@ -73,7 +73,7 @@ String getSensorLogLine()
     result += ",";
     result += String(ValveManager.getRoomSetpoint(), 1);
     result += ",";
-    if (ValveManager.inputs.roomTemperature > -50) result += String(ValveManager.inputs.flowTemperature, 1);
+    if (!isnan(ValveManager.inputs.roomTemperature)) result += String(ValveManager.inputs.flowTemperature, 1);
 
     // Manifold control
     //   - Setpoint
@@ -84,13 +84,13 @@ String getSensorLogLine()
     result += ",";
     result += String(ValveManager.getFlowSetpoint(), 1);
     result += ",";
-    if (ValveManager.inputs.inputTemperature > -50) result += String(ValveManager.inputs.inputTemperature, 1);
+    if (!isnan(ValveManager.inputs.inputTemperature)) result += String(ValveManager.inputs.inputTemperature, 1);
     result += ",";
-    if (ValveManager.inputs.returnTemperature > -50) result += String(ValveManager.inputs.returnTemperature, 1);
+    if (!isnan(ValveManager.inputs.returnTemperature)) result += String(ValveManager.inputs.returnTemperature, 1);
     result += ",";
     result += String(ValveManager.outputs.targetValvePosition, 1);
     result += "%,";
-    if (ValveManager.inputs.flowTemperature > -50) result += String(ValveManager.inputs.flowTemperature, 1);
+    if (!isnan(ValveManager.inputs.flowTemperature)) result += String(ValveManager.inputs.flowTemperature, 1);
 
     // All room sensors
 
@@ -98,11 +98,11 @@ String getSensorLogLine()
         NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (!d) { result += ",,"; continue; }
         result += ",";
-        if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        if (!isnan(d->roomTemperature)) {
             result += String(d->roomTemperature, 1);
         }
         result += ",";
-        if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        if (!isnan(d->floorTemperature)) {
             result += String(d->floorTemperature, 1);
         }
     }
@@ -111,11 +111,11 @@ String getSensorLogLine()
         NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (!d) { result += ",,"; continue; }
         result += ",";
-        if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        if (!isnan(d->roomTemperature)) {
             result += String(d->roomTemperature, 1);
         }
         result += ",";
-        if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        if (!isnan(d->floorTemperature)) {
             result += String(d->floorTemperature, 1);
         }
     }
@@ -132,12 +132,12 @@ String getSensorLogLine()
         if (entry->id == flowSensorId) continue;
         if (entry->id == returnSensorId) continue;
         OneWireSensor* sensor = OneWireManager.getSensor(entry->id.c_str());
-        float temperature = COneWireManager::SENSOR_NOT_FOUND;
+        float temperature = std::numeric_limits<float>::quiet_NaN();;
         if (sensor) {
             temperature = sensor->calibratedTemperature();
         }
         result += ",";
-        if (temperature > -50) {
+        if (!isnan(temperature)) {
             result += String(temperature, 1);
         }
     }

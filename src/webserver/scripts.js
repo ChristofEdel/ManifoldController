@@ -3,6 +3,7 @@
 // General helper functions
 //
 function fmt(value, digits, sign) {
+    if (value === null || typeof value === 'undefined') return ""
     var x = Number(value).toFixed(digits)
     if (x == "NaN") return value; // probably non-numerical text, return 1:1
     // Number, prepend + sign if requested
@@ -305,7 +306,7 @@ function monitorPage_refreshData() {
             $(".uptime").text(data.uptimeText + " since last start")
 
             $("#roomSetpoint").text(fmt(data.roomSetpoint, 1))
-            if(data.roomTemperature > -50) {
+            if(data.roomTemperature !== null) {
                 $("#roomTemperature").text(fmt(data.roomTemperature, 1))
                 var d = fmt(data.roomError, 1)
                 $("#roomError").text(d)
@@ -325,7 +326,7 @@ function monitorPage_refreshData() {
             $("#roomDead").toggle(data.roomDead)
 
             $("#flowSetpoint").text(fmt(data.flowSetpoint, 1))
-            if(data.flowTemperature > -50) {
+            if(data.flowTemperature !== null) {
                 $("#flowTemperature").text(fmt(data.flowTemperature, 1))
                 d = fmt(data.flowError, 1, "+")
                 $("#flowError").text(d)
@@ -344,11 +345,16 @@ function monitorPage_refreshData() {
             $("#flowAged").toggle(data.flowAged)
             $("#flowDead").toggle(data.flowDead)
 
-            $("#valvePosition").text(fmt(data.valvePosition, 0) + "%")
+            if (data.valvePosition !== null){
+                $("#valvePosition").text(fmt(data.valvePosition, 0) + "%")
+            }
+            else {
+                $("#valvePosition").text("")
+            }
             $("#valveManualFlag").toggle(data.valveManualControl)
             if (data.sensors) {
                 data.sensors.forEach(function (sensor) {
-                    if (sensor.temperature > -50) {
+                    if (sensor.temperature !== null) {
                         $("#" + sensor.id + "-temp").text(fmt(sensor.temperature, 1))
                     }
                     else {

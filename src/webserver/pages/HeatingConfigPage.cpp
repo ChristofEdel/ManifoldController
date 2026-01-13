@@ -128,11 +128,10 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
                 String fieldParameter = "name='s-" + entry->id + "' type='text'";
                 html.fieldTableRow(entry->id.c_str(), "class='handle'", [this, &html, fieldParameter, entry]{
                   html.print("<td id='"); html.print(entry->id.c_str()); html.print("-temp' class='has-data'>");
-                  float temperature = COneWireManager::SENSOR_NOT_FOUND;
+                  float temperature = std::numeric_limits<float>::quiet_NaN();
                   OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
                   if (sensor) temperature = sensor->calibratedTemperature();
-                  if (temperature == COneWireManager::SENSOR_NOT_FOUND) html.print("???");
-                  if (temperature > -50) html.print(String(temperature, 1).c_str());
+                  if (!isnan(temperature)) html.print(String(temperature, 1).c_str());
                   html.print("</td>");
                   html.fieldTableInput(fieldParameter.c_str(), entry->name.c_str());
                   html.print("<td class='delete-row'></td>");

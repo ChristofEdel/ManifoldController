@@ -130,13 +130,13 @@ void manageValveControls()
     double temperatureTotal = 0;
     for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
         NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
-        if (d && d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+        if (d && !isnan(d->roomTemperature)) {
             if (d->lastUpdate > ValveManager.timestamps.roomDataLoadTime) ValveManager.timestamps.roomDataLoadTime = d->lastUpdate;
             temperatureTotal += d->roomTemperature;
             tempCount++;
         }
     }
-    float roomTemperature = NeohubZoneData::NO_TEMPERATURE;
+    float roomTemperature = std::numeric_limits<float>::quiet_NaN();
     if (tempCount > 0) roomTemperature = temperatureTotal / tempCount;
 
     // Then, get the temperatures from the manifold
@@ -146,7 +146,7 @@ void manageValveControls()
     float flowTemperature = OneWireManager.getCalibratedTemperature(Config.getFlowSensorId().c_str());
     float returnTemperature = OneWireManager.getCalibratedTemperature(Config.getReturnSensorId().c_str());
 
-    if (flowTemperature > -50) ValveManager.timestamps.flowDataLoadTime = time(nullptr);
+    if (!isnan(flowTemperature)) ValveManager.timestamps.flowDataLoadTime = time(nullptr);
 
     // run the control loop
     ValveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);

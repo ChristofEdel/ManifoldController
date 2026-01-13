@@ -39,8 +39,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           bool dead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
           const char * extraClass = dead ? " data-is-dead" : aged ? " data-is-aged" : "";
           html.element("td", "id='roomSetpoint' class='has-data'",  String(sp,1).c_str());
-          html.element("td", StringPrintf("id='roomTemperature' class='has-data%s'", extraClass).c_str(), t > -50 ? String(t,1).c_str() : "");
-          html.element("td", "id='roomError' class='has-data'", t > -50 ? String(d,1).c_str() : "");
+          html.element("td", StringPrintf("id='roomTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
+          html.element("td", "id='roomError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
           if (expertMode) {
             html.element("td", "id='roomP' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
             html.element("td", "id='roomI' class='has-data'", String(ValveManager.getRoomIntegralTerm(),1).c_str());
@@ -50,7 +50,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
         });
         if (NeohubZoneManager.getActiveZones().size() == 1 && NeohubZoneManager.getMonitoredZones().size() == 0) {
           NeohubZoneData *d = NeohubZoneManager.getZoneData(NeohubZoneManager.getActiveZones().back().id);
-          if (d && d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+          if (d && !isnan(d->floorTemperature)) {
             html.fieldTableRow("Floor", [d, &html]{
               html.print("<td></td>");
               double ft = d->floorTemperature;
@@ -69,8 +69,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           bool dead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
           const char * extraClass = dead ? " data-is-dead" : aged ? " data-is-aged" : "";
           html.element("td", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", String(sp,1).c_str());
-          html.element("td",  StringPrintf("id='flowTemperature' class='has-data%s'", extraClass).c_str(), t > -50 ? String(t,1).c_str() : "");
-          html.element("td", "id='flowError' class='has-data'", t > -50 ? String(d,1).c_str() : "");
+          html.element("td",  StringPrintf("id='flowTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
+          html.element("td", "id='flowError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
           if (expertMode) {
             html.element("td", "id='flowP' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
             html.element("td", "id='flowI' class='has-data'", String(ValveManager.getFlowIntegralTerm(),1).c_str());
@@ -79,7 +79,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.print(StringPrintf("<td id='flowDead' class='data-is-dead'%s>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime) ? "" : "style='display: none'").c_str());
         });
         html.fieldTableRow("Valve", [this, &html]{
-          html.element("td", "id='valvePosition' class='has-data' onclick=\"openSetValueDialog(this, 'Set Valve Position', 'SetValvePidOutput')\"", (String(ValveManager.getValvePosition(),0) + "%").c_str());
+          double vp = ValveManager.getValvePosition();
+          html.element("td", "id='valvePosition' class='has-data' onclick=\"openSetValueDialog(this, 'Set Valve Position', 'SetValvePidOutput')\"", !isnan(vp) ? (String(vp,0) + "%").c_str() : "");
           if (ValveManager.valveUnderManualControl()) {
             html.print("<td id='valveManualFlag' colspan=2 class='manual-control'>Manual Control</td>");
           }
@@ -110,14 +111,14 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
 
                 String p = "id=z" + String(d->zone.id) + "-room-temp class='has-data'";
                 html.element("td", p.c_str(), [d, &html]{
-                  if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                  if (!isnan(d->roomTemperature)) {
                     html.print(String(d->roomTemperature,1).c_str());
                   }
                 });
 
                 p = "id=z" + String(d->zone.id) + "-floor-temp class='has-data'";
                 html.element("td", p.c_str(), [d, &html]{
-                  if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                  if (!isnan(d->floorTemperature)) {
                     html.print(String(d->floorTemperature,1).c_str());
                   }
                 });
@@ -139,14 +140,14 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
 
                 String p = "id=z" + String(d->zone.id) + "-room-temp class='has-data'";
                 html.element("td", p.c_str(), [d, &html]{
-                  if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                  if (!isnan(d->roomTemperature)) {
                     html.print(String(d->roomTemperature,1).c_str());
                   }
                 });
 
                 p = "id=z" + String(d->zone.id) + "-floor-temp class='has-data'";
                 html.element("td", p.c_str(), [d, &html]{
-                  if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+                  if (!isnan(d->floorTemperature)) {
                     html.print(String(d->floorTemperature,1).c_str());
                   }
                 });
@@ -174,7 +175,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.print("<td id='outside-temp' class='has-data'>");
           WeatherData& wd = WeatherDataManager.getWeatherData();
           float oat = wd.outsideTemperature;
-          if (oat <= -50) html.print("???");
+          if (isnan(oat)) html.print("???");
           else html.print(String(oat, 1).c_str());
           html.print("</td>");
           html.print("<td></td><td></td><td></td><td></td>");
@@ -191,7 +192,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           for (int i = 0; i < sensorCount; i++) {
             SensorMapEntry * entry = SensorMap[i];
             OneWireSensor * sensor = OneWireManager.getSensor(entry->id.c_str());
-            float temperature = COneWireManager::SENSOR_NOT_FOUND;
+            float temperature = std::numeric_limits<float>::quiet_NaN();;
             if (sensor) {
               temperature = sensor->calibratedTemperature();
               totalReadings += sensor->readings;
@@ -206,8 +207,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             html.print(entry->name.c_str());
             html.print("</th>");
             html.print("<td id='"); html.print(entry->id.c_str()); html.print("-temp' class='has-data'>");
-            if (temperature == COneWireManager::SENSOR_NOT_FOUND) html.print("???");
-            if (temperature > -50) html.print(String(temperature, 1).c_str());
+            if (!isnan(temperature)) html.print(String(temperature, 1).c_str());
             html.print("</td>");
             if (sensor) {
               char buffer[500];
@@ -252,10 +252,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     statusJson["roomSetpoint"]    = sp;
     statusJson["roomTemperature"] = t;
     statusJson["roomError"]  = t - sp;
-    if (t >= NeohubZoneData::NO_TEMPERATURE) {
-      statusJson["roomTemperatureAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
-      statusJson["roomTemperatureDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
-    }
+    statusJson["roomTemperatureAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
+    statusJson["roomTemperatureDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
     statusJson["roomProportionalTerm"] = ValveManager.getRoomProportionalTerm();
     statusJson["roomIntegralTerm"] = ValveManager.getRoomIntegralTerm();
     statusJson["roomAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime);
@@ -267,10 +265,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     statusJson["flowSetpoint"] = sp;
     statusJson["flowTemperature"] = t;
     statusJson["flowError"]       = t - sp;
-    if (t >= NeohubZoneData::NO_TEMPERATURE) {
-      statusJson["flowTemperatureAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
-      statusJson["flowTemperatureDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
-    }
+    statusJson["flowTemperatureAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
+    statusJson["flowTemperatureDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
     statusJson["flowProportionalTerm"] = ValveManager.getFlowProportionalTerm();
     statusJson["flowIntegralTerm"]     = ValveManager.getFlowIntegralTerm();
     statusJson["flowAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime);
@@ -313,10 +309,10 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     NeohubZoneData *d = NeohubZoneManager.getZoneData(z.id);
     if (d) {
       statusJson["zones"][i]["id"] = d->zone.id;
-      if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+      if (!isnan(d->roomTemperature)) {
         statusJson["zones"][i]["roomTemperature"] = d->roomTemperature;
       }
-      if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+      if (!isnan(d->floorTemperature)) {
         statusJson["zones"][i]["foorTemperature"] = d->floorTemperature;
       }
       statusJson["zones"][i]["roomOff"] = !d->demand;
@@ -330,10 +326,10 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     NeohubZoneData *d = NeohubZoneManager.getZoneData(z.id);
     if (d) {
       statusJson["zones"][i]["id"] = d->zone.id;
-      if (d->roomTemperature != NeohubZoneData::NO_TEMPERATURE) {
+      if (!isnan(d->roomTemperature)) {
         statusJson["zones"][i]["roomTemperature"] = d->roomTemperature;
       }
-      if (d->floorTemperature != NeohubZoneData::NO_TEMPERATURE) {
+      if (!isnan(d->floorTemperature)) {
         statusJson["zones"][i]["foorTemperature"] = d->floorTemperature;
       }
       statusJson["zones"][i]["roomOff"] = !d->demand;
