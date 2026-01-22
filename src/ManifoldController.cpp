@@ -10,6 +10,7 @@
 #include "SensorLog.h"
 #include "NeohubProxy.h"
 #include "WeatherLinkTemperature.h"
+#include "version.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -217,6 +218,7 @@ void valveControlTask(void* parameter)
                     data.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
                     data.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
                     data.uptimeSeconds = uptime();
+                    data.version = String(VERSION);
 
                     ManifoldDataPostJob::post(data, host);
                 }
