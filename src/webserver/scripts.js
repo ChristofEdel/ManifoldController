@@ -490,6 +490,19 @@ $(function () {
         }
     }).disableSelection()
 
+    // Toggling showing the extra columns in tables which can show additional information
+    $('table.hide-extras th.toggle-extras-button').on('click', function () {
+        const $table = $(this).closest('table')
+        if ($table.hasClass('hide-extras')) {
+            $table.removeClass('hide-extras')
+            $table.addClass('show-extras')
+        } 
+        else {
+            $table.removeClass('show-extras')
+            $table.addClass('hide-extras')
+        }
+    });
+        
     // Manual valve controls
     $('#valveControlManualCheckbox').on('change', function (e) {
         // Ignore programmatic changes (from slider logic)

@@ -363,6 +363,42 @@ table.monitor-table > tbody > tr > td.data-is-dead {
     font-weight: bold;
 }
 
+/**********************************************************************************
+** Hide/show extra columns
+*/
+
+table.control-table.hide-extras > tbody > tr > td:nth-child(n+5),
+table.control-table.hide-extras > thead > tr > th:nth-child(n+5)
+{
+    display: none;
+}
+
+table.monitor-table.hide-extras > tbody > tr > td:nth-child(n+3),
+table.monitor-table.hide-extras > thead > tr:nth-child(1) > th:nth-child(n+3),
+table.monitor-table.hide-extras > thead > tr:nth-child(2)
+{
+    display: none;
+}
+
+table.monitor-table.hide-extras {
+    margin-top: -3px !important; /* instead of -8 - an extra 5 pixels */
+}
+
+table.hide-extras > thead > tr > th.toggle-extras-button,
+table.show-extras > thead > tr > th.toggle-extras-button {
+    display: table-cell !important;
+    border-bottom: none;
+    color: var(--color-text-inactive);
+    cursor: pointer;
+    text-align: left; padding-left: 0px; vertical-align: bottom;
+}
+table.hide-extras > thead > tr > th.toggle-extras-button::before {
+    content: "\23F5";
+}
+table.show-extras > thead > tr > th.toggle-extras-button::before {
+    content: "\23F4";
+}
+
 
 /**********************************************************************************
 ** re-usable styles for all tables

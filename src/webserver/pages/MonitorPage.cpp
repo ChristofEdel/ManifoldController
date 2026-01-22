@@ -11,27 +11,24 @@ const String &CMyWebServer::mapSensorName(const String &id) const{
 }
 
 void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
-  bool expertMode = true;
   AsyncResponseStream *response = startHttpHtmlResponse(request);
   HtmlGenerator html(response);
 
   html.navbar(NavbarPage::Monitor);
 
-  html.blockLayout([this, expertMode, &html]{
+  html.blockLayout([this, &html]{
 
-    html.block("Control", [this, expertMode, &html]{
-      html.element("table", "class='field-table center-all-td'", [this, expertMode, &html] {
+    html.block("Control", [this, &html]{
+      html.element("table", "class='field-table center-all-td control-table hide-extras'", [this, &html] {
         html.print("<thead><tr>");
         html.print("<th style='border-bottom: none; min-width: 130px'></th><th style='width: 5em' class='gap-right'>Setpoint</th>");
         html.print("<th style='width: 5em' class='gap-right'>Actual</th><th style='width: 5em' class='gap-right' >&Delta;t</th>");
-        if (expertMode) {
-          html.print("<th style='width: 5em' class='gap-right'>P</th><th style='width: 5em' >I</th>");
-        }
-        html.print("</tr></thead>");
+        html.print("<th style='width: 5em' class='gap-right'>P</th><th style='width: 5em' >I</th>");
+        html.print("<th rowspan=2 class='toggle-extras-button'></th></tr></thead>");
 
         time_t now = time(nullptr);
 
-        html.fieldTableRow("Room", [this, now, expertMode, &html]{
+        html.fieldTableRow("Room", [this, now, &html]{
           double sp = Config.getRoomSetpoint();
           double t = ValveManager.inputs.roomTemperature;
           double d = t - sp;
@@ -41,12 +38,10 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.element("td", "id='roomSetpoint' class='has-data'",  String(sp,1).c_str());
           html.element("td", StringPrintf("id='roomTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='roomError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
-          if (expertMode) {
-            html.element("td", "id='roomP' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
-            html.element("td", "id='roomI' class='has-data'", String(ValveManager.getRoomIntegralTerm(),1).c_str());
-          }
-          html.print(StringPrintf("<td id='roomAged' class='data-is-aged'%s>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime) ? "" : "style='display: none'").c_str());
-          html.print(StringPrintf("<td id='roomDead' class='data-is-dead'%s>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime) ? "" : "style='display: none'").c_str());
+          html.element("td", "id='roomP' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
+          html.element("td", "id='roomI' class='has-data'", String(ValveManager.getRoomIntegralTerm(),1).c_str());
+          html.print(StringPrintf("<td id='roomAged' class='data-is-aged' style='display: %s'>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime) ? "table-cell" : "none").c_str());
+          html.print(StringPrintf("<td id='roomDead' class='data-is-dead' style='display: %s'>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime) ? "table-cell" : "none").c_str());
         });
         if (NeohubZoneManager.getActiveZones().size() == 1 && NeohubZoneManager.getMonitoredZones().size() == 0) {
           NeohubZoneData *d = NeohubZoneManager.getZoneData(NeohubZoneManager.getActiveZones().back().id);
@@ -61,7 +56,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             });
           }
         }
-        html.fieldTableRow("Flow", [this, now, expertMode, &html]{
+        html.fieldTableRow("Flow", [this, now, &html]{
           double sp = ValveManager.getFlowSetpoint();
           double t = ValveManager.inputs.flowTemperature;
           double d = t - sp;
@@ -71,12 +66,10 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.element("td", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", String(sp,1).c_str());
           html.element("td",  StringPrintf("id='flowTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='flowError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
-          if (expertMode) {
-            html.element("td", "id='flowP' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
-            html.element("td", "id='flowI' class='has-data'", String(ValveManager.getFlowIntegralTerm(),1).c_str());
-          }
-          html.print(StringPrintf("<td id='flowAged' class='data-is-aged'%s>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime) ? "" : "style='display: none'").c_str());
-          html.print(StringPrintf("<td id='flowDead' class='data-is-dead'%s>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime) ? "" : "style='display: none'").c_str());
+          html.element("td", "id='flowP' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
+          html.element("td", "id='flowI' class='has-data'", String(ValveManager.getFlowIntegralTerm(),1).c_str());
+          html.print(StringPrintf("<td id='flowAged' class='data-is-aged' style='display: %s'>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime) ? "table-cell" : "none").c_str());
+          html.print(StringPrintf("<td id='flowDead' class='data-is-dead' style='display: %s'>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime) ? "table-cell" : "none").c_str());
         });
         html.fieldTableRow("Valve", [this, &html]{
           double vp = ValveManager.getValvePosition();
@@ -122,10 +115,10 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
                     html.print(String(d->floorTemperature,1).c_str());
                   }
                 });
-                html.print(StringPrintf("<td id='z%d-room-off' class='data-is-off'%s>OFF</td>",  d->zone.id, !d->demand ? "" : " style='display: none'").c_str());
-                html.print(StringPrintf("<td id='z%d-floor-off' class='data-is-off'%s>FLOOR</td>", d->zone.id, d->floorLimitTriggered ? "" : " style='display: none'").c_str());
-                html.print(StringPrintf("<td id='z%d-aged' class='data-is-aged'%s>OLD</td>", d->zone.id, d->isAged(now) ? "" : " style='display: none'").c_str());
-                html.print(StringPrintf("<td id='z%d-dead' class='data-is-dead'%s>DEAD</td>", d->zone.id, d->isDead(now) ? "" : " style='display: none'").c_str());
+                html.print(StringPrintf("<td id='z%d-room-off' class='data-is-off' style='display: %s'>OFF</td>",  d->zone.id, !d->demand ? "table-cell" : "none").c_str());
+                html.print(StringPrintf("<td id='z%d-floor-off' class='data-is-off' style='display: %s'>FLOOR</td>", d->zone.id, d->floorLimitTriggered ? "table-cell" : "none").c_str());
+                html.print(StringPrintf("<td id='z%d-aged' class='data-is-aged' style='display: %s'>OLD</td>", d->zone.id, d->isAged(now) ? "table-cell" : "none").c_str());
+                html.print(StringPrintf("<td id='z%d-dead' class='data-is-dead' style='display: %s'>DEAD</td>", d->zone.id, d->isDead(now) ? "table-cell" : "none").c_str());
               });
             }
 
@@ -151,10 +144,10 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
                     html.print(String(d->floorTemperature,1).c_str());
                   }
                 });
-                html.print(StringPrintf("<td id='z%d-room-off' class='data-is-off'%s>OFF</td>",  d->zone.id, !d->demand ? "" : " style='display: none'").c_str());
-                html.print(StringPrintf("<td id='z%d-floor-off' class='data-is-off'%s>FLOOR</td>", d->zone.id, d->floorLimitTriggered ? "" : " style='display: none'").c_str());
-                html.print(StringPrintf("<td id='z%d-aged' class='data-is-aged'%s>OLD</td>", d->zone.id, d->isAged(now) ? "" : "style='display: none'").c_str());
-                html.print(StringPrintf("<td id='z%d-dead' class='data-is-dead'%s>DEAD</td>", d->zone.id, d->isDead(now) ? "" : "style='display: none'").c_str());
+                html.print(StringPrintf("<td id='z%d-room-off' class='data-is-off' style='display: %s'>OFF</td>",  d->zone.id, !d->demand ? "table-cell" : "none").c_str());
+                html.print(StringPrintf("<td id='z%d-floor-off' class='data-is-off' style='display: %s'>FLOOR</td>", d->zone.id, d->floorLimitTriggered ? "table-cell" : "none").c_str());
+                html.print(StringPrintf("<td id='z%d-aged' class='data-is-aged' style='display: %s'>OLD</td>", d->zone.id, d->isAged(now) ? "table-cell" : "none").c_str());
+                html.print(StringPrintf("<td id='z%d-dead' class='data-is-dead' style='display: %s'>DEAD</td>", d->zone.id, d->isDead(now) ? "table-cell" : "none").c_str());
               });
             }
           });
@@ -163,9 +156,13 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
     }
 
     html.block("Sensors", [this, &html]{
-      html.element("table", "class='monitor-table'", [this, &html]{
+      html.element("table", "class='monitor-table hide-extras'", [this, &html]{
         html.print("<thead>");
-        html.print("<tr class='tight'><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Sensor</th><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Temp</th><th colspan=4>Errors</th></tr>");
+        html.print("<tr class='tight'>");
+        html.print("<th rowspan=2 style='vertical-align: bottom' class='gap-right'>Sensor</th><th rowspan=2 style='vertical-align: bottom' class='gap-right'>Temp</th>");
+        html.print("<th colspan=4>Errors</th>");
+        html.print("<th rowspan=2 class='toggle-extras-button'></th>");
+        html.print("</tr>");
         html.print("<tr class='tight'><th>CRC</th><th>Empty</th><th>Other</th><th>Fail</th></tr>");
         html.print("</thead>");
         html.element("tbody", [this, &html]{
@@ -179,8 +176,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           else html.print(String(oat, 1).c_str());
           html.print("</td>");
           html.print("<td></td><td></td><td></td><td></td>");
-          html.print(StringPrintf("<td id='outside-aged' class='data-is-aged'%s>OLD</td>", wd.isAged(now) ? "" : "style='display: none'").c_str());
-          html.print(StringPrintf("<td id='outside-dead' class='data-is-dead'%s>DEAD</td>", wd.isDead(now) ? "" : "style='display: none'").c_str());
+          html.print(StringPrintf("<td id='outside-aged' class='data-is-aged' style='display: %s'>OLD</td>", wd.isAged(now) ? "table-cell" : "none").c_str());
+          html.print(StringPrintf("<td id='outside-dead' class='data-is-dead' style='display: %s'>DEAD</td>", wd.isDead(now) ? "table-cell" : "none").c_str());
           html.print("<td></td><td></td><td></td><td></td></tr>");
 
           int sensorCount = SensorMap.getCount();
@@ -224,8 +221,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             else {
               html.print("<td colspan=99></td>");
             }
-            html.print(StringPrintf("<td id='%s-aged' class='data-is-aged'%s>OLD</td>", sensor->id, sensor->isAged(now) ? "" : "style='display: none'").c_str());
-            html.print(StringPrintf("<td id='%s-dead' class='data-is-dead'%s>DEAD</td>", sensor->id, sensor->isDead(now) ? "" : "style='display: none'").c_str());
+            html.print(StringPrintf("<td id='%s-aged' class='data-is-aged' style='display: %s'>OLD</td>", sensor->id, sensor->isAged(now) ? "table-cell" : "none").c_str());
+            html.print(StringPrintf("<td id='%s-dead' class='data-is-dead' style='display: %s'>DEAD</td>", sensor->id, sensor->isDead(now) ? "table-cell" : "none").c_str());
             html.print("</tr>");
           }
         });

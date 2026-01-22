@@ -211,4 +211,7 @@ void logSensorIssues()
         MyLog.print((double)totalFailures * 100.0 / (double)totalReadings, 1);
         MyLog.println("%).");
     }
+    else {
+        MyLog.println("No sensor issues detected.");
+    }
 }
