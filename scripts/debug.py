@@ -18,6 +18,9 @@ if not elf.exists():
 
 gdb = Path.home() / ".platformio/tools/tool-xtensa-esp-elf-gdb/bin/xtensa-esp32s3-elf-gdb.exe"
 
+print("Using core dump:  " + str(newest_coredump))
+print("Using ELF      : " + str(elf))
+
 subprocess.run([
     str(gdb),
     str(elf),
