@@ -44,7 +44,7 @@ void CConfig::save() const
     }
 
     int i = 0;
-    for (auto z : NeohubZoneManager.getAllZones()) {
+    for (auto z : NeohubZoneManager.getAllZones(/* refreshFromNeohub: */ false)) {
         configJson["zones"][i]["id"] = z.id;
         configJson["zones"][i]["name"] = z.name;
         i++;
