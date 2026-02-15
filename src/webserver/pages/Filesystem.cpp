@@ -78,7 +78,7 @@ void CMyWebServer::processBacktraceRequest(AsyncWebServerRequest* request)
     }
 
     AsyncResponseStream* response = request->beginResponseStream("text/plain");
-    if (coreDump.writeBacktrace(*response)) {
+    if (coreDump.writeBacktrace(*response, /* details: */ true)) {
         response->setCode(200);
     }
     else {
