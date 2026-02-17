@@ -35,7 +35,7 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           bool aged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
           bool dead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
           const char * extraClass = dead ? " data-is-dead" : aged ? " data-is-aged" : "";
-          html.element("td", "id='roomSetpoint' class='has-data'",  String(sp,1).c_str());
+          html.element("td", "id='roomSetpoint' class='has-data'",  !isnan(sp) ? String(sp,1).c_str() : "");
           html.element("td", StringPrintf("id='roomTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='roomError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
           html.element("td", "id='roomP' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
@@ -63,9 +63,9 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           bool aged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
           bool dead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
           const char * extraClass = dead ? " data-is-dead" : aged ? " data-is-aged" : "";
-          html.element("td", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", String(sp,1).c_str());
+          html.element("td", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", !isnan(sp) ? String(sp,1).c_str() : "");
           html.element("td",  StringPrintf("id='flowTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
-          html.element("td", "id='flowError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
+          html.element("td", "id='flowError' class='has-data'", !isnan(d) ? String(d,1).c_str() : "");
           html.element("td", "id='flowP' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
           html.element("td", "id='flowI' class='has-data'", String(ValveManager.getFlowIntegralTerm(),1).c_str());
           html.print(StringPrintf("<td id='flowAged' class='data-is-aged' style='display: %s'>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime) ? "table-cell" : "none").c_str());
