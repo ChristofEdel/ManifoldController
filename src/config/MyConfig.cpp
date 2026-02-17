@@ -4,6 +4,7 @@
 #include "MyLog.h"
 #include "SensorMap.h"
 #include "Filesystem.h"
+#include <limits>
 
 CConfig Config;
 
@@ -22,20 +23,41 @@ void CConfig::save() const
 
     configJson["heatingControllerAddress"] = heatingControllerAddress;
 
-    configJson["flowMaxSetpoint"]          = flowMaxSetpoint;
-    configJson["flowMinSetpoint"]          = flowMinSetpoint;
+    if (!isnan(flowMaxSetpoint)) 
+        configJson["flowMaxSetpoint"]      = flowMaxSetpoint;
+    if (!isnan(flowMinSetpoint)) 
+        configJson["flowMinSetpoint"]      = flowMinSetpoint;
 
     configJson["flowSensorId"]             = flowSensorId;
     configJson["inputSensorId"]            = inputSensorId;
     configJson["returnSensorId"]           = returnSensorId;
 
-    configJson["flowProportionalGain"]     = flowProportionalGain;
-    configJson["flowIntegralSeconds"]      = flowIntegralSeconds;  
+    if (!isnan(flowProportionalGain)) 
+        configJson["flowProportionalGain"] = flowProportionalGain;
+    if (!isnan(flowIntegralSeconds)) 
+        configJson["flowIntegralSeconds"]  = flowIntegralSeconds;  
     configJson["flowValveInverted"]        = flowValveInverted;
 
-    configJson["roomSetpoint"]             = roomSetpoint;
-    configJson["roomProportionalGain"]     = roomProportionalGain;  
-    configJson["roomIntegralMinutes"]      = roomIntegralMinutes;
+    if (!isnan(roomSetpoint)) 
+        configJson["roomSetpoint"]         = roomSetpoint;
+    if (!isnan(roomProportionalGain)) 
+        configJson["roomProportionalGain"] = roomProportionalGain;
+    if (!isnan(roomIntegralMinutes)) 
+        configJson["roomIntegralMinutes"]  = roomIntegralMinutes;
+
+    configJson["controlMode"]              = (int) controlMode;
+    if (!isnan(weatherControlOat)) 
+        configJson["weatherControlOat"]        = weatherControlOat;
+    if (!isnan(weatherControlFlow)) 
+        configJson["weatherControlFlow"]       = weatherControlFlow;
+    if (!isnan(weatherControlExponent)) 
+        configJson["weatherControlExponent"]   = weatherControlExponent;
+
+    if (!isnan(hybridTweakBandWidth)) 
+        configJson["hybridTweakBandWidth"]     = hybridTweakBandWidth;
+
+    if (!isnan(fallbackFlow)) 
+        configJson["fallbackFlow"]         = fallbackFlow;
 
     for (int i = 0; i < SensorMap.getCount(); i++) {
         SensorMapEntry* entry = SensorMap[i];
@@ -125,20 +147,29 @@ void CConfig::load()
 
     weatherlinkAddress          = configJson["weatherlinkAddress"] | emptyString;
 
-    flowMaxSetpoint             = configJson["flowMaxSetpoint"];
-    flowMinSetpoint             = configJson["flowMinSetpoint"];
+    flowMaxSetpoint             = configJson["flowMaxSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowMaxSetpoint"].as<double>();
+    flowMinSetpoint             = configJson["flowMinSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowMinSetpoint"].as<double>();
 
     flowSensorId                = configJson["flowSensorId"] | emptyString;
     inputSensorId               = configJson["inputSensorId"] | emptyString;
     returnSensorId              = configJson["returnSensorId"] | emptyString;
 
-    flowProportionalGain        = configJson["flowProportionalGain"].as<double>();
-    flowIntegralSeconds         = configJson["flowIntegralSeconds"].as<double>(); 
+    flowProportionalGain        = configJson["flowProportionalGain"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowProportionalGain"].as<double>();
+    flowIntegralSeconds         = configJson["flowIntegralSeconds"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowIntegralSeconds"].as<double>(); 
     flowValveInverted           = configJson["flowValveInverted"].as<bool>();
 
-    roomSetpoint                = configJson["roomSetpoint"].as<double>();
-    roomProportionalGain        = configJson["roomProportionalGain"].as<double>();
-    roomIntegralMinutes         = configJson["roomIntegralMinutes"].as<double>();
+    roomSetpoint                = configJson["roomSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["roomSetpoint"].as<double>();
+    roomProportionalGain        = configJson["roomProportionalGain"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["roomProportionalGain"].as<double>();
+    roomIntegralMinutes         = configJson["roomIntegralMinutes"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["roomIntegralMinutes"].as<double>();
+
+    controlMode                 = (ValveManagerControlMode) configJson["controlMode"].as<int>();
+    weatherControlOat           = configJson["weatherControlOat"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["weatherControlOat"].as<double>();
+    weatherControlFlow          = configJson["weatherControlFlow"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["weatherControlFlow"].as<double>();
+    weatherControlExponent      = configJson["weatherControlExponent"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["weatherControlExponent"].as<double>();
+
+    hybridTweakBandWidth        = configJson["hybridTweakBandWidth"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["hybridTweakBandWidth"].as<double>();
+    
+    fallbackFlow                = configJson["fallbackFlow"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["fallbackFlow"].as<double>();
 
     // Iterate over sensors
     JsonArray sensorsArray = configJson["sensors"].as<JsonArray>();

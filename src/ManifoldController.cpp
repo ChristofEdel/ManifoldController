@@ -11,6 +11,7 @@
 #include "NeohubProxy.h"
 #include "WeatherLinkTemperature.h"
 #include "version.h"
+#include "WeatherDataManager.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -54,7 +55,6 @@ void setup()
     
     // Initialise the valve manager from the configuration
     ValveManager.setup();
-    ValveManager.setRooomSetpoint(Config.getRoomSetpoint());
 
     // Sustain the integral (cumulative error) for the controller stages from last start
     MyRtcData *rtcData = getMyRtcData();
@@ -146,11 +146,12 @@ void manageValveControls()
     float inputTemperature = OneWireManager.getCalibratedTemperature(Config.getInputSensorId().c_str());
     float flowTemperature = OneWireManager.getCalibratedTemperature(Config.getFlowSensorId().c_str());
     float returnTemperature = OneWireManager.getCalibratedTemperature(Config.getReturnSensorId().c_str());
+    float outsideTemperature = WeatherDataManager.getWeatherData().outsideTemperature;
 
     if (!isnan(flowTemperature)) ValveManager.timestamps.flowDataLoadTime = time(nullptr);
 
     // run the control loop
-    ValveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature);
+    ValveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature, outsideTemperature);
     ValveManager.calculateValvePosition();
     ValveManager.sendCurrentValvePosition();
 

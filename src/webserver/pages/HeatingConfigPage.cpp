@@ -74,28 +74,68 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
 
       html.block("Heating Parameters", [this, &html]{
         html.fieldTable( [this, &html] {
+          html.fieldTableRow("Control Mode", [&html]{
+            html.element("td", "colspan=3", [&html]{
+              html.select("name='mode' onchange='toggleHeatingControlFields()'", [&html]{
+                html.option("0", "Room Temperature Control", Config.getControlMode() == ValveManagerControlMode::RoomTemperatureControl);
+                html.option("1", "Weather Compensation", Config.getControlMode() == ValveManagerControlMode::WeatherCompensation);
+                html.option("2", "Hybrid", Config.getControlMode() == ValveManagerControlMode::Hybrid);
+              });
+            });
+          });
+
           html.fieldTableRow("Room Setpoint", [&html]{
-            html.fieldTableInput("name='room-setpoint' type='text' class='num-3em'", Config.getRoomSetpoint(), 1);
+            html.fieldTableInput("name='setpoint' type='text' class='num-3em'", Config.getRoomSetpoint(), 1);
             html.print("<td>&deg;C</td>");
           });
-          html.fieldTableRow("Proportional Gain", [&html]{
+
+          String wcFieldDisplay = 
+            Config.getControlMode() == ValveManagerControlMode::WeatherCompensation 
+            || Config.getControlMode() == ValveManagerControlMode::Hybrid 
+            ? nullptr : "style='display: none'";
+          html.fieldTableRow("Control Point", wcFieldDisplay.c_str(), nullptr, [&html]{
+            html.fieldTableInput("name='wc-oat' type='text' class='num-3em'", Config.getWeatherControlOat(), 1);
+            html.print("<td>&deg;C outside &rArr;");
+            html.input("name='wc-flow' type='text' class='num-3em'", Config.getWeatherControlFlow(), 1);
+            html.print("&deg;C flow</td>");
+          });
+          html.fieldTableRow("Exponent", wcFieldDisplay.c_str(), nullptr, [&html]{
+            html.fieldTableInput("name='wc-exp' type='text' class='num-3em'", Config.getWeatherControlExponent(), 2);
+            html.print("<td>(1 = linear, > 1 - slower flow increase) </td>");
+          });
+          String hybirdFieldDisplay = Config.getControlMode() == ValveManagerControlMode::Hybrid ? nullptr : "style='display: none'";
+          html.fieldTableRow("Room Influence &plusmn;", hybirdFieldDisplay.c_str(), nullptr, [&html]{
+            html.fieldTableInput("name='hybrid-influence' type='text' class='num-3em'", Config.getHybridTweakBandWidth(), 1);
+            html.print("<td>&deg;C flow</td>");
+          });
+
+          String roomFieldDisplay = 
+            Config.getControlMode() == ValveManagerControlMode::RoomTemperatureControl 
+            ||Config.getControlMode() == ValveManagerControlMode::Hybrid
+            ? nullptr : "style='display: none'";
+          html.fieldTableRow("Proportional Gain", roomFieldDisplay.c_str(), nullptr, [&html]{
             html.fieldTableInput("name='room-pg' type='text' class='num-3em'", Config.getRoomProportionalGain(), 1);
             html.print("<td>&deg;C flow per &deg;C room temperature</td>");
           });
-          html.fieldTableRow("Integral Time", [&html]{
+          html.fieldTableRow("Integral Time", roomFieldDisplay.c_str(), nullptr, [&html]{
             html.fieldTableInput("name='room-is' type='text' class='num-3em'", Config.getRoomIntegralMinutes(), 1);
             html.print("<td>minutes for 1x proportional gain</td>");
           });
+
         });
       });
 
-      html.block("Manifold Configuration", [this, &html]{
+      html.block("Manifold<br>Configuration", [this, &html]{
         html.fieldTable( [this, &html] {
           html.fieldTableRow("Flow Range", [&html]{
             html.fieldTableInput("name='flow-setpoint-min' type='text' class='num-3em'", Config.getFlowMinSetpoint(), 1);
             html.print("<td>&mdash;");
             html.input("name='flow-setpoint-max' type='text' class='num-3em'", Config.getFlowMaxSetpoint(), 1);
             html.print("&deg;C</td>");
+          });
+          html.fieldTableRow("Fallback Flow", [&html] {
+            html.fieldTableInput("name='fallback-flow' type='text' class='num-3em'", Config.getfallbackFlow(), 1);
+            html.print("<td>&deg;C (used in case of sensor failure)</td>");
           });
           html.fieldTableRow("Proportional Gain", [&html]{
             html.fieldTableInput("name='flow-pg' type='text' class='num-3em'", Config.getFlowProportionalGain(), 1);
@@ -194,12 +234,28 @@ void CMyWebServer::generateZoneOptions(HtmlGenerator &html, int selectedZone)
   }
 }
 
-bool update(double oldValue, void (CConfig::*setter)(double), double newValue) {
+bool update(double oldValue, void (CConfig::*setter)(double), String newValueAsString) {
+  
+  double newValue;
+  if (newValueAsString.length() == 0) {
+    newValue = std::numeric_limits<double>::quiet_NaN();
+  } else {
+    newValue = newValueAsString.toDouble();
+  }
+
+  if (isnan(oldValue) && isnan(newValue)) return false;
   if (oldValue == newValue) return false;
   (Config.*setter)(newValue);
   return true;
 }
+
 bool update(bool oldValue, void (CConfig::*setter)(bool), bool newValue) {
+  if (oldValue == newValue) return false;
+  (Config.*setter)(newValue);
+  return true;
+}
+
+bool update(int oldValue, void (CConfig::*setter)(int), int newValue) {
   if (oldValue == newValue) return false;
   (Config.*setter)(newValue);
   return true;
@@ -227,28 +283,44 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
       // Handle sensor name updates
       SensorMap.updateAtIndex(sensorIndex++, key.substring(2), p->value());
     }
-    else if (key == "room-setpoint") {
-      if (update(Config.getRoomSetpoint(), &CConfig::setRoomSetpoint, p->value().toFloat())) {
-        ValveManager.setRooomSetpoint(p->value().toFloat());
-      }
+    else if (key == "mode") {
+      pidReconfigured |= update((int) Config.getControlMode(), static_cast<void (CConfig::*)(int)>(&CConfig::setControlMode), p->value().toInt());
+    }
+    else if (key == "setpoint") {
+      pidReconfigured |= update(Config.getRoomSetpoint(), &CConfig::setRoomSetpoint, p->value());
     }
     else if (key == "room-pg") {
-      pidReconfigured |= update(Config.getRoomProportionalGain(), &CConfig::setRoomProportionalGain, p->value().toFloat());
+      pidReconfigured |= update(Config.getRoomProportionalGain(), &CConfig::setRoomProportionalGain, p->value());
     }
     else if (key == "room-is") {
-      pidReconfigured |= update(Config.getRoomIntegralMinutes(), &CConfig::setRoomIntegralMinutes, p->value().toFloat());
+      pidReconfigured |= update(Config.getRoomIntegralMinutes(), &CConfig::setRoomIntegralMinutes, p->value());
+    }
+    else if (key == "wc-oat") {
+      pidReconfigured |= update(Config.getWeatherControlOat(), &CConfig::setWeatherControlOat, p->value());
+    }
+    else if (key == "wc-flow") {
+      pidReconfigured |= update(Config.getWeatherControlFlow(), &CConfig::setWeatherControlFlow, p->value());
+    }
+    else if (key == "wc-exp") {
+      pidReconfigured |= update(Config.getWeatherControlExponent(), &CConfig::setWeatherControlExponent, p->value());
+    }
+    else if (key == "hybrid-influence") {
+      pidReconfigured |= update(Config.getHybridTweakBandWidth(), &CConfig::setHybridTweakBandWidth, p->value());
+    }
+    else if (key == "fallback-flow") {
+      pidReconfigured |= update(Config.getfallbackFlow(), &CConfig::setfallbackFlow, p->value());
     }
     else if (key == "flow-setpoint-min") {
-      flowRangeReconfigured |= update(Config.getFlowMinSetpoint(), &CConfig::setFlowMinSetpoint, p->value().toFloat());
+      flowRangeReconfigured |= update(Config.getFlowMinSetpoint(), &CConfig::setFlowMinSetpoint, p->value());
     }
     else if (key == "flow-setpoint-max") {
-      flowRangeReconfigured |= update(Config.getFlowMaxSetpoint(), &CConfig::setFlowMaxSetpoint, p->value().toFloat());
+      flowRangeReconfigured |= update(Config.getFlowMaxSetpoint(), &CConfig::setFlowMaxSetpoint, p->value());
     }
     else if (key == "flow-pg") {
-      pidReconfigured |= update(Config.getFlowProportionalGain(), &CConfig::setFlowProportionalGain, p->value().toFloat());
+      pidReconfigured |= update(Config.getFlowProportionalGain(), &CConfig::setFlowProportionalGain, p->value());
     }
     else if (key == "flow-is") {
-      pidReconfigured |= update(Config.getFlowIntegralSeconds(), &CConfig::setFlowIntegralSeconds, p->value().toFloat());
+      pidReconfigured |= update(Config.getFlowIntegralSeconds(), &CConfig::setFlowIntegralSeconds, p->value());
     }
     else if (key == "valve-direction") {
       pidReconfigured |= update(Config.getFlowValveInverted(), &CConfig::setFlowValveInverted, (bool) p->value().toInt());

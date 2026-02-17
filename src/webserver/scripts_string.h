@@ -297,6 +297,32 @@ function openSetValueDialog(element, title, command) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 //
+// Config page - Heating Parameters field visibility toggle
+//
+
+function toggleHeatingControlFields() {
+    const mode = $('select[name="mode"]').val();
+
+    if (mode === "0") { // Room Temperature Control
+        $('input[name^="room-"]').closest('tr').show()
+        $('input[name^="wc-"]').closest('tr').hide()
+        $('input[name^="hybrid-"]').closest('tr').hide()
+    }
+    else if (mode === "1") { // Weather Compensation
+        $('input[name^="room-"]').closest('tr').hide()
+        $('input[name^="wc-"]').closest('tr').show()
+        $('input[name^="hybrid-"]').closest('tr').hide()
+    }
+    else if (mode === "2") { // Hybrid
+        $('input[name^="room-"]').closest('tr').show()
+        $('input[name^="wc-"]').closest('tr').show()
+        $('input[name^="hybrid-"]').closest('tr').show()
+    }
+    
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // Monitor and Config page - data refresh
 //
 
@@ -521,6 +547,11 @@ $(function () {
     // Zone selection
     $('#zoneToResetSelect').on('change', function() {
         zoneToResetSelected()
+    })
+
+    // Control mode (Weather Compensation toggle)
+    $('select[name="mode"]').on('change', function() {
+        toggleHeatingControlFields()
     })
 
     // Start sequence on "Reset Valve" click

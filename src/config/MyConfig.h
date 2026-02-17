@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include "ValveManagerControlMode.h"
 
 #include "MyLog.h"
 
@@ -20,20 +21,27 @@ class CConfig {
 
     String weatherlinkAddress;
 
-    double flowMaxSetpoint;
-    double flowMinSetpoint;
+    double flowMaxSetpoint = std::numeric_limits<double>::quiet_NaN();
+    double flowMinSetpoint = std::numeric_limits<double>::quiet_NaN();
 
     String flowSensorId;
     String inputSensorId;
     String returnSensorId;
 
-    double flowProportionalGain;
-    double flowIntegralSeconds;
+    double flowProportionalGain = std::numeric_limits<double>::quiet_NaN();
+    double flowIntegralSeconds = std::numeric_limits<double>::quiet_NaN();
     bool flowValveInverted;
 
-    double roomSetpoint;
-    double roomProportionalGain;
-    double roomIntegralMinutes;
+    double roomSetpoint = std::numeric_limits<double>::quiet_NaN();
+    double roomProportionalGain = std::numeric_limits<double>::quiet_NaN();
+    double roomIntegralMinutes = std::numeric_limits<double>::quiet_NaN();
+
+    ValveManagerControlMode controlMode;
+    double weatherControlOat = std::numeric_limits<double>::quiet_NaN();
+    double weatherControlFlow = std::numeric_limits<double>::quiet_NaN();
+    double weatherControlExponent = std::numeric_limits<double>::quiet_NaN();
+    double hybridTweakBandWidth = std::numeric_limits<double>::quiet_NaN();
+    double fallbackFlow = std::numeric_limits<double>::quiet_NaN();
 
     const char* masterFileName = "/flash/config.json";
     const char* secondaryFileName = "/sdcard/config.json";
@@ -65,6 +73,15 @@ class CConfig {
     inline double getRoomProportionalGain() const { return roomProportionalGain; };
     inline double getRoomIntegralMinutes() const { return roomIntegralMinutes; };
 
+    inline ValveManagerControlMode getControlMode() const { return controlMode; };
+    inline double getWeatherControlOat() const { return weatherControlOat; };
+    inline double getWeatherControlFlow() const { return weatherControlFlow; };
+    inline double getWeatherControlExponent() const { return weatherControlExponent; };
+
+    inline double getHybridTweakBandWidth() const { return hybridTweakBandWidth; };
+
+    inline double getfallbackFlow() const { return fallbackFlow; };
+
     // Setters
     inline void setHostname(const String& value) { hostname = value; };
     inline void setName(const String& value) { name = value; };
@@ -90,6 +107,16 @@ class CConfig {
     inline void setRoomSetpoint(double value) { roomSetpoint = value; };
     inline void setRoomProportionalGain(double value) { roomProportionalGain = value; };
     inline void setRoomIntegralMinutes(double value) { roomIntegralMinutes = value; };
+
+    inline void setControlMode(ValveManagerControlMode value) { controlMode = value; };
+    inline void setControlMode(int value) { controlMode = (ValveManagerControlMode) value; };
+    inline void setWeatherControlOat(double value) { weatherControlOat = value; };
+    inline void setWeatherControlFlow(double value) { weatherControlFlow = value; };
+    inline void setWeatherControlExponent(double value) { weatherControlExponent = value; };
+
+    inline void setHybridTweakBandWidth(double value) { hybridTweakBandWidth = value; };
+
+    inline void setfallbackFlow(double value) { fallbackFlow = value; };
 
     // Dummies so shared code compiles
     inline float getBoilerDefaultSetpointForHeating() { return 0; };
