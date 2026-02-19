@@ -255,6 +255,7 @@ table.field-table > thead > tr > th {   /* if it has a head, thin line at bottom
 }
 
 table.field-table > tbody > tr > th {   /* headers in each row */
+    vertical-align: top;
     text-align: left;
     font-weight: normal;
     padding-left: 10px;
@@ -262,6 +263,16 @@ table.field-table > tbody > tr > th {   /* headers in each row */
     padding-top: 5px;
     padding-bottom: 5px;
 }
+
+table.field-table > tbody > tr > td {   /* Fields vertically centered, samevertical padding as header */
+    vertical-align: top;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+table.field-table > tbody > tr > td > span {
+    font-size: small;
+}
+
 
 table.field-table input {               /* input field style within table */
     background: transparent;

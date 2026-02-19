@@ -38,8 +38,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.element("td", "id='roomSetpoint' class='has-data'",  !isnan(sp) ? String(sp,1).c_str() : "");
           html.element("td", StringPrintf("id='roomTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='roomError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
-          html.element("td", "id='roomP' class='has-data'", String(ValveManager.getRoomProportionalTerm(),1).c_str());
-          html.element("td", "id='roomI' class='has-data'", String(ValveManager.getRoomIntegralTerm(),1).c_str());
+          html.element("td", "id='roomP' class='has-data'", Config.getControlMode() == ValveManagerControlMode::WeatherCompensation ? "" : String(ValveManager.getRoomProportionalTerm(),1).c_str());
+          html.element("td", "id='roomI' class='has-data'", Config.getControlMode() == ValveManagerControlMode::WeatherCompensation ? "" : String(ValveManager.getRoomIntegralTerm(),1).c_str());
           html.print(StringPrintf("<td id='roomAged' class='data-is-aged' style='display: %s'>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime) ? "table-cell" : "none").c_str());
           html.print(StringPrintf("<td id='roomDead' class='data-is-dead' style='display: %s'>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime) ? "table-cell" : "none").c_str());
         });
@@ -63,7 +63,15 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           bool aged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
           bool dead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
           const char * extraClass = dead ? " data-is-dead" : aged ? " data-is-aged" : "";
-          html.element("td", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", !isnan(sp) ? String(sp,1).c_str() : "");
+          html.element("td", [this, sp, &html]{ 
+            double delta = ValveManager.outputs.targetFlowTemperatureTweak;
+            double raw = ValveManager.outputs.targetFlowTemperature - delta;
+            String prefix = delta >= 0 ? "+" : "";
+            String d = Config.getControlMode() != ValveManagerControlMode::Hybrid ? " style='display: none'" : "";
+            html.element("div", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", !isnan(sp) ? String(sp,1).c_str() : "");
+            html.span(("id='flowRaw' class='has-data'" + d).c_str(), String(raw,1).c_str());
+            html.span(("id='flowTweak' class='has-data'" + d).c_str(), (prefix + String(delta,1)).c_str());
+          });
           html.element("td",  StringPrintf("id='flowTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='flowError' class='has-data'", !isnan(d) ? String(d,1).c_str() : "");
           html.element("td", "id='flowP' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
@@ -251,23 +259,30 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     statusJson["roomError"]  = t - sp;
     statusJson["roomTemperatureAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
     statusJson["roomTemperatureDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
-    statusJson["roomProportionalTerm"] = ValveManager.getRoomProportionalTerm();
-    statusJson["roomIntegralTerm"] = ValveManager.getRoomIntegralTerm();
+    if (Config.getControlMode() != ValveManagerControlMode::WeatherCompensation) {
+      // In weather compensation mode, the room P and I terms are not meaningful
+      statusJson["roomProportionalTerm"] = ValveManager.getRoomProportionalTerm();
+      statusJson["roomIntegralTerm"] = ValveManager.getRoomIntegralTerm();
+    }
     statusJson["roomAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime);
     statusJson["roomDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime);
   }
   {
     double sp = ValveManager.getFlowSetpoint();
     double t = ValveManager.inputs.flowTemperature;
-    statusJson["flowSetpoint"] = sp;
-    statusJson["flowTemperature"] = t;
-    statusJson["flowError"]       = t - sp;
-    statusJson["flowTemperatureAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
-    statusJson["flowTemperatureDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
+    statusJson["flowSetpoint"]         = sp;
+    if (Config.getControlMode() == ValveManagerControlMode::Hybrid) {
+      statusJson["flowRaw"]            = sp - ValveManager.outputs.targetFlowTemperatureTweak;
+      statusJson["flowTweak"]          = ValveManager.outputs.targetFlowTemperatureTweak;
+    }
+    statusJson["flowTemperature"]      = t;
+    statusJson["flowError"]            = t - sp;
+    statusJson["flowTemperatureAged"]  = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
+    statusJson["flowTemperatureDead"]  = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
     statusJson["flowProportionalTerm"] = ValveManager.getFlowProportionalTerm();
     statusJson["flowIntegralTerm"]     = ValveManager.getFlowIntegralTerm();
-    statusJson["flowAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime);
-    statusJson["flowDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime);
+    statusJson["flowAged"]             = ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime);
+    statusJson["flowDead"]             = ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime);
   }
 
   statusJson["valvePosition"]        = ValveManager.getValvePosition();
