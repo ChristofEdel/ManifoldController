@@ -33,7 +33,6 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
           html.fieldTableRow("Token", [&html]{
             html.fieldTableInput("name='nh_token' style='width: 20em'",Config.getNeohubToken().c_str());
           });
-          html.print("<tr><th colspan=2><a href='/messagelog.txt'>Message Log</a></th></tr>");
           html.fieldTableRow("Enable Proxy", [&html]{
             html.element("td", "style='text-align: left'", [&html] {
               html.print("<input type='hidden' name='nh_proxy' value='false'>");

@@ -47,7 +47,6 @@ void CMyWebServer::setup()
     // Core dumps and other debug helpers
     this->m_server.on(AsyncURIMatcher::exact("/coredump.elf"),  HTTP_GET, [this](AsyncWebServerRequest *r) { this->processCoreDumpRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/backtrace.txt"), HTTP_GET, [this](AsyncWebServerRequest *r) { this->processBacktraceRequest(r); });
-    this->m_server.on(AsyncURIMatcher::exact("/messagelog.txt"),HTTP_GET, [this](AsyncWebServerRequest *r) { this->processMessageLogRequest(r); });
     this->m_server.on(AsyncURIMatcher::exact("/panic"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareAbort(SW_RESET_PANIC_TEST); /* Force a crash to test crash logging */ });
     this->m_server.on(AsyncURIMatcher::exact("/reset"),         HTTP_GET, [this](AsyncWebServerRequest *r) { softwareReset(SW_RESET_USER_RESET); });
 

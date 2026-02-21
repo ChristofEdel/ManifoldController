@@ -38,7 +38,6 @@ class CMyWebServer {
 
     void processCoreDumpRequest(AsyncWebServerRequest* request);
     void processBacktraceRequest(AsyncWebServerRequest* request);
-    void processMessageLogRequest(AsyncWebServerRequest* request);
 
     // HTML pages - main functions
     AsyncResponseStream* startHttpHtmlResponse(AsyncWebServerRequest* request);
