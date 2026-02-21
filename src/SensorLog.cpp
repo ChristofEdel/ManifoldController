@@ -57,6 +57,17 @@ String getSensorLogLine()
     String result;
     result = MyRtc.getTime().getTimestampText();
 
+    // Weather control
+    // - Outdoor temperature
+    // - Calculated manifold flow temperature setpoint (if weather compensation enabled)
+     result += ",";
+     if (!isnan(ValveManager.inputs.outsideTemperature)) result += String(ValveManager.inputs.outsideTemperature, 1);
+     result += ",";
+     double flowSetpoint = ValveManager.outputs.targetFlowTemperature - ValveManager.outputs.targetFlowTemperatureTweak;
+     if (!isnan(flowSetpoint)) result += String(flowSetpoint, 1);
+     result += ",";
+     if (!isnan(ValveManager.outputs.targetFlowTemperatureTweak)) result += String(ValveManager.outputs.targetFlowTemperatureTweak, 1);
+
     // Room control
     //  - Setpoint
     //  - Actual
@@ -139,7 +150,7 @@ String getSensorLogLine()
 String getSensorHeaderLine()
 {
     String result;
-    result = "Time,Room Setpoint,Room,Flow Setpoint,Input,Return,Valve,Flow";
+    result = "Time,OAT,WC-Flow,WC-Tweak,Room Setpoint,Room,Flow Setpoint,Input,Return,Valve,Flow";
 
     String inputSensorId = Config.getInputSensorId();
     String flowSensorId = Config.getFlowSensorId();
