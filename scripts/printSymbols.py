@@ -7,19 +7,12 @@ ADDR2LINE = os.path.expanduser(
     "~/.platformio/packages/toolchain-xtensa-esp-elf/bin/xtensa-esp32-elf-addr2line"
 )
 PROJECT_DIR = os.path.abspath(".").replace("\\","/")
-PACKAGE_DIR = os.environ.get("PACKAGE_DIR", os.path.join(os.path.expanduser("~"), ".platformio", "packages")).replace("\\","/")
-XTENSA_DIR = PACKAGE_DIR + "/toolchain-xtensa-esp-elf/xtensa-esp32s3-elf"
-ESPIDF_DIR = PACKAGE_DIR + "/framework-espidf/components"
 
 ELF_FILE = os.path.join(PROJECT_DIR, ".pio/build/debug/firmware.elf")
 
 # helper: replace PROJECT_DIR and PACKAGE_DIR in paths so we have more streamlined output
 def normalisePath(p: str) -> str:
     p = p.replace("\\", "/")
-    p = p.replace(PROJECT_DIR+"/",     "PROJECT ")
-    p = re.sub(re.escape(XTENSA_DIR),  "XTENSA  ", p, flags=re.IGNORECASE)
-    p = re.sub(re.escape(ESPIDF_DIR),  "ESPIDF  ", p, flags=re.IGNORECASE)
-    p = re.sub(re.escape(PACKAGE_DIR), "PACKAGE ", p, flags=re.IGNORECASE)
     return p
 
 def main():
@@ -51,11 +44,6 @@ def main():
 
     # we now have line pairs for each address, 1st line function, 2nd line file
     it = iter(lines)
-    print ("")
-    print ("XTENSA  = " + XTENSA_DIR)
-    print ("ESPIDF  = " + ESPIDF_DIR)
-    print ("PACKAGE = " + PACKAGE_DIR)
-    print ("")
 
     for function in it:
         # extract function and location
@@ -68,13 +56,13 @@ def main():
         location = normalisePath(location.strip() or "??:0")
 
         # print the functions and where they are in a more palatable format
-        if len(location) <= 78:
+        if len(function) <= 78:
             # pad to 40 chars and print on same line
-            print(f"{location:<80}{function}")
+            print(f"{function:<80}{location}")
         else:
             # long function name: separate lines
-            print(location)
-            print(" " * 80 + function)
+            print(function)
+            print(" " * 80 + location)
     print ("")
     
 if __name__ == "__main__":
