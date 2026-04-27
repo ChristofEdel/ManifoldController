@@ -174,10 +174,11 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
         return;
     }
 
-    std::vector<DirectoryEntry> entries = Filesystem.dir(dirPath);
+    DirectoryEntry entries[40];  // max 40 entries in a directory
+    size_t count = Filesystem.dir(dirPath, entries, 40);
     
     bool hasDate = false;
-    for (DirectoryEntry& e : entries) hasDate |= e.lastModified > 0;
+    for (size_t i = 0; i < count; i++) hasDate |= entries[i].lastModified > 0;
 
     // Now print HTML
     AsyncResponseStream* response = startHttpHtmlResponse(request);
@@ -221,7 +222,8 @@ void CMyWebServer::respondWithDirectory(AsyncWebServerRequest* request, const St
         response->printf("<td><a href='/backtrace.txt'>backtrace.txt</a></td><td></td><td></td><td></td>");
         response->printf("</tr>");
     }
-    for (DirectoryEntry& e : entries) {
+    for (size_t i = 0; i < count; i++) {
+        const DirectoryEntry& e = entries[i];
         response->print("<tr>");
         response->printf("<td><a href='%s'>%s</a></td>", e.path.c_str(), e.name.c_str());
         if (!e.isDirectory) {
