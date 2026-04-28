@@ -23,6 +23,7 @@ class CConfig {
 
     double flowMaxSetpoint = std::numeric_limits<double>::quiet_NaN();
     double flowMinSetpoint = std::numeric_limits<double>::quiet_NaN();
+    double flowAddOn = std::numeric_limits<double>::quiet_NaN();
 
     String flowSensorId;
     String inputSensorId;
@@ -60,6 +61,7 @@ class CConfig {
 
     inline double getFlowMaxSetpoint() const { return flowMaxSetpoint; };
     inline double getFlowMinSetpoint() const { return flowMinSetpoint; };
+    inline double getFlowAddOn() const { return flowAddOn; };
 
     inline const String& getFlowSensorId() const { return flowSensorId; };
     inline const String& getInputSensorId() const { return inputSensorId; };
@@ -95,6 +97,7 @@ class CConfig {
 
     inline void setFlowMaxSetpoint(double value) { flowMaxSetpoint = value; };
     inline void setFlowMinSetpoint(double value) { flowMinSetpoint = value; };
+    inline void setFlowAddOn(double value) { flowAddOn = value; };
 
     inline void setFlowSensorId(const String& value) { flowSensorId = value; };
     inline void setInputSensorId(const String& value) { inputSensorId = value; };

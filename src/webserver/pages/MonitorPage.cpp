@@ -68,9 +68,9 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
             double raw = ValveManager.outputs.targetFlowTemperature - delta;
             String prefix = delta >= 0 ? "+" : "";
             String d = Config.getControlMode() != ValveManagerControlMode::Hybrid ? " style='display: none'" : "";
-            html.element("div", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", !isnan(sp) ? String(sp,1).c_str() : "");
-            html.span(("id='flowRaw' class='has-data'" + d).c_str(), String(raw,1).c_str());
-            html.span(("id='flowTweak' class='has-data'" + d).c_str(), (prefix + String(delta,1)).c_str());
+            html.element("div", "id='flowSetpoint' class='has-data' onclick=\"openSetValueDialog(this, 'Set Flow Temperature', 'SetFlowPidOutput')\"", !isnan(sp) ? String(sp,1).c_str() : "OFF");
+            html.span(("id='flowRaw' class='has-data'" + d).c_str(), !isnan(sp) && !isnan(raw) ? String(raw,1).c_str() : "");
+            html.span(("id='flowTweak' class='has-data'" + d).c_str(), !isnan(sp) && !isnan(delta) ? (prefix + String(delta,1)).c_str() : "");
           });
           html.element("td",  StringPrintf("id='flowTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='flowError' class='has-data'", !isnan(d) ? String(d,1).c_str() : "");
@@ -271,7 +271,7 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     double sp = ValveManager.getFlowSetpoint();
     double t = ValveManager.inputs.flowTemperature;
     statusJson["flowSetpoint"]         = sp;
-    if (Config.getControlMode() == ValveManagerControlMode::Hybrid) {
+    if (Config.getControlMode() == ValveManagerControlMode::Hybrid && !isnan(sp)) {
       statusJson["flowRaw"]            = sp - ValveManager.outputs.targetFlowTemperatureTweak;
       statusJson["flowTweak"]          = ValveManager.outputs.targetFlowTemperatureTweak;
     }

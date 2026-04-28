@@ -355,21 +355,29 @@ function monitorPage_refreshData() {
             $("#roomAged").toggle(data.roomAged)
             $("#roomDead").toggle(data.roomDead)
 
-            $("#flowSetpoint").text(fmt(data.flowSetpoint, 1))
-            if (data.flowRaw !== null) {
+            if (data.flowSetpoint !== null) {
+                $("#flowSetpoint").text(fmt(data.flowSetpoint, 1))
+            }
+            else {
+                $("#flowSetpoint").text("OFF")
+            }
+            if (data.flowSetpoint !== null && data.flowRaw !== null) {
                 $("#flowRaw").text(fmt(data.flowRaw, 1))
                 $("#flowRaw").show();
             }
             else {
+                $("#flowRaw").text("")
                 $("#flowRaw").hide();
             }
-            if (data.flowTweak !== null) {
+            if (data.flowSetpoint !== null && data.flowTweak !== null) {
                 $("#flowTweak").text(fmt(data.flowTweak, 1, "+"))
                 $("#flowTweak").show();
             }
             else {
+                $("#flowTweak").text("")
                 $("#flowTweak").hide();
             }
+            
             if(data.flowTemperature !== null) {
                 $("#flowTemperature").text(fmt(data.flowTemperature, 1))
                 d = fmt(data.flowError, 1, "+")

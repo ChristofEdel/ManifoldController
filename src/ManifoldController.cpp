@@ -129,12 +129,16 @@ void manageValveControls()
     // Update the timestamp when we collected the lastest room temperature if we can obtain at least one
     int tempCount = 0;
     double temperatureTotal = 0;
+    bool allRoomsOff = true;
     for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
         NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
-        if (d && !isnan(d->roomTemperature)) {
-            if (d->lastUpdate > ValveManager.timestamps.roomDataLoadTime) ValveManager.timestamps.roomDataLoadTime = d->lastUpdate;
-            temperatureTotal += d->roomTemperature;
-            tempCount++;
+        if (d) {
+            if (!isnan(d->roomTemperature)) {
+                if (d->lastUpdate > ValveManager.timestamps.roomDataLoadTime) ValveManager.timestamps.roomDataLoadTime = d->lastUpdate;
+                temperatureTotal += d->roomTemperature;
+                tempCount++;
+            }
+            if (d->demand) allRoomsOff = false;
         }
     }
     float roomTemperature = std::numeric_limits<float>::quiet_NaN();
@@ -151,7 +155,7 @@ void manageValveControls()
     if (!isnan(flowTemperature)) ValveManager.timestamps.flowDataLoadTime = time(nullptr);
 
     // run the control loop
-    ValveManager.setInputs(roomTemperature, flowTemperature, inputTemperature, returnTemperature, outsideTemperature);
+    ValveManager.setInputs(allRoomsOff, roomTemperature, flowTemperature, inputTemperature, returnTemperature, outsideTemperature);
     ValveManager.calculateValvePosition();
     ValveManager.sendCurrentValvePosition();
 
@@ -213,7 +217,7 @@ void valveControlTask(void* parameter)
                     data.flowTemperature = ValveManager.inputs.flowTemperature;
                     data.flowDeltaT = data.flowTemperature - data.flowSetpoint;
                     data.valvePosition = ValveManager.getValvePosition();
-                    data.flowDemand = data.flowSetpoint;
+                    data.flowDemand = data.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
                     data.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
                     data.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
                     data.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);

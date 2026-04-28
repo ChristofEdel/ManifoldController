@@ -133,6 +133,10 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             html.input("name='flow-setpoint-max' type='text' class='num-3em'", Config.getFlowMaxSetpoint(), 1);
             html.print("&deg;C</td>");
           });
+          html.fieldTableRow("Demand Add-On", [&html]{
+            html.fieldTableInput("name='flow-add-on' type='text' class='num-3em'", Config.getFlowAddOn(), 1);
+            html.print("<td>&deg;C</td>");
+          });
           html.fieldTableRow("Fallback Flow", [&html] {
             html.fieldTableInput("name='fallback-flow' type='text' class='num-3em'", Config.getfallbackFlow(), 1);
             html.print("<td>&deg;C (used in case of sensor failure)</td>");
@@ -315,6 +319,9 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     }
     else if (key == "flow-setpoint-max") {
       flowRangeReconfigured |= update(Config.getFlowMaxSetpoint(), &CConfig::setFlowMaxSetpoint, p->value());
+    }
+    else if (key == "flow-add-on") {
+      update(Config.getFlowAddOn(), &CConfig::setFlowAddOn, p->value());
     }
     else if (key == "flow-pg") {
       pidReconfigured |= update(Config.getFlowProportionalGain(), &CConfig::setFlowProportionalGain, p->value());

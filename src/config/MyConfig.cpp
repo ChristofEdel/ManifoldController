@@ -149,6 +149,7 @@ void CConfig::load()
 
     flowMaxSetpoint             = configJson["flowMaxSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowMaxSetpoint"].as<double>();
     flowMinSetpoint             = configJson["flowMinSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowMinSetpoint"].as<double>();
+    flowAddOn                   = configJson["flowAddOn"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowAddOn"].as<double>();
 
     flowSensorId                = configJson["flowSensorId"] | emptyString;
     inputSensorId               = configJson["inputSensorId"] | emptyString;
