@@ -136,7 +136,6 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     }
     if (key == "hostname" && p->value() != Config.getHostname()) {
       Config.setHostname(p->value());
-      MyWiFi.setHostname(p->value());
       changesMade = true;
       hostnameChanged = true;
     }
@@ -199,6 +198,7 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     AsyncWebServerResponse *response = request->beginResponse(302);  
     response->addHeader("Location", "http://" + Config.getHostname() + ".local" + request->url());  
     request->send(response);
+    softwareReset(SW_RESET_HOSTNAME_CHANGED);
   }
 
 }
