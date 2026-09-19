@@ -1,5 +1,4 @@
 #include <arduino.h>
-#include <NeohubConnection.h>
 #include "MyWebServer.h"
 #include "MyLog.h"      // Lopgging to serial and, if available, SD card
 #include <MyConfig.h> 

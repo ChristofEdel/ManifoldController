@@ -1,5 +1,6 @@
 #include <ArduinoOTA.h>
 #include <cppQueue.h>
+#include "MqttManager.h"
 #include "Esp32Controller.h"
 #include "ValveManager.h"
 #include "EspTools.h"
@@ -8,10 +9,9 @@
 #include "ManifoldConnections.h"
 #include "MyWifi.h"
 #include "SensorLog.h"
-#include "NeohubProxy.h"
-#include "WeatherLinkTemperature.h"
 #include "version.h"
 #include "WeatherDataManager.h"
+#include "StringTools.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -45,14 +45,19 @@ void triggerValveControls(bool);
 void setup()
 {
     ManifoldController.setup();
+    if (!Config.getMqttHost().isEmpty()) {
+        MqttManager.setNeohubTopic(Config.getMqttTopicNeohub().c_str());
+        MqttManager.setWeatherTopics(
+            Config.getMqttTopicTemperature().c_str(),
+            Config.getMqttTopicTemperatureKeepalive().c_str()
+        );
+        MqttManager.start(
+            StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()).c_str(), 
+            Config.getMqttUsername().c_str(), 
+            Config.getMqttPassword().c_str()
+        );
+    }
 
-    if (Config.getNeohubProxyEnabled()) {
-        NeohubProxyServer.start();
-    }
-    else {
-        NeohubProxyClient.start();
-    }
-    
     // Initialise the valve manager from the configuration
     ValveManager.setup();
 
@@ -65,10 +70,6 @@ void setup()
     if (rtcData->getLastKnownFlowControllerIntegralSet()) {
         MyLog.printf("Initialising flow integral to %.1f\n", rtcData->getLastKnownFlowControllerIntegral());
         ValveManager.setFlowIntegralTerm(rtcData->getLastKnownFlowControllerIntegral());
-    }
-
-    if (Config.getWeatherlinkAddress() != "") {
-        WeatherLinkTemperature.start(Config.getWeatherlinkAddress());
     }
 
     // Launch the backgroud task that performs the valve control loop
@@ -175,11 +176,19 @@ void triggerValveControls(bool writeLogLine)
     xQueueSend(valveControlQueue, &writeLogLine, 0);
 }
 
+ManifoldData myData;
+
 // Task function that runs the boiler control in the background
 void valveControlTask(void* parameter)
 {
+
+    myData.ipAddress = MyWiFi.getIpAddress();
+    myData.version = String(VERSION);
+
     bool writeLogLine = false;
+    uint32_t previousLoopStartMillis = millis(); 
     readSensors();
+
     for (;;) {
         // Wait for notification from main loop
         if (xQueueReceive(valveControlQueue, &writeLogLine, portMAX_DELAY) == pdTRUE) {
@@ -189,6 +198,10 @@ void valveControlTask(void* parameter)
                 writeLogLine = tmp;
             }
 
+            uint32_t startMillis = millis();
+            uint32_t previousLoopMillis = startMillis - previousLoopStartMillis;
+            previousLoopStartMillis = startMillis;
+
             // Control loop first
             manageValveControls();
 
@@ -197,37 +210,37 @@ void valveControlTask(void* parameter)
             rtcData->setLastKnownFlowControllerIntegral (ValveManager.getRoomIntegralTerm());
             rtcData->setLastKnownValveControllerIntegral(ValveManager.getFlowIntegralTerm());
 
+
+            uint32_t controlLoopMillis = millis() - startMillis;
+
             // Then log if requested
             if (writeLogLine) {
                 logSensors();
-                // Then send our stats to the central heating controller (if configured)
-                const String &host = Config.getHeatingControllerAddress();
-                if (host != "" && host != "null") {
-                    ManifoldData data;
-                    time_t now = time(nullptr);
-                    String hostname = Config.getHostname();
-                    if (hostname != "" && hostname.indexOf('.') == -1) hostname = hostname + ".local";
-                    data.name = Config.getName() == "" ? hostname : Config.getName();
-                    data.hostname = Config.getHostname() + ".local";
-                    data.ipAddress = MyWiFi.getIpAddress();
-                    data.roomSetpoint = ValveManager.getRoomSetpoint();
-                    data.roomTemperature = ValveManager.inputs.roomTemperature;
-                    data.roomDeltaT = data.roomTemperature - data.roomSetpoint;
-                    data.flowSetpoint = ValveManager.getFlowSetpoint();
-                    data.flowTemperature = ValveManager.inputs.flowTemperature;
-                    data.flowDeltaT = data.flowTemperature - data.flowSetpoint;
-                    data.valvePosition = ValveManager.getValvePosition();
-                    data.flowDemand = data.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
-                    data.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
-                    data.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
-                    data.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
-                    data.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
-                    data.uptimeSeconds = uptime();
-                    data.version = String(VERSION);
-
-                    ManifoldDataPostJob::post(data, host);
-                }
             }
+
+            uint32_t loggingMillis = millis() - startMillis - controlLoopMillis;
+
+            // send our stats to MQTT (and indirectly, to the central heating controller)
+            time_t now = time(nullptr);
+            myData.name = Config.getName() == "" ? Config.getHostname() : Config.getName();
+            myData.hostname = Config.getHostname();
+            myData.roomSetpoint = ValveManager.getRoomSetpoint();
+            myData.roomTemperature = ValveManager.inputs.roomTemperature;
+            myData.roomDeltaT = myData.roomTemperature - myData.roomSetpoint;
+            myData.flowSetpoint = ValveManager.getFlowSetpoint();
+            myData.flowTemperature = ValveManager.inputs.flowTemperature;
+            myData.flowDeltaT = myData.flowTemperature - myData.flowSetpoint;
+            myData.valvePosition = ValveManager.getValvePosition();
+            myData.flowDemand = myData.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
+            myData.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
+            myData.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
+            myData.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
+            myData.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
+            myData.uptimeSeconds = uptime();
+            myData.controlLoopMs = controlLoopMillis;
+            myData.loggingMs = loggingMillis;
+            myData.roundTripMs = previousLoopMillis;
+            myData.sendChangesToMqtt();
 
             // Finally, read the sensors for the next iteration
             // This is done last because reading takes around 600-800 ms so this prepares

@@ -4,6 +4,7 @@
 #include "NeohubZoneManager.h"
 #include "ValveManager.h"
 #include "StringTools.h"
+#include "MqttManager.h"
 
 // Ececute commands in the following form:
 //
@@ -110,16 +111,11 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
 
     else if (command == "GetZoneStatus" || command == "ZoneOn" || command == "ZoneOff" || command == "ZoneAuto") {
         int zoneId = commandJson["zoneId"].as<int>();
-        String zoneName = NeohubZoneManager.getZoneName(zoneId);
-        if (zoneName == emptyString) {
-            request->send(makeCommandResponse(request, 400, "{ \"error\": \"unknown zone\" }"));
-            return;
-        }
         NeohubZoneData* zd;
-        if (command == "GetZoneStatus") zd = NeohubConnection.loadZoneData(zoneName);
-        else if (command == "ZoneOn") zd = NeohubConnection.forceZoneOn(zoneName);
-        else if (command == "ZoneOff") zd = NeohubConnection.forceZoneOff(zoneName);
-        else if (command == "ZoneAuto") zd = NeohubConnection.setZoneToAutomatic(zoneName);
+        if (command == "GetZoneStatus") zd = NeohubZoneManager.getZoneData(zoneId);
+        else if (command == "ZoneOn")   zd = MqttManager.forceZoneOn(zoneId);
+        else if (command == "ZoneOff")  zd = MqttManager.forceZoneOff(zoneId);
+        else if (command == "ZoneAuto") zd = MqttManager.setZoneToAutomatic(zoneId);
         if (!zd) {
             request->send(makeCommandResponse(request, 400, "{ \"error\": \"unable to configure zone\" }"));
             return;

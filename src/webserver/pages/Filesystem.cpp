@@ -2,7 +2,6 @@
 #include "../MyWebServer.h"
 #include "MyLog.h"
 #include "EspTools.h"
-#include "NeohubConnection.h"
 #include "Filesystem.h"
 #include "StringTools.h"
 #include <dirent.h>   // DIR, opendir(), readdir(), closedir(), struct dirent

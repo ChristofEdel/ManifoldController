@@ -5,7 +5,6 @@
 
 #include "../tools/HtmlGenerator.h"
 #include "MyWifi.h"
-#include "NeohubConnection.h"
 #include "OneWireManager.h"  // OneWire sensor reading and management
 #include "SensorMap.h"       // Sensor name mapping
 #include "ValveManager.h"

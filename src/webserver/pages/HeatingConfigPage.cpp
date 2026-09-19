@@ -230,7 +230,7 @@ void CMyWebServer::generateSensorOptions(HtmlGenerator &html, const String &sele
 
 void CMyWebServer::generateZoneOptions(HtmlGenerator &html, int selectedZone)
 {
-  std::vector<NeohubZone> zones = NeohubZoneManager.getAllZones(/* refreshFromNeohub: */ false);
+  std::vector<NeohubZone> zones = NeohubZoneManager.getAllZones();
   html.option("", "Not Selected", false);
   for (NeohubZone& i: zones)
   {

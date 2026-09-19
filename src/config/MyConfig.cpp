@@ -15,48 +15,49 @@ void CConfig::save() const
     configJson["name"]                     = name;
     configJson["hostname"]                 = hostname;
 
-    configJson["neohubAddress"]            = neohubAddress;
-    configJson["neohubToken"]              = neohubToken;
-    configJson["neohubProxyEnabled"]       = neohubProxyEnabled;
+    configJson["mqttHost"]                 = mqttHost;
+    configJson["mqttPort"]                 = mqttPort;
+    configJson["mqttUsername"]             = mqttUsername;
+    configJson["mqttPassowrd"]             = mqttPassword;
 
-    configJson["weatherlinkAddress"]       = weatherlinkAddress;
+    configJson["mqttTopicNeohub"]               = mqttTopicNeohub;
+    configJson["mqttTopicTemperature"]          = mqttTopicTemperature;
+    configJson["mqttTopicTemperatureKeepalive"] = mqttTopicTemperatureKeepalive;
 
-    configJson["heatingControllerAddress"] = heatingControllerAddress;
-
-    if (!isnan(flowMaxSetpoint)) 
+    if (!isnan(flowMaxSetpoint))
         configJson["flowMaxSetpoint"]      = flowMaxSetpoint;
-    if (!isnan(flowMinSetpoint)) 
+    if (!isnan(flowMinSetpoint))
         configJson["flowMinSetpoint"]      = flowMinSetpoint;
 
     configJson["flowSensorId"]             = flowSensorId;
     configJson["inputSensorId"]            = inputSensorId;
     configJson["returnSensorId"]           = returnSensorId;
 
-    if (!isnan(flowProportionalGain)) 
+    if (!isnan(flowProportionalGain))
         configJson["flowProportionalGain"] = flowProportionalGain;
-    if (!isnan(flowIntegralSeconds)) 
-        configJson["flowIntegralSeconds"]  = flowIntegralSeconds;  
+    if (!isnan(flowIntegralSeconds))
+        configJson["flowIntegralSeconds"]  = flowIntegralSeconds;
     configJson["flowValveInverted"]        = flowValveInverted;
 
-    if (!isnan(roomSetpoint)) 
+    if (!isnan(roomSetpoint))
         configJson["roomSetpoint"]         = roomSetpoint;
-    if (!isnan(roomProportionalGain)) 
+    if (!isnan(roomProportionalGain))
         configJson["roomProportionalGain"] = roomProportionalGain;
-    if (!isnan(roomIntegralMinutes)) 
+    if (!isnan(roomIntegralMinutes))
         configJson["roomIntegralMinutes"]  = roomIntegralMinutes;
 
     configJson["controlMode"]              = (int) controlMode;
-    if (!isnan(weatherControlOat)) 
+    if (!isnan(weatherControlOat))
         configJson["weatherControlOat"]        = weatherControlOat;
-    if (!isnan(weatherControlFlow)) 
+    if (!isnan(weatherControlFlow))
         configJson["weatherControlFlow"]       = weatherControlFlow;
-    if (!isnan(weatherControlExponent)) 
+    if (!isnan(weatherControlExponent))
         configJson["weatherControlExponent"]   = weatherControlExponent;
 
-    if (!isnan(hybridTweakBandWidth)) 
+    if (!isnan(hybridTweakBandWidth))
         configJson["hybridTweakBandWidth"]     = hybridTweakBandWidth;
 
-    if (!isnan(fallbackFlow)) 
+    if (!isnan(fallbackFlow))
         configJson["fallbackFlow"]         = fallbackFlow;
 
     for (int i = 0; i < SensorMap.getCount(); i++) {
@@ -66,7 +67,7 @@ void CConfig::save() const
     }
 
     int i = 0;
-    for (auto z : NeohubZoneManager.getAllZones(/* refreshFromNeohub: */ false)) {
+    for (auto z : NeohubZoneManager.getAllZones()) {
         configJson["zones"][i]["id"] = z.id;
         configJson["zones"][i]["name"] = z.name;
         i++;
@@ -140,12 +141,14 @@ void CConfig::load()
     name                        = configJson["name"] | emptyString;
     hostname                    = configJson["hostname"] | emptyString;
 
-    neohubAddress               = configJson["neohubAddress"] | emptyString;
-    neohubToken                 = configJson["neohubToken"] | emptyString;
-    neohubProxyEnabled          = configJson["neohubProxyEnabled"].as<bool>();
-    heatingControllerAddress    = configJson["heatingControllerAddress"] | emptyString;
+    mqttHost                  = configJson["mqttHost"] | emptyString;
+    mqttPort                    = configJson["mqttPort"].isNull() ? 1883 : configJson["mqttPort"].as<int>();
+    mqttUsername                = configJson["mqttUsername"] | emptyString;
+    mqttPassword                = configJson["mqttPassowrd"] | emptyString;
 
-    weatherlinkAddress          = configJson["weatherlinkAddress"] | emptyString;
+    mqttTopicNeohub               = configJson["mqttTopicNeohub"] | emptyString;
+    mqttTopicTemperature          = configJson["mqttTopicTemperature"] | emptyString;
+    mqttTopicTemperatureKeepalive = configJson["mqttTopicTemperatureKeepalive"] | emptyString;
 
     flowMaxSetpoint             = configJson["flowMaxSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowMaxSetpoint"].as<double>();
     flowMinSetpoint             = configJson["flowMinSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowMinSetpoint"].as<double>();
@@ -156,7 +159,7 @@ void CConfig::load()
     returnSensorId              = configJson["returnSensorId"] | emptyString;
 
     flowProportionalGain        = configJson["flowProportionalGain"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowProportionalGain"].as<double>();
-    flowIntegralSeconds         = configJson["flowIntegralSeconds"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowIntegralSeconds"].as<double>(); 
+    flowIntegralSeconds         = configJson["flowIntegralSeconds"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["flowIntegralSeconds"].as<double>();
     flowValveInverted           = configJson["flowValveInverted"].as<bool>();
 
     roomSetpoint                = configJson["roomSetpoint"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["roomSetpoint"].as<double>();
@@ -169,7 +172,7 @@ void CConfig::load()
     weatherControlExponent      = configJson["weatherControlExponent"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["weatherControlExponent"].as<double>();
 
     hybridTweakBandWidth        = configJson["hybridTweakBandWidth"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["hybridTweakBandWidth"].as<double>();
-    
+
     fallbackFlow                = configJson["fallbackFlow"].isNull() ? std::numeric_limits<double>::quiet_NaN() : configJson["fallbackFlow"].as<double>();
 
     // Iterate over sensors
@@ -217,7 +220,7 @@ void CConfig::applyDefaults()
 
     this->flowMinSetpoint     = 25.0;
     this->flowMaxSetpoint     = 37.0;
-    
+
     this->flowProportionalGain    = 3;
     this->flowIntegralSeconds     = 10;
 }

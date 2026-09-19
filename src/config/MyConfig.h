@@ -14,12 +14,14 @@ class CConfig {
     String name;
     String hostname;
 
-    String neohubAddress;
-    String neohubToken;
-    bool neohubProxyEnabled;
-    String heatingControllerAddress;
+    String mqttHost;
+    int mqttPort = 1883;
+    String mqttUsername;
+    String mqttPassword;
 
-    String weatherlinkAddress;
+    String mqttTopicNeohub;
+    String mqttTopicTemperature;
+    String mqttTopicTemperatureKeepalive;
 
     double flowMaxSetpoint = std::numeric_limits<double>::quiet_NaN();
     double flowMinSetpoint = std::numeric_limits<double>::quiet_NaN();
@@ -52,12 +54,14 @@ class CConfig {
     inline const String& getName() const { return name; };
     inline const String& getHostname() const { return hostname; };
 
-    inline const String& getNeohubAddress() const { return neohubAddress; };
-    inline const String& getNeohubToken() const { return neohubToken; };
-    inline const bool getNeohubProxyEnabled() const { return neohubProxyEnabled; };
-    inline const String& getHeatingControllerAddress() const { return heatingControllerAddress; };
+    inline const String& getMqttHost() const { return mqttHost; }
+    inline int getMqttPort() const { return mqttPort; }
+    inline const String& getMqttUsername() const { return mqttUsername; }
+    inline const String& getMqttPassword() const { return mqttPassword; }
 
-    inline const String& getWeatherlinkAddress() const { return weatherlinkAddress; };
+    inline const String& getMqttTopicNeohub() const { return mqttTopicNeohub; }
+    inline const String& getMqttTopicTemperature() const { return mqttTopicTemperature; }
+    inline const String& getMqttTopicTemperatureKeepalive() const { return mqttTopicTemperatureKeepalive; }
 
     inline double getFlowMaxSetpoint() const { return flowMaxSetpoint; };
     inline double getFlowMinSetpoint() const { return flowMinSetpoint; };
@@ -88,13 +92,14 @@ class CConfig {
     inline void setHostname(const String& value) { hostname = value; };
     inline void setName(const String& value) { name = value; };
 
-    inline void setNeohubAddress(const String& value) { neohubAddress = value; };
-    inline void setNeohubToken(const String& value) { neohubToken = value; };
-    inline void setNeohubProxyEnabled(bool value)  { neohubProxyEnabled = value; };
-    inline void setHeatingControllerAddress(const String& value) { heatingControllerAddress = value; };
-
-    inline void setWeatherlinkAddress(const String& value) { weatherlinkAddress = value; };
-
+    inline void setMqttHost(const String& value) { mqttHost = value; }
+    inline void setMqttPort(int value) { mqttPort = value; }
+    inline void setMqttUsername(const String& value) { mqttUsername = value; }
+    inline void setMqttPassword(const String& value) { mqttPassword = value; }
+    inline void setMqttTopicNeohub(const String& value) { mqttTopicNeohub = value; }
+    inline void setMqttTopicTemperature(const String& value) { mqttTopicTemperature = value; }
+    inline void setMqttTopicTemperatureKeepalive(const String& value) { mqttTopicTemperatureKeepalive = value; }
+    
     inline void setFlowMaxSetpoint(double value) { flowMaxSetpoint = value; };
     inline void setFlowMinSetpoint(double value) { flowMinSetpoint = value; };
     inline void setFlowAddOn(double value) { flowAddOn = value; };

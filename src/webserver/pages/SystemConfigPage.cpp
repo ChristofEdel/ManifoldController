@@ -1,9 +1,7 @@
 #include "../MyWebServer.h"
-#include "NeohubConnection.h"
 #include "ESPmDNS.h"
 #include "StringTools.h"
-#include "NeohubProxy.h"
-#include "WeatherLinkTemperature.h"
+#include "MqttManager.h"
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
@@ -25,35 +23,33 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
         });
       });
 
-      html.block("Neohub", [this, &html]{
+      html.block("MQTT Server", [this, &html]{
         html.fieldTable( [this, &html] {
-          html.fieldTableRow("URL", [&html]{
-            html.fieldTableInput("name='nh_url' style='width: 20em'", Config.getNeohubAddress().c_str());
+          html.fieldTableRow("Host", [&html]{
+            html.fieldTableInput("name='mqtt_host' style='width: 20em'", Config.getMqttHost().c_str());
           });
-          html.fieldTableRow("Token", [&html]{
-            html.fieldTableInput("name='nh_token' style='width: 20em'",Config.getNeohubToken().c_str());
+          html.fieldTableRow("Port", [&html]{
+            html.fieldTableInput("name='mqtt_port' style='width: 20em'",Config.getMqttPort());
           });
-          html.fieldTableRow("Enable Proxy", [&html]{
-            html.element("td", "style='text-align: left'", [&html] {
-              html.print("<input type='hidden' name='nh_proxy' value='false'>");
-              html.printf("<input type='checkbox' name='nh_proxy' value='true'%s>", Config.getNeohubProxyEnabled() ? " checked" : "");
-            });
+          html.fieldTableRow("User Name", [&html]{
+            html.fieldTableInput("name='mqtt_un' style='width: 20em'",Config.getMqttUsername().c_str());
+          });
+          html.fieldTableRow("Password", [&html]{
+            html.fieldTableInput("name='mqtt_pw' style='width: 20em'",Config.getMqttPassword().c_str());
           });
         });
       });
 
-      html.block("Weather", [this, &html]{
+      html.block("MQTT Topics", [this, &html]{
         html.fieldTable( [this, &html] {
-          html.fieldTableRow("URL", [&html]{
-            html.fieldTableInput("name='wl_url' style='width: 20em'", Config.getWeatherlinkAddress().c_str());
+          html.fieldTableRow("Neohub", [&html]{
+            html.fieldTableInput("name='topic_nh' style='width: 20em'", Config.getMqttTopicNeohub().c_str());
           });
-        });
-      });
-
-      html.block("Heating Controller", [this, &html]{
-        html.fieldTable( [this, &html] {
-          html.fieldTableRow("URL", [&html]{
-            html.fieldTableInput("name='hc_url' style='width: 20em'", Config.getHeatingControllerAddress().c_str());
+          html.fieldTableRow("Temperature", [&html]{
+            html.fieldTableInput("name='topic_t' style='width: 20em'",Config.getMqttTopicTemperature().c_str());
+          });
+          html.fieldTableRow("Temperature Alive", [&html]{
+            html.fieldTableInput("name='topic_t_k' style='width: 20em'",Config.getMqttTopicTemperatureKeepalive().c_str());
           });
         });
       });
@@ -121,8 +117,7 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
 
   bool hostnameChanged      = false; // Flag if we have to redirect to the new hostname
   bool changesMade          = false; // Flag if any changes were nade and we need to save them
-  bool reconnectNeohub      = false; // Flag if we have to reconnect to the neohub
-  bool reconnectWeatherlink = false; // Flag if we have to reconnect to the neohub
+  bool reconnectMqtt        = false; // Flag if we have to reconnect to the MQTT server
 
   int count = request->params();
   for (int i = 0; i < count; i++) {
@@ -139,37 +134,39 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
       changesMade = true;
       hostnameChanged = true;
     }
-    if (key == "nh_url" && p->value() != Config.getNeohubAddress()) {
-      Config.setNeohubAddress(p->value());
-      reconnectNeohub = true;
+    if (key == "mqtt_host" && p->value() != Config.getMqttHost()) {
+      Config.setMqttHost(p->value());
+      reconnectMqtt = true;
       changesMade = true;
     }
-    if (key == "wl_url" && p->value() != Config.getWeatherlinkAddress()) {
-      Config.setWeatherlinkAddress(p->value());
-      reconnectWeatherlink = true;
+    if (key == "mqtt_port" && p->value().toInt() != Config.getMqttPort()) {
+      Config.setMqttPort(p->value().toInt());
+      reconnectMqtt = true;
       changesMade = true;
     }
-    if (key == "nh_token" && p->value() != Config.getNeohubToken()) {
-      Config.setNeohubToken(p->value());
+    if (key == "mqtt_un" && p->value() != Config.getMqttUsername()) {
+      Config.setMqttUsername(p->value());
+      reconnectMqtt = true;
       changesMade = true;
     }
-    if(key == "nh_proxy") {
-      bool value = p->value() == "true";
-      if (value != Config.getNeohubProxyEnabled()) {
-        changesMade = true;
-        Config.setNeohubProxyEnabled(value);
-        if (value == false) {
-          NeohubProxyServer.stop();
-          NeohubProxyClient.start();
-        }
-        else {
-          NeohubProxyClient.stop();
-          NeohubProxyServer.start();
-        }
-      }
+    if (key == "mqtt_pw" && p->value() != Config.getMqttPassword()) {
+      Config.setMqttPassword(p->value());
+      reconnectMqtt = true;
+      changesMade = true;
     }
-    if (key == "hc_url" && p->value() != Config.getHeatingControllerAddress()) {
-      Config.setHeatingControllerAddress(p->value());
+    if (key == "topic_nh" && p->value() != Config.getMqttTopicNeohub()) {
+      Config.setMqttTopicNeohub(p->value());
+      reconnectMqtt = true;
+      changesMade = true;
+    }
+    if (key == "topic_t" && p->value() != Config.getMqttTopicTemperature()) {
+      Config.setMqttTopicTemperature(p->value());
+      reconnectMqtt = true;
+      changesMade = true;
+    }
+    if (key == "topic_t_k" && p->value() != Config.getMqttTopicTemperatureKeepalive()) {
+      Config.setMqttTopicTemperatureKeepalive(p->value());
+      reconnectMqtt = true;
       changesMade = true;
     }
   }
@@ -179,14 +176,21 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
     Config.print(MyLog);
   }
 
-  if (reconnectNeohub) {
-    NeohubConnection.reconnect();
-  }
-
-  if (reconnectWeatherlink) {
-    WeatherLinkTemperature.stop();
-    if (Config.getWeatherlinkAddress() != "") {
-      WeatherLinkTemperature.start(Config.getWeatherlinkAddress());
+  if (reconnectMqtt) {
+    if (!Config.getMqttHost().isEmpty()) {
+      MqttManager.setNeohubTopic(Config.getMqttTopicNeohub().c_str());
+      MqttManager.setWeatherTopics(
+        Config.getMqttTopicTemperature().c_str(),
+        Config.getMqttTopicTemperatureKeepalive().c_str()
+      );
+      MqttManager.restart(
+        StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()).c_str(), 
+        Config.getMqttUsername().c_str(), 
+        Config.getMqttPassword().c_str()
+      );
+    }
+    else {
+      MqttManager.stop();
     }
   }
 
