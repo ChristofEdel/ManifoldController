@@ -81,16 +81,21 @@ void setup()
 
 }
 
+#define HOUR_MS (60 * 60 * 1000) 
+
 void loop()
 {
     // How often we do what
-    const unsigned long controlLoopInterval = 1000;         // Read sensors and set control vale poistion
-    const unsigned long logFileInterval = 5000;             // log sensor and control values
+    const unsigned long controlLoopInterval = 1000;              // Read sensors and set control vale poistion
+    const unsigned long logFileInterval = 5000;                  // log sensor and control values
+    const unsigned long mqttAutodiscoverInterval = 24 * HOUR_MS; // publish HASS autodiscover messages to MQTT daily
 
     // When we last did that
     static unsigned long lastControlLoop = 0;
     static unsigned long lastLogFile = 0;
+    static unsigned long lastAutodiscover = 0;
     static bool first = true;
+    static bool autodiscoverPublished = false;
 
     // Do stuff
     unsigned long timeNow = millis();
@@ -108,6 +113,16 @@ void loop()
             logSensorIssues();
         }
     }
+
+    if (!autodiscoverPublished || timeNow - lastAutodiscover >= mqttAutodiscoverInterval) {
+        lastAutodiscover = timeNow;
+        if (MqttManager.isConnected()) {
+            ManifoldData::publishAutodiscoverTopics();
+            MyLog.println("MQTT: Autodiscovery messages published");
+            autodiscoverPublished = true;
+        }
+    }
+
     first = false;
 
     // Trigger common loop functions
@@ -232,6 +247,8 @@ void valveControlTask(void* parameter)
             myData.roomDeltaT = myData.roomTemperature - myData.roomSetpoint;
             myData.flowSetpoint = ValveManager.getFlowSetpoint();
             myData.flowTemperature = ValveManager.inputs.flowTemperature;
+            myData.inputTemperature = ValveManager.inputs.inputTemperature;
+            myData.returnTemperature = ValveManager.inputs.returnTemperature;
             myData.flowDeltaT = myData.flowTemperature - myData.flowSetpoint;
             myData.valvePosition = ValveManager.getValvePosition();
             myData.flowDemand = myData.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
