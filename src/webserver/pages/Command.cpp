@@ -113,9 +113,9 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
         int zoneId = commandJson["zoneId"].as<int>();
         NeohubZoneData* zd;
         if (command == "GetZoneStatus") zd = NeohubZoneManager.getZoneData(zoneId);
-        else if (command == "ZoneOn")   zd = MqttManager.forceZoneOn(zoneId);
-        else if (command == "ZoneOff")  zd = MqttManager.forceZoneOff(zoneId);
-        else if (command == "ZoneAuto") zd = MqttManager.setZoneToAutomatic(zoneId);
+        else if (command == "ZoneOn")   zd = NeohubZoneManager.forceZoneOn(zoneId);
+        else if (command == "ZoneOff")  zd = NeohubZoneManager.forceZoneOff(zoneId);
+        else if (command == "ZoneAuto") zd = NeohubZoneManager.setZoneToAutomatic(zoneId);
         if (!zd) {
             request->send(makeCommandResponse(request, 400, "{ \"error\": \"unable to configure zone\" }"));
             return;

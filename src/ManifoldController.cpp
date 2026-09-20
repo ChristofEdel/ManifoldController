@@ -12,6 +12,8 @@
 #include "version.h"
 #include "WeatherDataManager.h"
 #include "StringTools.h"
+#include "LoopTimer.h"
+#include "StringTools.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -46,16 +48,16 @@ void setup()
 {
     ManifoldController.setup();
     if (!Config.getMqttHost().isEmpty()) {
-        MqttManager.setNeohubTopic(Config.getMqttTopicNeohub().c_str());
-        MqttManager.setWeatherTopics(
-            Config.getMqttTopicTemperature().c_str(),
-            Config.getMqttTopicTemperatureKeepalive().c_str()
-        );
+        if (!Config.getHostname().isEmpty()) {
+            MqttManager.setAvailabilityTopic(StringPrintf("manifold/%s/available", Config.getHostname().c_str()).c_str());
+        }
         MqttManager.start(
             StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()).c_str(), 
             Config.getMqttUsername().c_str(), 
             Config.getMqttPassword().c_str()
         );
+        NeohubZoneManager.subscribeZoneData();
+        WeatherDataManager.subscribeWeatherData();
     }
 
     // Initialise the valve manager from the configuration
@@ -188,6 +190,7 @@ void valveControlTask(void* parameter)
     bool writeLogLine = false;
     uint32_t previousLoopStartMillis = millis(); 
     readSensors();
+    LoopTimer timer;
 
     for (;;) {
         // Wait for notification from main loop
@@ -198,27 +201,27 @@ void valveControlTask(void* parameter)
                 writeLogLine = tmp;
             }
 
-            uint32_t startMillis = millis();
-            uint32_t previousLoopMillis = startMillis - previousLoopStartMillis;
-            previousLoopStartMillis = startMillis;
+            // Restart the timer and remember the time from the previous loop
+            timer.stop();
+            LoopTimer previousTimer = timer;
+            timer.start();
 
             // Control loop first
             manageValveControls();
-
+            
             // remember the integral values for use at next reboot
             MyRtcData *rtcData = getMyRtcData();
             rtcData->setLastKnownFlowControllerIntegral (ValveManager.getRoomIntegralTerm());
             rtcData->setLastKnownValveControllerIntegral(ValveManager.getFlowIntegralTerm());
 
-
-            uint32_t controlLoopMillis = millis() - startMillis;
+            timer.controlComplete();
 
             // Then log if requested
             if (writeLogLine) {
                 logSensors();
             }
 
-            uint32_t loggingMillis = millis() - startMillis - controlLoopMillis;
+            timer.loggingComplete();
 
             // send our stats to MQTT (and indirectly, to the central heating controller)
             time_t now = time(nullptr);
@@ -237,17 +240,20 @@ void valveControlTask(void* parameter)
             myData.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
             myData.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
             myData.uptimeSeconds = uptime();
-            myData.controlLoopMs = controlLoopMillis;
-            myData.loggingMs = loggingMillis;
-            myData.roundTripMs = previousLoopMillis;
+            myData.loopTimer = previousTimer;
             myData.sendChangesToMqtt();
+
+            timer.sendingComplete();
 
             // Finally, read the sensors for the next iteration
             // This is done last because reading takes around 600-800 ms so this prepares
             // the next iteration
             readSensors();
-
             // For a loop rate slower than 1/s this should be changed!
+
+            timer.measuringComplete();
+            // timer will be stopped at next round trip so we get the idlet time
+
         }
     }
 }

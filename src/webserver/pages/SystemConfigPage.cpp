@@ -2,6 +2,8 @@
 #include "ESPmDNS.h"
 #include "StringTools.h"
 #include "MqttManager.h"
+#include "WeatherDataManager.h"
+#include "NeohubZoneManager.h"
 
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
@@ -178,16 +180,13 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
 
   if (reconnectMqtt) {
     if (!Config.getMqttHost().isEmpty()) {
-      MqttManager.setNeohubTopic(Config.getMqttTopicNeohub().c_str());
-      MqttManager.setWeatherTopics(
-        Config.getMqttTopicTemperature().c_str(),
-        Config.getMqttTopicTemperatureKeepalive().c_str()
-      );
       MqttManager.restart(
         StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()).c_str(), 
         Config.getMqttUsername().c_str(), 
         Config.getMqttPassword().c_str()
       );
+      NeohubZoneManager.subscribeZoneData();
+      WeatherDataManager.subscribeWeatherData();
     }
     else {
       MqttManager.stop();

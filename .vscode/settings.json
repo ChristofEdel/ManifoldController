@@ -63,5 +63,16 @@
     "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
     "editor.insertSpaces": true,
     "editor.detectIndentation": false,
-    "editor.tabSize": 4
+    "editor.tabSize": 4,
+    "[cpp]": {
+        "editor.defaultFoldingRangeProvider": "maptz.regionfolder"
+    },
+    "maptz.regionfolder": {
+        "[cpp]": {
+            "foldStart": "// #region [NAME]",
+            "foldEnd": "// #endregion",
+            "foldStartRegex": "^[\\s]*//[\\s]*#region[\\s]*(.*)",
+            "foldEndRegex": "^[\\s]*//[\\s]*#endregion"
+        }
+}
 }
