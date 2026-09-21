@@ -185,8 +185,8 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
         Config.getMqttUsername().c_str(), 
         Config.getMqttPassword().c_str()
       );
-      NeohubZoneManager.subscribeZoneData();
-      WeatherDataManager.subscribeWeatherData();
+      NeohubZoneManager.subscribeZoneData(Config.getMqttTopicNeohub());
+      WeatherDataManager.subscribeWeatherData(Config.getMqttTopicTemperature(), Config.getMqttTopicTemperatureKeepalive());
     }
     else {
       MqttManager.stop();

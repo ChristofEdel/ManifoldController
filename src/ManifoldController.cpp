@@ -56,8 +56,8 @@ void setup()
             Config.getMqttUsername().c_str(), 
             Config.getMqttPassword().c_str()
         );
-        NeohubZoneManager.subscribeZoneData();
-        WeatherDataManager.subscribeWeatherData();
+        NeohubZoneManager.subscribeZoneData(Config.getMqttTopicNeohub());
+        WeatherDataManager.subscribeWeatherData(Config.getMqttTopicTemperature(), Config.getMqttTopicTemperatureKeepalive());
     }
 
     // Initialise the valve manager from the configuration
