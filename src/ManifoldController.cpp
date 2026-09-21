@@ -14,6 +14,7 @@
 #include "StringTools.h"
 #include "LoopTimer.h"
 #include "StringTools.h"
+#include "MyWiFi.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -49,7 +50,7 @@ void setup()
     ManifoldController.setup();
     if (!Config.getMqttHost().isEmpty()) {
         if (!Config.getHostname().isEmpty()) {
-            MqttManager.setAvailabilityTopic(StringPrintf("manifold/%s/available", Config.getHostname().c_str()).c_str());
+            MqttManager.setAvailabilityTopic(StringPrintf("manifold/%s/available", MyWiFi.getMacAddress().c_str()).c_str());
         }
         MqttManager.start(
             StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()).c_str(), 
@@ -82,6 +83,7 @@ void setup()
 }
 
 #define HOUR_MS (60 * 60 * 1000) 
+void fillManifoldData (ManifoldData &data); // forward declaration
 
 void loop()
 {
@@ -117,9 +119,10 @@ void loop()
     if (!autodiscoverPublished || timeNow - lastAutodiscover >= mqttAutodiscoverInterval) {
         lastAutodiscover = timeNow;
         if (MqttManager.isConnected()) {
-            ManifoldData::publishAutodiscoverTopics();
-            MyLog.println("MQTT: Autodiscovery messages published");
-            autodiscoverPublished = true;
+            ManifoldData d;
+            fillManifoldData(d);
+            autodiscoverPublished = d.publishAutodiscoverTopics();
+            if (autodiscoverPublished) MyLog.println("MQTT: Autodiscovery messages published");
         }
     }
 
@@ -193,44 +196,45 @@ void triggerValveControls(bool writeLogLine)
     xQueueSend(valveControlQueue, &writeLogLine, 0);
 }
 
-ManifoldData myData;
+ManifoldData myManifoldData;
 
 void fillManifoldData (ManifoldData &data)
 {
     time_t now = time(nullptr);
-    myData.name = Config.getName() == "" ? Config.getHostname() : Config.getName();
-    myData.hostname = Config.getHostname();
+    data.id = MyWiFi.getMacAddress();
+    data.name = Config.getName() == "" ? Config.getHostname() : Config.getName();
+    data.hostname = Config.getHostname();
     // ip address and version are set once only
-    myData.flowDemand = myData.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
-    myData.uptimeSeconds = uptime();
+    data.flowDemand = data.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
+    data.uptimeSeconds = uptime();
 
-    myData.roomSetpoint = ValveManager.getRoomSetpoint();
-    myData.roomTemperature = ValveManager.inputs.roomTemperature;
-    myData.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
-    myData.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
-    myData.flowPidControllerP = ValveManager.getFlowProportionalTerm();
-    myData.flowPidControllerI = ValveManager.getFlowIntegralTerm();
-    myData.flowPidControllerD = ValveManager.getFlowDerivativeTerm(); 
+    data.roomSetpoint = ValveManager.getRoomSetpoint();
+    data.roomTemperature = ValveManager.inputs.roomTemperature;
+    data.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
+    data.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
+    data.flowPidControllerP = ValveManager.getFlowProportionalTerm();
+    data.flowPidControllerI = ValveManager.getFlowIntegralTerm();
+    data.flowPidControllerD = ValveManager.getFlowDerivativeTerm(); 
 
-    myData.flowSetpoint = ValveManager.getFlowSetpoint();
-    myData.flowTemperature = ValveManager.inputs.flowTemperature;
-    myData.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
-    myData.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
-    myData.valvePidControllerP = ValveManager.getValveProportionalTerm();
-    myData.valvePidControllerI = ValveManager.getValveIntegralTerm();
-    myData.valvePidControllerD = ValveManager.getValveDerivativeTerm(); 
-    myData.valvePosition = ValveManager.getValvePosition();
+    data.flowSetpoint = ValveManager.getFlowSetpoint();
+    data.flowTemperature = ValveManager.inputs.flowTemperature;
+    data.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
+    data.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
+    data.valvePidControllerP = ValveManager.getValveProportionalTerm();
+    data.valvePidControllerI = ValveManager.getValveIntegralTerm();
+    data.valvePidControllerD = ValveManager.getValveDerivativeTerm(); 
+    data.valvePosition = ValveManager.getValvePosition();
     
-    myData.inputTemperature = ValveManager.inputs.inputTemperature;
-    myData.returnTemperature = ValveManager.inputs.returnTemperature;
+    data.inputTemperature = ValveManager.inputs.inputTemperature;
+    data.returnTemperature = ValveManager.inputs.returnTemperature;
 }
 
 // Task function that runs the boiler control in the background
 void valveControlTask(void* parameter)
 {
 
-    myData.ipAddress = MyWiFi.getIpAddress();
-    myData.version = String(VERSION);
+    myManifoldData.ipAddress = MyWiFi.getIpAddress();
+    myManifoldData.version = String(VERSION);
 
     bool writeLogLine = false;
     uint32_t previousLoopStartMillis = millis(); 
@@ -264,9 +268,9 @@ void valveControlTask(void* parameter)
             // MQTT Publishing --------------------------------------------------------------------
             // Get and send the current manifold controller information to MQTT
             // (and via that to the boiler)
-            fillManifoldData(myData);
-            myData.loopTimer = previousTimer;
-            myData.sendChangesToMqtt();
+            fillManifoldData(myManifoldData);
+            myManifoldData.loopTimer = previousTimer;
+            myManifoldData.sendChangesToMqtt();
 
             timer.sendingComplete();
 
