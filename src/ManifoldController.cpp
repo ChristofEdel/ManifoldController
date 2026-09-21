@@ -195,6 +195,36 @@ void triggerValveControls(bool writeLogLine)
 
 ManifoldData myData;
 
+void fillManifoldData (ManifoldData &data)
+{
+    time_t now = time(nullptr);
+    myData.name = Config.getName() == "" ? Config.getHostname() : Config.getName();
+    myData.hostname = Config.getHostname();
+    // ip address and version are set once only
+    myData.flowDemand = myData.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
+    myData.uptimeSeconds = uptime();
+
+    myData.roomSetpoint = ValveManager.getRoomSetpoint();
+    myData.roomTemperature = ValveManager.inputs.roomTemperature;
+    myData.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
+    myData.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
+    myData.flowPidControllerP = ValveManager.getFlowProportionalTerm();
+    myData.flowPidControllerI = ValveManager.getFlowIntegralTerm();
+    myData.flowPidControllerD = ValveManager.getFlowDerivativeTerm(); 
+
+    myData.flowSetpoint = ValveManager.getFlowSetpoint();
+    myData.flowTemperature = ValveManager.inputs.flowTemperature;
+    myData.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
+    myData.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
+    myData.valvePidControllerP = ValveManager.getValveProportionalTerm();
+    myData.valvePidControllerI = ValveManager.getValveIntegralTerm();
+    myData.valvePidControllerD = ValveManager.getValveDerivativeTerm(); 
+    myData.valvePosition = ValveManager.getValvePosition();
+    
+    myData.inputTemperature = ValveManager.inputs.inputTemperature;
+    myData.returnTemperature = ValveManager.inputs.returnTemperature;
+}
+
 // Task function that runs the boiler control in the background
 void valveControlTask(void* parameter)
 {
@@ -210,7 +240,7 @@ void valveControlTask(void* parameter)
     for (;;) {
         // Wait for notification from main loop
         if (xQueueReceive(valveControlQueue, &writeLogLine, portMAX_DELAY) == pdTRUE) {
-            // Drain any additional messages — only the last one is kept
+            // Drain any additional messages — only the last one is kept --------------------------
             bool tmp;
             while (xQueueReceive(valveControlQueue, &tmp, 0) == pdTRUE) {
                 writeLogLine = tmp;
@@ -221,48 +251,32 @@ void valveControlTask(void* parameter)
             LoopTimer previousTimer = timer;
             timer.start();
 
-            // Control loop first
+            // Run valve controller ---------------------------------------------------------------
             manageValveControls();
             
             // remember the integral values for use at next reboot
             MyRtcData *rtcData = getMyRtcData();
-            rtcData->setLastKnownFlowControllerIntegral (ValveManager.getRoomIntegralTerm());
-            rtcData->setLastKnownValveControllerIntegral(ValveManager.getFlowIntegralTerm());
+            rtcData->setLastKnownFlowControllerIntegral (ValveManager.getFlowIntegralTerm());
+            rtcData->setLastKnownValveControllerIntegral(ValveManager.getValveIntegralTerm());
 
             timer.controlComplete();
 
-            // Then log if requested
-            if (writeLogLine) {
-                logSensors();
-            }
-
-            timer.loggingComplete();
-
-            // send our stats to MQTT (and indirectly, to the central heating controller)
-            time_t now = time(nullptr);
-            myData.name = Config.getName() == "" ? Config.getHostname() : Config.getName();
-            myData.hostname = Config.getHostname();
-            myData.roomSetpoint = ValveManager.getRoomSetpoint();
-            myData.roomTemperature = ValveManager.inputs.roomTemperature;
-            myData.roomDeltaT = myData.roomTemperature - myData.roomSetpoint;
-            myData.flowSetpoint = ValveManager.getFlowSetpoint();
-            myData.flowTemperature = ValveManager.inputs.flowTemperature;
-            myData.inputTemperature = ValveManager.inputs.inputTemperature;
-            myData.returnTemperature = ValveManager.inputs.returnTemperature;
-            myData.flowDeltaT = myData.flowTemperature - myData.flowSetpoint;
-            myData.valvePosition = ValveManager.getValvePosition();
-            myData.flowDemand = myData.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
-            myData.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
-            myData.roomTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
-            myData.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
-            myData.flowTemperatureDead = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
-            myData.uptimeSeconds = uptime();
+            // MQTT Publishing --------------------------------------------------------------------
+            // Get and send the current manifold controller information to MQTT
+            // (and via that to the boiler)
+            fillManifoldData(myData);
             myData.loopTimer = previousTimer;
             myData.sendChangesToMqtt();
 
             timer.sendingComplete();
 
-            // Finally, read the sensors for the next iteration
+            // Then log if requested --------------------------------------------------------------
+            if (writeLogLine) {
+                logSensors();
+            }
+            timer.loggingComplete();
+
+            // Finally, read the sensors for the next iteration -----------------------------------
             // This is done last because reading takes around 600-800 ms so this prepares
             // the next iteration
             readSensors();
