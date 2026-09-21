@@ -7,7 +7,7 @@ FILE="src/version.h"
 [ -f "$FILE" ] || exit 0
 
 
-ver=$(grep -oP 'VERSION\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+' "$FILE" || true)
+ver=$(grep -oP 'VERSION\s*=\s*"\K[0-9]+\.[0-9]+\.-?[0-9]+' "$FILE" || true)
 
 if [ -n "$ver" ]; then
     IFS=. read -r major minor patch <<< "$ver"
