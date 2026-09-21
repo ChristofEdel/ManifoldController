@@ -38,8 +38,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           html.element("td", "id='roomSetpoint' class='has-data'",  !isnan(sp) ? String(sp,1).c_str() : "");
           html.element("td", StringPrintf("id='roomTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='roomError' class='has-data'", !isnan(t) ? String(d,1).c_str() : "");
-          html.element("td", "id='roomP' class='has-data'", Config.getControlMode() == ValveManagerControlMode::WeatherCompensation ? "" : String(ValveManager.getRoomProportionalTerm(),1).c_str());
-          html.element("td", "id='roomI' class='has-data'", Config.getControlMode() == ValveManagerControlMode::WeatherCompensation ? "" : String(ValveManager.getRoomIntegralTerm(),1).c_str());
+          html.element("td", "id='flowP' class='has-data'", Config.getControlMode() == ValveManagerControlMode::WeatherCompensation ? "" : String(ValveManager.getFlowProportionalTerm(),1).c_str());
+          html.element("td", "id='flowI' class='has-data'", Config.getControlMode() == ValveManagerControlMode::WeatherCompensation ? "" : String(ValveManager.getFlowIntegralTerm(),1).c_str());
           html.print(StringPrintf("<td id='roomAged' class='data-is-aged' style='display: %s'>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime) ? "table-cell" : "none").c_str());
           html.print(StringPrintf("<td id='roomDead' class='data-is-dead' style='display: %s'>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime) ? "table-cell" : "none").c_str());
         });
@@ -74,8 +74,8 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           });
           html.element("td",  StringPrintf("id='flowTemperature' class='has-data%s'", extraClass).c_str(), !isnan(t) ? String(t,1).c_str() : "");
           html.element("td", "id='flowError' class='has-data'", !isnan(d) ? String(d,1).c_str() : "");
-          html.element("td", "id='flowP' class='has-data'", String(ValveManager.getFlowProportionalTerm(),1).c_str());
-          html.element("td", "id='flowI' class='has-data'", String(ValveManager.getFlowIntegralTerm(),1).c_str());
+          html.element("td", "id='valveP' class='has-data'", String(ValveManager.getValveProportionalTerm(),1).c_str());
+          html.element("td", "id='valveI' class='has-data'", String(ValveManager.getValveIntegralTerm(),1).c_str());
           html.print(StringPrintf("<td id='flowAged' class='data-is-aged' style='display: %s'>OLD</td>", ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime) ? "table-cell" : "none").c_str());
           html.print(StringPrintf("<td id='flowDead' class='data-is-dead' style='display: %s'>DEAD</td>", ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime) ? "table-cell" : "none").c_str());
         });
@@ -261,8 +261,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     statusJson["roomTemperatureDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.roomDataLoadTime);
     if (Config.getControlMode() != ValveManagerControlMode::WeatherCompensation) {
       // In weather compensation mode, the room P and I terms are not meaningful
-      statusJson["roomProportionalTerm"] = ValveManager.getRoomProportionalTerm();
-      statusJson["roomIntegralTerm"] = ValveManager.getRoomIntegralTerm();
+      statusJson["flowProportionalTerm"] = ValveManager.getFlowProportionalTerm();
+      statusJson["flowIntegralTerm"] = ValveManager.getFlowIntegralTerm();
     }
     statusJson["roomAged"] = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowCalculatedTime);
     statusJson["roomDead"] = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowCalculatedTime);
@@ -279,8 +279,8 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
     statusJson["flowError"]            = t - sp;
     statusJson["flowTemperatureAged"]  = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
     statusJson["flowTemperatureDead"]  = ValveManager.timestamps.isDead(now, ValveManager.timestamps.flowDataLoadTime);
-    statusJson["flowProportionalTerm"] = ValveManager.getFlowProportionalTerm();
-    statusJson["flowIntegralTerm"]     = ValveManager.getFlowIntegralTerm();
+    statusJson["valveProportionalTerm"] = ValveManager.getValveProportionalTerm();
+    statusJson["valveIntegralTerm"]     = ValveManager.getValveIntegralTerm();
     statusJson["flowAged"]             = ValveManager.timestamps.isAged(now, ValveManager.timestamps.valveCalculatedTime);
     statusJson["flowDead"]             = ValveManager.timestamps.isDead(now, ValveManager.timestamps.valveCalculatedTime);
   }

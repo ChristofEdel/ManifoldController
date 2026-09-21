@@ -350,8 +350,8 @@ function monitorPage_refreshData() {
             if (data.roomTemperatureDead) ageClass="data-is-dead"
             $("#roomTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
 
-            $("#roomP").text(fmt(data.roomProportionalTerm, 1))
-            $("#roomI").text(fmt(data.roomIntegralTerm, 1))
+            $("#flowP").text(fmt(data.flowProportionalTerm, 1))
+            $("#flowI").text(fmt(data.flowIntegralTerm, 1))
             $("#roomAged").toggle(data.roomAged)
             $("#roomDead").toggle(data.roomDead)
 
@@ -392,8 +392,8 @@ function monitorPage_refreshData() {
             if (data.flowTemperatureDead) ageClass="data-is-dead"
             $("#flowTemperature").removeClass("data-is-aged data-is-dead").addClass(ageClass)
 
-            $("#flowP").text(fmt(data.flowProportionalTerm, 1))
-            $("#flowI").text(fmt(data.flowIntegralTerm, 1))
+            $("#valveP").text(fmt(data.valveProportionalTerm, 1))
+            $("#valveI").text(fmt(data.valveIntegralTerm, 1))
             $("#flowAged").toggle(data.flowAged)
             $("#flowDead").toggle(data.flowDead)
 
