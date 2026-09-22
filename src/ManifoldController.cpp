@@ -15,6 +15,7 @@
 #include "LoopTimer.h"
 #include "StringTools.h"
 #include "MyWiFi.h"
+#include "MemDebug.h"
 
 // Pin Assignments - digital pins --------------------------------
 //
@@ -120,6 +121,7 @@ void loop()
         lastAutodiscover = timeNow;
         if (MqttManager.isConnected()) {
             ManifoldData d;
+            d.id = MyWiFi.getMacAddress();
             fillManifoldData(d);
             autodiscoverPublished = d.publishAutodiscoverTopics();
             if (autodiscoverPublished) MyLog.println("MQTT: Autodiscovery messages published");
@@ -196,18 +198,20 @@ void triggerValveControls(bool writeLogLine)
     xQueueSend(valveControlQueue, &writeLogLine, 0);
 }
 
-ManifoldData myManifoldData;
-
 void fillManifoldData (ManifoldData &data)
 {
     time_t now = time(nullptr);
-    data.id = MyWiFi.getMacAddress();
+
+    // General information ------------------------------------------------------------------------
     data.name = Config.getName() == "" ? Config.getHostname() : Config.getName();
     data.hostname = Config.getHostname();
     // ip address and version are set once only
-    data.flowDemand = data.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
     data.uptimeSeconds = uptime();
 
+    // Demand for boiler --------------------------------------------------------------------------
+    data.flowDemand = data.flowSetpoint + (isnan(Config.getFlowAddOn()) ? 0 : Config.getFlowAddOn());
+
+    // Room controller ----------------------------------------------------------------------------
     data.roomSetpoint = ValveManager.getRoomSetpoint();
     data.roomTemperature = ValveManager.inputs.roomTemperature;
     data.roomTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.roomDataLoadTime);
@@ -216,6 +220,8 @@ void fillManifoldData (ManifoldData &data)
     data.flowPidControllerI = ValveManager.getFlowIntegralTerm();
     data.flowPidControllerD = ValveManager.getFlowDerivativeTerm(); 
 
+
+    // Flow controller ----------------------------------------------------------------------------
     data.flowSetpoint = ValveManager.getFlowSetpoint();
     data.flowTemperature = ValveManager.inputs.flowTemperature;
     data.flowTemperatureAged = ValveManager.timestamps.isAged(now, ValveManager.timestamps.flowDataLoadTime);
@@ -225,14 +231,21 @@ void fillManifoldData (ManifoldData &data)
     data.valvePidControllerD = ValveManager.getValveDerivativeTerm(); 
     data.valvePosition = ValveManager.getValvePosition();
     
+    // Other information --------------------------------------------------------------------------
     data.inputTemperature = ValveManager.inputs.inputTemperature;
     data.returnTemperature = ValveManager.inputs.returnTemperature;
+
+    // Diagnostics --------------------------------------------------------------------------------
+    data.freeMemoryKb = freeRam() / 1024.0;
+    data.lastResetReason = getResetReasonText();
 }
 
 // Task function that runs the boiler control in the background
 void valveControlTask(void* parameter)
 {
+    ManifoldData myManifoldData;
 
+    myManifoldData.id = MyWiFi.getMacAddress();
     myManifoldData.ipAddress = MyWiFi.getIpAddress();
     myManifoldData.version = String(VERSION);
 
