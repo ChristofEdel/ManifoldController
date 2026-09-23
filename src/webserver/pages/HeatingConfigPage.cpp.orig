@@ -6,9 +6,6 @@
 #include "NeohubZoneManager.h"
 #include "ValveManager.h"
 
-extern void republishConfiguration();
-
-
 void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response= this->startHttpHtmlResponse(request);
 
@@ -315,7 +312,11 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
       pidReconfigured |= update(Config.getHybridTweakBandWidth(), &CConfig::setHybridTweakBandWidth, p->value());
     }
     else if (key == "fallback-flow") {
+<<<<<<< Updated upstream
+      pidReconfigured |= update(Config.getFallbackFlow(), &CConfig::setfallbackFlow, p->value());
+=======
       pidReconfigured |= update(Config.getFallbackFlow(), &CConfig::setFallbackFlow, p->value());
+>>>>>>> Stashed changes
     }
     else if (key == "flow-setpoint-min") {
       flowRangeReconfigured |= update(Config.getFlowMinSetpoint(), &CConfig::setFlowMinSetpoint, p->value());
@@ -363,7 +364,6 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
 
   SensorMap.removeFromIndex(sensorIndex); // Remove any remaining sensors
   Config.save();
-  republishConfiguration();
   if (pidReconfigured) {
     ValveManager.loadConfig();
     // includes loading the flow range

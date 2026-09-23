@@ -46,6 +46,12 @@ Esp32Controller ManifoldController(sdCardCsPin, oneWirePin);
 void startValveControlTask();
 void triggerValveControls(bool);
 
+void mqttResetCallback(void *arg, const String&topic, const String& payload)
+{
+    MyLog.printf("Received %s = %s\n", topic.c_str(), payload.c_str());
+    softwareReset(SW_RESET_MQTT_RESET, "Reset command from MQTT");
+}
+
 void setup()
 {
     ManifoldController.setup();
@@ -60,6 +66,8 @@ void setup()
         );
         NeohubZoneManager.subscribeZoneData(Config.getMqttTopicNeohub());
         WeatherDataManager.subscribeWeatherData(Config.getMqttTopicTemperature(), Config.getMqttTopicTemperatureKeepalive());
+        Config.subscribeToMqttSetTopics(MyWiFi.getMacAddress());
+        MqttManager.subscribeTopic("manifold/" + MyWiFi.getMacAddress() + "/command/restart", mqttResetCallback, nullptr);
     }
 
     // Initialise the valve manager from the configuration
@@ -85,6 +93,12 @@ void setup()
 
 #define HOUR_MS (60 * 60 * 1000) 
 void fillManifoldData (ManifoldData &data); // forward declaration
+const int configRetentionSeconds = 60 * 60; // 1 hour
+bool configPublished = false;
+
+void republishConfiguration() {
+    configPublished = false;
+}
 
 void loop()
 {
@@ -92,11 +106,13 @@ void loop()
     const unsigned long controlLoopInterval = 1000;              // Read sensors and set control vale poistion
     const unsigned long logFileInterval = 5000;                  // log sensor and control values
     const unsigned long mqttAutodiscoverInterval = 24 * HOUR_MS; // publish HASS autodiscover messages to MQTT daily
+    const unsigned long mqttConfigPublishInterval = configRetentionSeconds * 500; // publish config parameters at half the retention period
 
     // When we last did that
     static unsigned long lastControlLoop = 0;
     static unsigned long lastLogFile = 0;
     static unsigned long lastAutodiscover = 0;
+    static unsigned long lastConfigPublish = 0;
     static bool first = true;
     static bool autodiscoverPublished = false;
 
@@ -123,8 +139,16 @@ void loop()
             ManifoldData d;
             d.id = MyWiFi.getMacAddress();
             fillManifoldData(d);
-            autodiscoverPublished = d.publishAutodiscoverTopics();
+            autodiscoverPublished = d.publishAutodiscoverTopics() && Config.publishAutodiscoverTopics(d.id);
             if (autodiscoverPublished) MyLog.println("MQTT: Autodiscovery messages published");
+        }
+    }
+
+    if (!configPublished || timeNow - lastConfigPublish >= mqttConfigPublishInterval) {
+        lastConfigPublish = timeNow;
+        if (MqttManager.isConnected()) {
+            Config.publishConfigToMqtt(MyWiFi.getMacAddress(), configRetentionSeconds);
+            configPublished = true;
         }
     }
 

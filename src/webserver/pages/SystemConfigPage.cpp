@@ -5,6 +5,8 @@
 #include "WeatherDataManager.h"
 #include "NeohubZoneManager.h"
 
+extern void republishConfiguration();
+
 void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
   AsyncResponseStream *response = this->startHttpHtmlResponse(request);
   HtmlGenerator html(response);
@@ -175,15 +177,15 @@ void CMyWebServer::processSystemConfigPagePost(AsyncWebServerRequest *request) {
 
   if (changesMade) {
     Config.save();
-    Config.print(MyLog);
+    republishConfiguration();
   }
 
   if (reconnectMqtt) {
     if (!Config.getMqttHost().isEmpty()) {
       MqttManager.restart(
-        StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()).c_str(), 
-        Config.getMqttUsername().c_str(), 
-        Config.getMqttPassword().c_str()
+        StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()), 
+        Config.getMqttUsername(), 
+        Config.getMqttPassword()
       );
       NeohubZoneManager.subscribeZoneData(Config.getMqttTopicNeohub());
       WeatherDataManager.subscribeWeatherData(Config.getMqttTopicTemperature(), Config.getMqttTopicTemperatureKeepalive());

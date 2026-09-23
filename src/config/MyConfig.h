@@ -2,144 +2,143 @@
 #define __CONFIG_H__
 
 #include <Arduino.h>
-#include <ArduinoJson.h>
+#include <type_traits>
+#include "MyLog.h"
+#include "Homeassistant.h"
 #include "ValveManagerControlMode.h"
 
-#include "MyLog.h"
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Configuration parameters
+//
+// Loads, maintains and saves configuration parameters using a json file
+// Publishes configuration parameters over MQTT and allows changing them via MQTT
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-class SdFs;
+//-------------------------------------------------------------------------------------------------
+// #region Single source of truth for all configuration parameters
+//-------------------------------------------------------------------------------------------------
+
+#define CONFIG_PARAMETERS(X) \
+    X(String,                  Name,                          , "") \
+    X(String,                  Hostname,                      , "") \
+    \
+    X(String,                  MqttHost,                      , "") \
+    X(long,                    MqttPort,                      , "") \
+    X(String,                  MqttUsername,                  , "") \
+    X(String,                  MqttPassword,                  , "") \
+    \
+    X(String,                  MqttTopicNeohub,               , "") \
+    X(String,                  MqttTopicTemperature,          , "") \
+    X(String,                  MqttTopicTemperatureKeepalive, , "") \
+    \
+    X(double,                  FlowMaxSetpoint,               Temperature, "Min Flow") \
+    X(double,                  FlowMinSetpoint,               Temperature, "Max Flow") \
+    X(double,                  FlowAddOn,                     Temperature, "Flow add-on") \
+    \
+    X(String,                  FlowSensorId,                  , "") \
+    X(String,                  InputSensorId,                 , "") \
+    X(String,                  ReturnSensorId,                , "") \
+    \
+    X(double,                  FlowProportionalGain,          , "") \
+    X(double,                  FlowIntegralSeconds,           , "") \
+    X(bool,                    FlowValveInverted,             , "") \
+    \
+    X(double,                  RoomSetpoint,                  Temperature, "Room Setpoint") \
+    X(double,                  RoomProportionalGain,          , "") \
+    X(double,                  RoomIntegralMinutes,           , "") \
+    \
+    X(long,                    ControlModeAsInt,              , "") \
+    \
+    X(double,                  WeatherControlOat,             , "") \
+    X(double,                  WeatherControlFlow,            , "") \
+    X(double,                  WeatherControlExponent,        , "") \
+    \
+    X(double,                  HybridTweakBandWidth,          , "") \
+    \
+    X(double,                  FallbackFlow,                  , "")
+
+    
+// #endregion
+//-------------------------------------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------------------------------------
+// #region CConfig class and Config global singleton
+//-------------------------------------------------------------------------------------------------
 
 class CConfig {
+
   private:
-    String name;
-    String hostname;
 
-    String mqttHost;
-    int mqttPort = 1883;
-    String mqttUsername;
-    String mqttPassword;
+    // data members -------------------------------------------------------------------------------
 
-    String mqttTopicNeohub;
-    String mqttTopicTemperature;
-    String mqttTopicTemperatureKeepalive;
+    #define CONFIG_DECLARE(type, name, pType, displayName) \
+        type _##name;
 
-    double flowMaxSetpoint = std::numeric_limits<double>::quiet_NaN();
-    double flowMinSetpoint = std::numeric_limits<double>::quiet_NaN();
-    double flowAddOn = std::numeric_limits<double>::quiet_NaN();
+    CONFIG_PARAMETERS(CONFIG_DECLARE)
 
-    String flowSensorId;
-    String inputSensorId;
-    String returnSensorId;
+    #undef CONFIG_DECLARE
 
-    double flowProportionalGain = std::numeric_limits<double>::quiet_NaN();
-    double flowIntegralSeconds = std::numeric_limits<double>::quiet_NaN();
-    bool flowValveInverted;
+public:
 
-    double roomSetpoint = std::numeric_limits<double>::quiet_NaN();
-    double roomProportionalGain = std::numeric_limits<double>::quiet_NaN();
-    double roomIntegralMinutes = std::numeric_limits<double>::quiet_NaN();
+    // getters/setters and manipulation -----------------------------------------------------------
 
-    ValveManagerControlMode controlMode;
-    double weatherControlOat = std::numeric_limits<double>::quiet_NaN();
-    double weatherControlFlow = std::numeric_limits<double>::quiet_NaN();
-    double weatherControlExponent = std::numeric_limits<double>::quiet_NaN();
-    double hybridTweakBandWidth = std::numeric_limits<double>::quiet_NaN();
-    double fallbackFlow = std::numeric_limits<double>::quiet_NaN();
+    #define CONFIG_ACCESSORS(type, name, pType, displayName) \
+        const type& get##name() const { return _##name; } \
+        void set##name(const type& value) { _##name = value; }
 
-    const char* masterFileName = "/flash/config.json";
-    const char* secondaryFileName = "/sdcard/config.json";
+        CONFIG_PARAMETERS(CONFIG_ACCESSORS)
 
-  public:
-    // Getters
-    inline const String& getName() const { return name; };
-    inline const String& getHostname() const { return hostname; };
+    #undef CONFIG_ACCESSORS
 
-    inline const String& getMqttHost() const { return mqttHost; }
-    inline int getMqttPort() const { return mqttPort; }
-    inline const String& getMqttUsername() const { return mqttUsername; }
-    inline const String& getMqttPassword() const { return mqttPassword; }
-
-    inline const String& getMqttTopicNeohub() const { return mqttTopicNeohub; }
-    inline const String& getMqttTopicTemperature() const { return mqttTopicTemperature; }
-    inline const String& getMqttTopicTemperatureKeepalive() const { return mqttTopicTemperatureKeepalive; }
-
-    inline double getFlowMaxSetpoint() const { return flowMaxSetpoint; };
-    inline double getFlowMinSetpoint() const { return flowMinSetpoint; };
-    inline double getFlowAddOn() const { return flowAddOn; };
-
-    inline const String& getFlowSensorId() const { return flowSensorId; };
-    inline const String& getInputSensorId() const { return inputSensorId; };
-    inline const String& getReturnSensorId() const { return returnSensorId; };
-
-    inline double getFlowProportionalGain() const { return flowProportionalGain; };
-    inline double getFlowIntegralSeconds() const { return flowIntegralSeconds; };
-    inline bool getFlowValveInverted() const { return flowValveInverted; };
-
-    inline double getRoomSetpoint() const { return roomSetpoint; };
-    inline double getRoomProportionalGain() const { return roomProportionalGain; };
-    inline double getRoomIntegralMinutes() const { return roomIntegralMinutes; };
-
-    inline ValveManagerControlMode getControlMode() const { return controlMode; };
-    inline double getWeatherControlOat() const { return weatherControlOat; };
-    inline double getWeatherControlFlow() const { return weatherControlFlow; };
-    inline double getWeatherControlExponent() const { return weatherControlExponent; };
-
-    inline double getHybridTweakBandWidth() const { return hybridTweakBandWidth; };
-
-    inline double getFallbackFlow() const { return fallbackFlow; };
-
-    // Setters
-    inline void setHostname(const String& value) { hostname = value; };
-    inline void setName(const String& value) { name = value; };
-
-    inline void setMqttHost(const String& value) { mqttHost = value; }
-    inline void setMqttPort(int value) { mqttPort = value; }
-    inline void setMqttUsername(const String& value) { mqttUsername = value; }
-    inline void setMqttPassword(const String& value) { mqttPassword = value; }
-    inline void setMqttTopicNeohub(const String& value) { mqttTopicNeohub = value; }
-    inline void setMqttTopicTemperature(const String& value) { mqttTopicTemperature = value; }
-    inline void setMqttTopicTemperatureKeepalive(const String& value) { mqttTopicTemperatureKeepalive = value; }
-    
-    inline void setFlowMaxSetpoint(double value) { flowMaxSetpoint = value; };
-    inline void setFlowMinSetpoint(double value) { flowMinSetpoint = value; };
-    inline void setFlowAddOn(double value) { flowAddOn = value; };
-
-    inline void setFlowSensorId(const String& value) { flowSensorId = value; };
-    inline void setInputSensorId(const String& value) { inputSensorId = value; };
-    inline void setReturnSensorId(const String& value) { returnSensorId = value; };
-
-    inline void setFlowProportionalGain(double value) { flowProportionalGain = value; };
-    inline void setFlowIntegralSeconds(double value) { flowIntegralSeconds = value; };
-    inline void setFlowValveInverted(bool value) { flowValveInverted = value; };
-
-    inline void setRoomSetpoint(double value) { roomSetpoint = value; };
-    inline void setRoomProportionalGain(double value) { roomProportionalGain = value; };
-    inline void setRoomIntegralMinutes(double value) { roomIntegralMinutes = value; };
-
-    inline void setControlMode(ValveManagerControlMode value) { controlMode = value; };
-    inline void setControlMode(int value) { controlMode = (ValveManagerControlMode) value; };
-    inline void setWeatherControlOat(double value) { weatherControlOat = value; };
-    inline void setWeatherControlFlow(double value) { weatherControlFlow = value; };
-    inline void setWeatherControlExponent(double value) { weatherControlExponent = value; };
-
-    inline void setHybridTweakBandWidth(double value) { hybridTweakBandWidth = value; };
-
-    inline void setfallbackFlow(double value) { fallbackFlow = value; };
+    // Specials: hostname before the first dot, and propertly typed control mode
+    String getHostnameFirstPart();
+    ValveManagerControlMode getControlMode() { 
+        return (ValveManagerControlMode) this->_ControlModeAsInt;
+    }
+    void setControlMode(ValveManagerControlMode mode) { 
+        this->_ControlModeAsInt = (long) mode;
+    }
 
     // Dummies so shared code compiles
     inline float getBoilerDefaultSetpointForHeating() { return 0; };
     inline float getBoilerFlowAddOn() { return 0; };
 
+    void applyDefaults();
+
+
+    // saving / loading from flash  ---------------------------------------------------------------
+  public:
     void save() const;
     void load();
-
-    void applyDefaults();
-    void print(CMyLog& p) const;
-
-private:
+  private:
+    const char* masterFileName = "/flash/config.json";
+    const char* secondaryFileName = "/sdcard/config.json";
+    static String _toParameterKey(const String& name);
     void save(JsonDocument &configJson, const char *fileName) const;
+
+    // Sending to MQTT  ---------------------------------------------------------------------------
+  public:
+    void publishConfigToMqtt(const String& deviceId, int retentionSeconds);
+    bool publishAutodiscoverTopics(const String& deviceId);
+  private:
+    int _retentionSeconds = 5 * 60;
+    void _publishTemperatureAutodiscover(HomeassistantMqttDiscovery &d, const String& name, const String& displayName);
+    void _publishAutodiscover(HomeassistantMqttDiscovery &d, const String& name, const String& displayName) { return; } // dummy for parameters which are not published
+
+    // Updating from MQTT -------------------------------------------------------------------------
+  public:
+    void subscribeToMqttSetTopics(const String& deviceId); 
+  private:
+    String _deviceId;
+
+    void _updateFromMqtt(const String& topic, const String& payload);
+    static void _mqttCallback(void *arg, const String& topic, const String& payload);
 
 };
 
 extern CConfig Config;
+
 #endif
