@@ -86,7 +86,7 @@ class CConfig {
 
     inline double getHybridTweakBandWidth() const { return hybridTweakBandWidth; };
 
-    inline double getfallbackFlow() const { return fallbackFlow; };
+    inline double getFallbackFlow() const { return fallbackFlow; };
 
     // Setters
     inline void setHostname(const String& value) { hostname = value; };

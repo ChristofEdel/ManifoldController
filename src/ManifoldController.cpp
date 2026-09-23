@@ -51,12 +51,12 @@ void setup()
     ManifoldController.setup();
     if (!Config.getMqttHost().isEmpty()) {
         if (!Config.getHostname().isEmpty()) {
-            MqttManager.setAvailabilityTopic(StringPrintf("manifold/%s/available", MyWiFi.getMacAddress().c_str()).c_str());
+            MqttManager.setAvailabilityTopic(StringPrintf("manifold/%s/available", MyWiFi.getMacAddress().c_str()));
         }
         MqttManager.start(
-            StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()).c_str(), 
-            Config.getMqttUsername().c_str(), 
-            Config.getMqttPassword().c_str()
+            StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()), 
+            Config.getMqttUsername(), 
+            Config.getMqttPassword()
         );
         NeohubZoneManager.subscribeZoneData(Config.getMqttTopicNeohub());
         WeatherDataManager.subscribeWeatherData(Config.getMqttTopicTemperature(), Config.getMqttTopicTemperatureKeepalive());

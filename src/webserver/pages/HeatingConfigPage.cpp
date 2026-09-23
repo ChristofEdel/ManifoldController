@@ -138,7 +138,7 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             html.print("<td>&deg;C</td>");
           });
           html.fieldTableRow("Fallback Flow", [&html] {
-            html.fieldTableInput("name='fallback-flow' type='text' class='num-3em'", Config.getfallbackFlow(), 1);
+            html.fieldTableInput("name='fallback-flow' type='text' class='num-3em'", Config.getFallbackFlow(), 1);
             html.print("<td>&deg;C (used in case of sensor failure)</td>");
           });
           html.fieldTableRow("Proportional Gain", [&html]{
@@ -312,7 +312,7 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
       pidReconfigured |= update(Config.getHybridTweakBandWidth(), &CConfig::setHybridTweakBandWidth, p->value());
     }
     else if (key == "fallback-flow") {
-      pidReconfigured |= update(Config.getfallbackFlow(), &CConfig::setfallbackFlow, p->value());
+      pidReconfigured |= update(Config.getFallbackFlow(), &CConfig::setfallbackFlow, p->value());
     }
     else if (key == "flow-setpoint-min") {
       flowRangeReconfigured |= update(Config.getFlowMinSetpoint(), &CConfig::setFlowMinSetpoint, p->value());
