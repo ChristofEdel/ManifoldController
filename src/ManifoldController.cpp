@@ -57,7 +57,7 @@ void setup()
     ManifoldController.setup();
     if (!Config.getMqttHost().isEmpty()) {
         if (!Config.getHostname().isEmpty()) {
-            MqttManager.setAvailabilityTopic(StringPrintf("manifold/%s/available", MyWiFi.getMacAddress().c_str()));
+            MqttManager.setAvailabilityTopic(StringPrintf("manifold/%s/available", MyWiFi.getMacAddress().c_str()), 10, 5 * 60);
         }
         MqttManager.start(
             StringPrintf("mqtt://%s:%d", Config.getMqttHost().c_str(), Config.getMqttPort()), 
@@ -153,6 +153,8 @@ void loop()
     }
 
     first = false;
+
+    MqttManager.publishAvailabilityTopicIfNecessary();
 
     // Trigger common loop functions
     ManifoldController.loop(timeNow);
