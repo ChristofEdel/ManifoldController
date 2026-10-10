@@ -77,35 +77,31 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
 
       html.block("Salus Valve Reset", [this, &html]{
         html.fieldTable( [this, &html] {
-          html.fieldTableRow("Zone", [this, &html]{
+          html.fieldTableRow("Zone", "style='vertical-align: middle'", [this, &html]{
             html.element("td", "style='text-align: left'", [this, &html]() {
               html.select("id='zoneToResetSelect'", [this, &html]{
                 generateZoneOptions(html, 0);
               });
-            });
-          });
-          html.fieldTableRow("Setpoint", [&html]{
-            html.print("<td><div id='resetZoneSetpoint' type='button' class='zone-on'></div></td>");
-          });
-          html.fieldTableRow("", [&html]{
-            html.print("<td><div class='reset-progress-bar'>");
-            html.print("<div id='resetProgressIndicator' style='display: none'></div>");
-            html.print("<div style='width: 60px' class='on'>30s</div>");
-            html.print("<div style='width: 30px' class='off'>15s</div>");
-            html.print("<div style='width: 30px' class='on'>15s</div>");
-            html.print("<div style='width: 30px' class='off'>15s</div>");
-            html.print("<div style='width: 180px' class='on'>90s</div>");
-            html.print("<div style='width: 40px' class='off'>20s</div>");
-            html.print("<div style='width: 40px; border-left: 1px solid green' class='on'>Auto</div>");
-            html.print("</div></td>");
-          });
-          html.element("tr", [&html]() {
-            html.element("th", "colspan=2", [&html]() {
-              html.print("<button id='resetZoneStartButton' type='button' disabled>Start Reset Sequence</button>");
-              html.print("<button id='resetZoneStopButton' type='button' style='display:none'>Stop</button>");
+              html.print(" <button id='resetZoneStartButton' type='button' disabled>Start Reset Sequence</button>");
             });
           });
         });
+        html.print("<table><tbody id='zoneResetRows'></tbody></table>");
+        html.print("<template id='zoneResetRowTemplate'><tr class='zone-reset-row'>");
+        html.print("<th class='reset-zone-name'></th>");
+        html.print("<td><div class='reset-zone-setpoint'></div></td>");
+        html.print("<td><div class='reset-progress-bar' role='progressbar' aria-label='Valve reset progress' aria-valuemin='0' aria-valuemax='205'>");
+        html.print("<div class='reset-progress-indicator'></div>");
+        html.print("<div style='width: 60px' class='on'>30s</div>");
+        html.print("<div style='width: 30px' class='off'>15s</div>");
+        html.print("<div style='width: 30px' class='on'>15s</div>");
+        html.print("<div style='width: 30px' class='off'>15s</div>");
+        html.print("<div style='width: 180px' class='on'>90s</div>");
+        html.print("<div style='width: 40px' class='off'>20s</div>");
+        html.print("<div style='width: 40px; border-left: 1px solid green' class='on'>Auto</div>");
+        html.print("</div></td>");
+        html.print("<td><button class='reset-zone-cancel' type='button'>Cancel</button></td>");
+        html.print("</tr></template>");
       });
 
     }); // block layout

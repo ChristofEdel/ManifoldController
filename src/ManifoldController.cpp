@@ -6,6 +6,7 @@
 #include "EspTools.h"
 #include "OneWireManager.h"
 #include "NeohubZoneManager.h"
+#include "NeohubZoneReset.h"
 #include "ManifoldConnections.h"
 #include "MyWifi.h"
 #include "SensorLog.h"
@@ -121,6 +122,7 @@ void loop()
 
     if (first || timeNow - lastControlLoop >= controlLoopInterval) {
         lastControlLoop = timeNow;
+        NeobubZoneReset::tick();
         if (first || timeNow - lastLogFile >= logFileInterval) {
             lastLogFile = timeNow;
             triggerValveControls(true);  // emit a log line

@@ -40,159 +40,113 @@ function renumberTable($table) {
 // Config page: Valve reset function
 //
 
-var zoneIdToReset = null
-var zoneResetIntervalTimer = null
-var zoneResetElapsed
+var zoneResetPollTimer = null
+var zoneResetStatusPending = false
+var zoneResetRefreshRequested = false
+var zoneResetStartPending = false
 
-// Step 1 - user selects a zone to reset.
-//
-// This disables the select field and obtains the current zone status from the server.
-function zoneToResetSelected () {
-    zoneIdToReset = $("#zoneToResetSelect").val() || null
-    if (zoneIdToReset == "") zoneIdToReset = null; else zoneIdToReset = Number(zoneIdToReset)
+function zoneToResetSelected() {
+    $('#resetZoneStartButton').prop('disabled',
+        zoneResetStartPending || !Number($('#zoneToResetSelect').val()))
+}
 
-    // No zone selected - we restore the initial state
-    if (!zoneIdToReset) {
-        $('#resetZoneStartButton').prop('disabled', true)
-        $('#resetZoneStopButton').hide()
-        $('#resetZoneSetpoint').text('')
-        $('#resetZoneSetpoint').hide()
-        $('#resetProgressIndicator').hide()
-        return
-    }
+function resetCommandError(xhr) {
+    alert(xhr.responseJSON && xhr.responseJSON.error || 'Unable to send valve reset command')
+}
 
-    // Zone selected - we get the zone setpoint and status, and once
-    // we have it we enable the "Start Reset Sequence" button
+function startResetSequence() {
+    var zoneId = Number($('#zoneToResetSelect').val())
+    if (!zoneId || zoneResetStartPending) return
+    zoneResetStartPending = true
+    zoneToResetSelected()
     $.ajax({
         url: '/command',
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({command: 'GetZoneStatus', zoneId: zoneIdToReset }),
-        success: function (data) {
-            handleStatusResponse(data)
-            $('#resetZoneSetpoint').show()
-            $('#resetZoneStartButton').prop('disabled', false)
+        timeout: 3000,
+        data: JSON.stringify({command: 'ValveResetStart', zoneId: zoneId}),
+        success: pollValveResetStatus,
+        error: resetCommandError,
+        complete: function () {
+            zoneResetStartPending = false
+            zoneToResetSelected()
         }
     })
 }
 
-// Step 2 - user clicks the "Start Reset Sequence" button
-function startResetSequence() {
-    if (!zoneIdToReset) return
-    
-    // if we alredy have the interval timer runnimg, we do nothing
-    if (zoneResetIntervalTimer) return
-    $('#zoneToResetSelect').prop('disabled', true)
-    $('#resetZoneStartButton').hide()
-    $('#resetZoneStopButton').prop('disabled', false)
-    $('#resetZoneStopButton').show()
-
-
-    zoneResetElapsed = 0
-
-    $('#resetProgressIndicator').css('left', zoneResetElapsed*2 + 'px')
-    $('#resetProgressIndicator').show()
-
-    var lastCommandSent = "";
-    var lastCommandSentAt = 0; 
-
-    zoneResetIntervalTimer = setInterval(function () {
-        zoneResetElapsed++
-
-        if (zoneResetElapsed <= 205) {
-            $('#resetProgressIndicator').css('left', zoneResetElapsed*2 + 'px')
-        }
-
-        if (zoneResetElapsed <= 30) {
-            // (a) 30 seconds ZoneOn
-            cmd = 'ZoneOn'
-        } else if (zoneResetElapsed <= 45) { // +15
-            // (b) 15 seconds ZoneOff
-            cmd = 'ZoneOff'
-        } else if (zoneResetElapsed <= 60) { // +15
-            // (c) 15 seconds ZoneOn
-            cmd = 'ZoneOn'
-        } else if (zoneResetElapsed <= 75) { // +15
-            // (d) 15 seconds ZoneOff
-            cmd = 'ZoneOff'
-        } else if (zoneResetElapsed <= 165) { // +90
-            // (d) 90 seconds ZoneOn
-            cmd = 'ZoneOn'
-        } else if (zoneResetElapsed <= 185) { // +20
-            // (d) 20 seconds ZoneOff
-            cmd = 'ZoneOff'
-        } else if (zoneResetElapsed == 205) { // +20
-            // (e) then set the zone back to automatic
-            cmd = 'ZoneAuto'
-        } else {
-            // after that, get the status until we are finished
-            cmd = 'GetZoneStatus'
-        }
-
-        if (cmd != lastCommandSent || zoneResetElapsed - lastCommandSentAt >= 5 ) {
-            sendZoneCommand(zoneIdToReset, cmd)
-            lastCommandSentAt = zoneResetElapsed
-            lastCommandSent = cmd
-        }
-
-        if (zoneResetElapsed === 205) {
-            clearInterval(zoneResetIntervalTimer)
-            zoneResetIntervalTimer = null
-            // End of sequence: show Reset button again
-            $('#zoneToResetSelect').prop('disabled', false)
-            $('#resetZoneStartButton').show()
-            $('#resetZoneStopButton').hide()
-            $('#resetProgressIndicator').hide()
-        }
-    }, 1000)
-}
-
-// User abort - skip forward to the final stage where the zone is set to 
-// automatic and then monitored for 10 seconds
-function stopResetSequence() {
-
-    // Jump forward in the sequence so the next command is to set the zone to auto
-    if (zoneResetElapsed < 105) zoneResetElapsed = 195
-
-    // Just to make sure we send one ourselves
-    sendZoneCommand(zoneIdToReset, 'ZoneAuto')
-
-    $('#resetZoneStopButton').prop('disabled', true)
-}
-
-// Helper - whenever we receive the status of the zone, we put it
-// in the "resetZoneSetpoint" element
-function handleStatusResponse(data) {
-    if (data && typeof data.setpoint !== 'undefined') {
-        var setpoint = parseFloat(data.setpoint)
-        if (!isNaN(setpoint)) {
-            $('#resetZoneSetpoint').text(setpoint.toFixed(1))
-        }
-        else {
-            $('#resetZoneSetpoint').text('???')
-        }
-    }
-
-    if (data && typeof data.on !== 'undefined') {
-        if (data.on) {
-            $('#resetZoneSetpoint').addClass('zone-on')
-            $('#resetZoneSetpoint').removeClass('zone-off')
-        } else {
-            $('#resetZoneSetpoint').removeClass('zone-on')
-            $('#resetZoneSetpoint').addClass('zone-off')
-        }
-    }
-}
-
-// Helper - send a command for the zone.
-function sendZoneCommand(zoneId, commandName) {
+function stopResetSequence(zoneId, button) {
+    $(button).prop('disabled', true)
     $.ajax({
         url: '/command',
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({command: commandName, zoneId: zoneId }),
-        success: function (data) {
-            handleStatusResponse(data)
+        timeout: 3000,
+        data: JSON.stringify({command: 'ValveResetCancel', zoneId: zoneId}),
+        success: pollValveResetStatus,
+        error: resetCommandError,
+        complete: function () {
+            $(button).prop('disabled', false)
+        }
+    })
+}
+
+function renderValveResetStatus(zones) {
+    var activeIds = new Set()
+    zones.forEach(function (zone) {
+        var rowId = 'zone-reset-' + zone.zoneId
+        activeIds.add(rowId)
+        var $row = $('#' + rowId)
+        if (!$row.length) {
+            $row = $($('#zoneResetRowTemplate').html()).attr('id', rowId)
+            $row.attr('data-zone-id', zone.zoneId)
+            $('#zoneResetRows').append($row)
+        }
+        $row.find('.reset-zone-name').text(zone.name)
+        $row.find('.reset-zone-setpoint')
+            .text(zone.setpoint === null ? '???' : fmt(zone.setpoint, 1))
+            .toggleClass('zone-on', !!zone.on)
+            .toggleClass('zone-off', !zone.on)
+        var ticks = Math.max(0, Math.min(205, zone.ticksElapsed))
+        $row.find('.reset-progress-indicator').css('left', ticks * 2 + 'px')
+        $row.find('.reset-progress-bar').attr('aria-valuenow', ticks)
+            .attr('title', ticks + ' / 205 seconds')
+    })
+    $('#zoneResetRows').children().each(function () {
+        if (!activeIds.has(this.id)) $(this).remove()
+    })
+}
+
+// One shared poll for all zones. Serialize requests so an older response cannot
+// overwrite the status fetched after a start/cancel command.
+function pollValveResetStatus() {
+    clearTimeout(zoneResetPollTimer)
+    zoneResetPollTimer = null
+    if (zoneResetStatusPending) {
+        zoneResetRefreshRequested = true
+        return
+    }
+    zoneResetStatusPending = true
+    var keepPolling = true // Retry transient failures without discarding rows.
+    $.ajax({
+        url: '/command',
+        method: 'POST',
+        contentType: 'application/json',
+        dataType: 'json',
+        timeout: 3000,
+        data: JSON.stringify({command: 'ValveResetStatus'}),
+        success: function (zones) {
+            if (!Array.isArray(zones)) return
+            renderValveResetStatus(zones)
+            keepPolling = zones.length > 0
+        },
+        complete: function () {
+            zoneResetStatusPending = false
+            if (zoneResetRefreshRequested) {
+                zoneResetRefreshRequested = false
+                pollValveResetStatus()
+            } else if (keepPolling) {
+                zoneResetPollTimer = setTimeout(pollValveResetStatus, 1000)
+            }
         }
     })
 }
@@ -577,10 +531,15 @@ $(function () {
         startResetSequence()
     })
 
-    // Stop and reset everything
-    $('#resetZoneStopButton').on('click', function () {
-        stopResetSequence()
+    $('#zoneResetRows').on('click', '.reset-zone-cancel', function () {
+        stopResetSequence(Number($(this).closest('tr').attr('data-zone-id')), this)
     })
+
+    // Discover controller-managed resets when opening or reloading this page.
+    if ($('#zoneResetRows').length) {
+        zoneToResetSelected()
+        pollValveResetStatus()
+    }
 
     // "Change value" dialaog
     $("#changeDialog").dialog({

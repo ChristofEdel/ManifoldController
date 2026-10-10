@@ -574,6 +574,9 @@ button.save-button {
     margin: 10px auto 0px auto;
 }
 
+button.reset-zone-start-button {
+    display: inline-block;
+}
 
 /* "Block Layout" with bold titles on the left and content on the right;
 ** adapts to titles on top on narrow screens (mobile)
@@ -644,7 +647,7 @@ button.save-button {
 ** Reset Valve function on config page
 */
 
-#resetZoneSetpoint {
+.reset-zone-setpoint {
     width: 2.5em;
     display: block;
     text-align: center;
@@ -680,10 +683,10 @@ button.save-button {
 .reset-progress-bar > div.off {
     background-color: var(--bg-active);
 }
-#resetProgressIndicator {
+.reset-progress-indicator {
     height: 100%;
     width: 2px;
     background-color: black;
     position: absolute;
-    left: 19px;
+    left: 0;
 }

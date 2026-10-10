@@ -2,6 +2,7 @@
 #include "../MyWebServer.h"
 #include "MyLog.h"
 #include "NeohubZoneManager.h"
+#include "NeohubZoneReset.h"
 #include "ValveManager.h"
 #include "StringTools.h"
 #include "MqttManager.h"
@@ -107,6 +108,35 @@ void CMyWebServer::executeCommand(AsyncWebServerRequest* request)
             ValveManager.setValvePosition(value);
         }
         // default response
+    }
+
+    else if (command == "ValveResetStart" || command == "ValveResetCancel") {
+        if (!commandJson["zoneId"].is<int>() ||
+            !NeohubZoneManager.getZoneData(commandJson["zoneId"].as<int>())) {
+            request->send(makeCommandResponse(request, 400, "{ \"error\": \"Invalid zoneId\" }"));
+            return;
+        }
+        int zoneId = commandJson["zoneId"].as<int>();
+        if (command == "ValveResetStart") NeobubZoneReset::zoneResetStart(zoneId);
+        else NeobubZoneReset::zoneResetCancel(zoneId);
+    }
+
+    else if (command == "ValveResetStatus") {
+        JsonArray zones = responseJson.to<JsonArray>();
+        for (const auto& status : NeobubZoneReset::zoneResetGetStatus()) {
+            NeohubZoneData* zd = NeohubZoneManager.getZoneData(status.zoneId);
+            JsonObject zone = zones.add<JsonObject>();
+            zone["zoneId"] = status.zoneId;
+            zone["name"] = zd ? zd->zone.name : String(status.zoneId);
+            zone["ticksElapsed"] = status.ticksElapsed;
+            if (zd) zone["setpoint"] = zd->roomSetpoint;
+            else zone["setpoint"] = nullptr;
+            zone["on"] = zd && zd->demand;
+        }
+        String response;
+        serializeJson(responseJson, response);
+        request->send(makeCommandResponse(request, 200, response));
+        return;
     }
 
     else if (command == "GetZoneStatus" || command == "ZoneOn" || command == "ZoneOff" || command == "ZoneAuto") {

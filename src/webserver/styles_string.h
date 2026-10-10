@@ -648,7 +648,7 @@ button.save-button {
 ** Reset Valve function on config page
 */
 
-#resetZoneSetpoint {
+.reset-zone-setpoint {
     width: 2.5em;
     display: block;
     text-align: center;
@@ -684,11 +684,11 @@ button.save-button {
 .reset-progress-bar > div.off {
     background-color: var(--bg-active);
 }
-#resetProgressIndicator {
+.reset-progress-indicator {
     height: 100%;
     width: 2px;
     background-color: black;
     position: absolute;
-    left: 19px;
+    left: 0;
 }
 )RAW_STRING";
