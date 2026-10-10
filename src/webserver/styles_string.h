@@ -578,6 +578,9 @@ button.save-button {
     margin: 10px auto 0px auto;
 }
 
+#resetZoneStartButton {
+    display: inline-block;
+}
 
 /* "Block Layout" with bold titles on the left and content on the right;
 ** adapts to titles on top on narrow screens (mobile)
@@ -648,6 +651,10 @@ button.save-button {
 ** Reset Valve function on config page
 */
 
+.reset-zone-setpoint,
+.reset-progress-bar {
+    font-size: small;
+}
 .reset-zone-setpoint {
     width: 2.5em;
     display: block;
@@ -670,7 +677,6 @@ button.save-button {
     padding: 0;
     margin: 0;
     position: relative;
-    font-size: small
 }
 .reset-progress-bar > div {
     flex: 0 0 auto;         /* keep fixed width from inline style */

@@ -90,7 +90,8 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
         html.print("<template id='zoneResetRowTemplate'><tr class='zone-reset-row'>");
         html.print("<th class='reset-zone-name'></th>");
         html.print("<td><div class='reset-zone-setpoint'></div></td>");
-        html.print("<td><div class='reset-progress-bar' role='progressbar' aria-label='Valve reset progress' aria-valuemin='0' aria-valuemax='205'>");
+        html.print("<td><div class='reset-progress' role='progressbar' aria-label='Valve reset progress' aria-valuemin='0' aria-valuemax='505'>");
+        html.print("<div class='reset-progress-bar reset-progress-initial'>");
         html.print("<div class='reset-progress-indicator'></div>");
         html.print("<div style='width: 60px' class='on'>30s</div>");
         html.print("<div style='width: 30px' class='off'>15s</div>");
@@ -98,8 +99,12 @@ void CMyWebServer::respondWithSystemConfigPage(AsyncWebServerRequest *request) {
         html.print("<div style='width: 30px' class='off'>15s</div>");
         html.print("<div style='width: 180px' class='on'>90s</div>");
         html.print("<div style='width: 40px' class='off'>20s</div>");
-        html.print("<div style='width: 40px; border-left: 1px solid green' class='on'>Auto</div>");
-        html.print("</div></td>");
+        html.print("</div>");
+        html.print("<div class='reset-progress-bar reset-progress-final'>");
+        html.print("<div class='reset-progress-indicator' style='display: none'></div>");
+        html.print("<div style='width: 300px' class='on'>300s</div>");
+        html.print("<div style='width: 20px; border-left: 1px solid green'>Auto</div>");
+        html.print("</div></div></td>");
         html.print("<td><button class='reset-zone-cancel' type='button'>Cancel</button></td>");
         html.print("</tr></template>");
       });

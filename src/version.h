@@ -1,6 +1,6 @@
 #ifndef __VERSION_H
 #define __VERSION_H
 
-inline constexpr const char* VERSION = "2.2.2";
+inline constexpr const char* VERSION = "2.2.3";
 
 #endif
