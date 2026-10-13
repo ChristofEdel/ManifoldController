@@ -3,6 +3,7 @@
 #include "ValveManager.h"
 #include "StringTools.h"
 #include "WeatherDataManager.h"
+#include "ZoneValveState.h"
 
 const String &CMyWebServer::mapSensorName(const String &id) const{
   const String &displayName = SensorMap.getNameForId(id);
@@ -87,6 +88,12 @@ void CMyWebServer::respondWithMonitorPage(AsyncWebServerRequest *request) {
           }
           else {
             html.print("<td id='valveManualFlag' colspan=2 class='manual-control' style='display: none'>Manual Control</td>");
+          }
+          if (getZoneValveState() == ZoneValveState::OPENING) {
+            html.printf("<td id='valveOpening' colspan=2 style='text-align: left'>Waiting: %ds</td>", (int)getZoneValveOpeningSecondsRemaining());
+          }
+          else {
+            html.print("<td id='valveOpening' colspan=2 style='display: none; text-align: left'>--</td>");
           }
         });
       });
@@ -288,6 +295,7 @@ void CMyWebServer::respondWithStatusData(AsyncWebServerRequest *request) {
   statusJson["valvePosition"]        = ValveManager.getValvePosition();
   statusJson["valveManualControl"]   = ValveManager.valveUnderManualControl();
   statusJson["uptimeText"]           = uptimeText();
+  statusJson["valveOpening"]         = (int) getZoneValveOpeningSecondsRemaining();
   
   int sensorCount = SensorMap.getCount();
 

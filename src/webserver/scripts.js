@@ -359,6 +359,12 @@ function monitorPage_refreshData() {
                 $("#valvePosition").text("")
             }
             $("#valveManualFlag").toggle(data.valveManualControl)
+            if (data.valveOpening > 0) {
+                $("#valvePosition").text("Waiting: " + data.valveOpening + "s").show()
+            }
+            else {
+                $("#valveOpening").hide()
+            }
             if (data.sensors) {
                 data.sensors.forEach(function (sensor) {
                     if (sensor.temperature !== null) {
