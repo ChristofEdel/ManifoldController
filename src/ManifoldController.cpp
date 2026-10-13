@@ -175,13 +175,86 @@ void readSensors()
 TaskHandle_t valveControlTaskHandle = NULL;  // Task for boiler control
 QueueHandle_t valveControlQueue = NULL;
 
-void manageValveControls()
-{
+enum class CallForHeatState {
+    STARTUP, OFF, WAITING, CALLING
+};
+
+bool zoneValveOpen() {
+
+    static CallForHeatState state = CallForHeatState::STARTUP;
+    static unsigned long waitingStateStartedAt = 0;  // When did the call for heat start?
+
+    // Check if there are any zones which are calling for heat
+    bool anyZoneCallingForHeat = false;
+    for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
+        if (d && d->demand) {
+            anyZoneCallingForHeat = true;
+            break;
+        }
+    }
+
+    switch (state) {
+        // After start-up, the first call for heat is passed immediately
+        // until then, we remain in STARTUP
+        case CallForHeatState::STARTUP:
+            if (!anyZoneCallingForHeat) break;
+            // At least one zone calling --> enter CALLING state
+            state = CallForHeatState::CALLING;
+            break;
+
+        // When calling, if there is no more call we turn off
+        case CallForHeatState::CALLING:
+            if (anyZoneCallingForHeat) break;
+            // No zone calling --> enter OFF state
+            state = CallForHeatState::OFF;
+            break;
+
+        // When off and there is now a call, we wait
+        case CallForHeatState::OFF:
+            if (!anyZoneCallingForHeat) break;
+            // Delay configured --> enter WAITING state
+            if (Config.getZoneValveDelaySeconds() > 0) {
+                waitingStateStartedAt = millis();
+                state = CallForHeatState::WAITING;
+                break;
+            }
+            // No delay configured --> straight to calling
+            state = CallForHeatState::CALLING;
+            break;
+
+
+        // when Waiting, change to ON after the timer has expired
+        // if at any time the call disappears, we go back to OFF
+        case CallForHeatState::WAITING:
+            // No zones calling --> back to OFF state
+            if (!anyZoneCallingForHeat) {
+                state = CallForHeatState::OFF;
+                break;
+            }
+            // Waiting time expored --> enter CALLING state
+            unsigned long enableDelayMs = Config.getZoneValveDelaySeconds() * 1000UL;
+            if (millis() - waitingStateStartedAt >= enableDelayMs) {
+                waitingStateStartedAt = 0;
+                state = CallForHeatState::CALLING;
+                break;
+            }
+            // Otherwise, keep waiting
+            break;
+
+    }
+
+    // Return if the state, after all of the above, is now 'CALLING'
+    return state == CallForHeatState::CALLING;
+}
+
+float getCurrentRoomTemperature() {
+
     // First, calculate the average room temperature for all zones which are configured
     // Update the timestamp when we collected the lastest room temperature if we can obtain at least one
     int tempCount = 0;
     double temperatureTotal = 0;
-    bool allRoomsOff = true;
+
     for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
         NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (d) {
@@ -190,11 +263,20 @@ void manageValveControls()
                 temperatureTotal += d->roomTemperature;
                 tempCount++;
             }
-            if (d->demand) allRoomsOff = false;
         }
     }
     float roomTemperature = std::numeric_limits<float>::quiet_NaN();
     if (tempCount > 0) roomTemperature = temperatureTotal / tempCount;
+
+    return roomTemperature;
+}
+
+void manageValveControls()
+{
+    // Get the current room temperature we are trying to control
+    // and the valve state
+    float roomTemperature = getCurrentRoomTemperature();
+    bool enabled = zoneValveOpen();
 
     // Then, get the temperatures from the manifold
     // the flowTemperature is the one that matters, the other ones are currently FYI
@@ -207,7 +289,7 @@ void manageValveControls()
     if (!isnan(flowTemperature)) ValveManager.timestamps.flowDataLoadTime = time(nullptr);
 
     // run the control loop
-    ValveManager.setInputs(allRoomsOff, roomTemperature, flowTemperature, inputTemperature, returnTemperature, outsideTemperature);
+    ValveManager.setInputs(enabled, roomTemperature, flowTemperature, inputTemperature, returnTemperature, outsideTemperature);
     ValveManager.calculateValvePosition();
     ValveManager.sendCurrentValvePosition();
 
@@ -374,7 +456,7 @@ void startValveControlTask()
     xTaskCreate(
         valveControlTask,        // Task function
         "ValveControl",          // Task name
-        4096,                    // Stack size (bytes)
+        8096,                    // Stack size (bytes)
         NULL,                    // Parameter to pass
         1,                       // Task priority
         &valveControlTaskHandle  // Task handle

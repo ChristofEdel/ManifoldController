@@ -16,6 +16,7 @@ KnownTask knownTasks[] = {
     {"websocket_task", "OS       | Network | UDP Websocket handler"},
     {"esp_timer",      "OS       | Timers  | ESP precision timer dispatcher"},
     {"Tmr Svc",        "OS       | Timers  | System timer service"},
+    {"mqtt_task",      "OS       | Network | MQTT event Handlers"},
     {"ipc0",           "OS       |         | Inter-Processer Communication"},
     {"loopTask",       "Arduino  |         | Arduino core task for setup and loop" },
     {"ValveControl",   "APP      |         | Valve control loop"},

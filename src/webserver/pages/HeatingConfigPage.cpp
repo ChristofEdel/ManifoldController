@@ -152,11 +152,21 @@ void CMyWebServer::respondWithHeatingConfigPage(AsyncWebServerRequest *request) 
             html.fieldTableInput("name='flow-is' type='text' class='num-3em'", Config.getFlowIntegralSeconds(), 1);
             html.print("<td>seconds for 1x proportional gain</td>");
           });
+        });
+      });
+
+      html.block("Valve<br>Configuration", [this, &html]{
+        html.fieldTable( [this, &html] {
           html.fieldTableRow("Valve Direction", [&html]{
-            html.fieldTableSelect("colspan=2", "name='valve-direction'", [&html]{
+            html.fieldTableSelect("colspan=3", "name='valve-direction'", [&html]{
               html.option("0", "Standard (clockwise)",  Config.getFlowValveInverted() == false);
               html.option("1", "Inverted (counter-clockwise)",  Config.getFlowValveInverted() == true);
             });
+          });
+          html.fieldTableRow("Zone Valve Delay", [&html]{
+            html.fieldTableInput("name='valve-delay' type='text' class='num-3em'", Config.getZoneValveDelaySeconds());
+            html.print("<td>Seconds</td>");
+            html.print("<td style='width: 100px'></td>");
           });
         });
       });
@@ -334,6 +344,9 @@ void CMyWebServer::processHeatingConfigPagePost(AsyncWebServerRequest *request) 
     }
     else if (key == "valve-direction") {
       pidReconfigured |= update(Config.getFlowValveInverted(), &CConfig::setFlowValveInverted, (bool) p->value().toInt());
+    }
+    else if (key == "valve-delay") {
+      update(Config.getZoneValveDelaySeconds(), &CConfig::setZoneValveDelaySeconds, p->value().toInt());
     }
     else if (key == "sensor-input") {
       Config.setInputSensorId(p->value());

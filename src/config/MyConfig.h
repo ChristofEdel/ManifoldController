@@ -44,6 +44,7 @@
     X(double,                  FlowProportionalGain,          , "") \
     X(double,                  FlowIntegralSeconds,           , "") \
     X(bool,                    FlowValveInverted,             , "") \
+    X(long,                    ZoneValveDelaySeconds,         , "") \
     \
     X(double,                  RoomSetpoint,                  Temperature, "Room Setpoint") \
     X(double,                  RoomProportionalGain,          , "") \
