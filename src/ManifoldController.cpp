@@ -96,9 +96,11 @@ void setup()
 void fillManifoldData (ManifoldData &data); // forward declaration
 const int configRetentionSeconds = 60 * 60; // 1 hour
 bool configPublished = false;
+bool autodiscoverPublished = false;
 
 void republishConfiguration() {
     configPublished = false;
+    autodiscoverPublished = false;
 }
 
 void loop()
@@ -115,7 +117,6 @@ void loop()
     static unsigned long lastAutodiscover = 0;
     static unsigned long lastConfigPublish = 0;
     static bool first = true;
-    static bool autodiscoverPublished = false;
 
     // Do stuff
     unsigned long timeNow = millis();
@@ -184,7 +185,7 @@ void manageValveControls()
     for (NeohubZone z : NeohubZoneManager.getActiveZones()) {
         NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
         if (d) {
-            if (!isnan(d->roomTemperature)) {
+            if (!isnan(d->roomTemperature) && d->roomTemperature > 0) {
                 if (d->lastUpdate > ValveManager.timestamps.roomDataLoadTime) ValveManager.timestamps.roomDataLoadTime = d->lastUpdate;
                 temperatureTotal += d->roomTemperature;
                 tempCount++;
@@ -258,7 +259,37 @@ void fillManifoldData (ManifoldData &data)
     data.valvePidControllerI = ValveManager.getValveIntegralTerm();
     data.valvePidControllerD = ValveManager.getValveDerivativeTerm(); 
     data.valvePosition = ValveManager.getValvePosition();
-    
+
+    // Detailed room temperatures (up to 10)
+    auto activeZones = NeohubZoneManager.getActiveZones();
+    auto otherZones = NeohubZoneManager.getMonitoredZones();
+    data.activeZoneNames = "";
+    data.otherZoneNames = "";
+    data.zoneCount = activeZones.size() + otherZones.size();
+    data.zonesWithCallCount = 0;
+    if (data.roomTemperatures.size() < data.zoneCount) data.roomTemperatures.resize(data.zoneCount, NaN);
+    if (data.floorTemperatures.size() < data.zoneCount) data.floorTemperatures.resize(data.zoneCount, NaN);
+    if (data.zoneNames.size() < data.zoneCount) data.zoneNames.resize(data.zoneCount, "");
+    int i = 0;
+    for (NeohubZone z : activeZones) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
+        data.roomTemperatures[i]  = d && !d->isDead(now) ? d->roomTemperature  : NaN;
+        data.floorTemperatures[i] = d && !d->isDead(now) ? d->floorTemperature : NaN;
+        data.zoneNames[i] = d ? z.name : "";
+        if (d && d->demand && !d->isDead(now)) data.zonesWithCallCount++;
+        if (d) data.activeZoneNames += (data.activeZoneNames.isEmpty() ? "" : ",") + z.name;
+        i++;
+    }
+    for (NeohubZone z : otherZones) {
+        NeohubZoneData* d = NeohubZoneManager.getZoneData(z.id);
+        data.roomTemperatures[i]  = d && !d->isDead(now) ? d->roomTemperature  : NaN;
+        data.floorTemperatures[i] = d && !d->isDead(now) ? d->floorTemperature : NaN;
+        data.zoneNames[i] = d ? z.name : "";
+        if (d && d->demand && !d->isDead(now)) data.zonesWithCallCount++;
+        if (d) data.otherZoneNames += (data.otherZoneNames.isEmpty() ? "" : ",") + z.name;
+        i++;
+    }
+
     // Other information --------------------------------------------------------------------------
     data.inputTemperature = ValveManager.inputs.inputTemperature;
     data.returnTemperature = ValveManager.inputs.returnTemperature;
